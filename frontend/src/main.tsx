@@ -11,6 +11,7 @@ import {
   TextField,
 } from 'terry-react-ui-library'
 import {
+  ArrowLeft,
   ArrowRight,
   Box,
   ChevronDown,
@@ -36,8 +37,15 @@ import './styles.css'
 
 type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
 type SectionRow = { id: string; label: string; type: string; category: string; side: Side }
+type NavigationState = { items: SectionRow[]; index: number }
 
 const EMPTY_SECTION: SectionData = { section: '', description: '', options: [], raw: '', references: [] }
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+
+function storedPaneWidth(key: string, fallback: number) {
+  const value = Number.parseInt(localStorage.getItem(key) || '', 10)
+  return Number.isFinite(value) ? value : fallback
+}
 
 function sideForId(id: string): Side {
   const key = id.toUpperCase()
@@ -110,40 +118,25 @@ function numericRange(option: SectionOption) {
   const parsed = Number.parseFloat(sourceValue.replace('%', ''))
   const decimal = sourceValue.includes('.')
   const key = option.key.toLowerCase()
-
-  // Explicit documented constraints override the legacy Web heuristic.
-  // Chance/percent values in YR/Ares are conventionally bounded to 0..100.
   if (option.value.includes('%') || option.value_type === 'percent' || /chance$|percent$/.test(key)) {
     return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: option.value.includes('%') ? '%' : '' }
   }
-
   if (!Number.isFinite(parsed)) return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: '' }
-
-  // Match the old RulesmdEditorWeb behavior, but calculate from raw_value so the
-  // range is stable while dragging. Recomputing max from the edited value caused
-  // a runaway range and values that exploded into the hundreds of thousands.
   const factor = decimal ? 6 : 4
   const magnitude = Math.abs(parsed)
   const max = magnitude === 0 ? (decimal ? 1 : 4) : magnitude * factor
   const min = parsed < 0 ? parsed * factor : 0
-  return {
-    min,
-    max,
-    step: decimal ? 0.01 : 1,
-    suffix: '',
-  }
+  return { min, max, step: decimal ? 0.01 : 1, suffix: '' }
 }
 
 function IconButton({ title, children, primary = false, onClick, disabled = false }: {
   title: string; children: React.ReactNode; primary?: boolean; onClick?: () => void; disabled?: boolean
 }) {
-  return <button className={`iconButton ${primary ? 'primary' : ''}`} title={title} onClick={onClick} disabled={disabled}>{children}</button>
+  return <button className={`iconButton ${primary ? 'primary' : ''}`} title={title} onClick={onClick} disabled={disabled}>{children}<span className="iconButtonLabel">{title}</span></button>
 }
 
 function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: number; className?: string }) {
-  if (hasLegacyIcon(id)) {
-    return <div className={`legacyUnitIcon ${className}`} style={{ width: size, height: Math.round(size * .8), ...legacyIconStyle(id, size) }} />
-  }
+  if (hasLegacyIcon(id)) return <div className={`legacyUnitIcon ${className}`} style={{ width: size, height: Math.round(size * .8), ...legacyIconStyle(id, size) }} />
   return <div className={`legacyUnitIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
 }
 
@@ -187,6 +180,9 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [documentEpoch, setDocumentEpoch] = useState(0)
+  const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
+  const [leftPane, setLeftPane] = useState(() => storedPaneWidth('rulesmd.leftPane', 230))
+  const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
 
@@ -208,6 +204,8 @@ function App() {
     return [...result.entries()]
   }, [visibleFields])
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
+  const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
+  const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
 
   function referenceTarget(option: SectionOption) {
     const value = option.value.trim()
@@ -215,7 +213,7 @@ function App() {
     return rowById.get(value.toLowerCase()) ?? null
   }
 
-  async function showSection(row: SectionRow) {
+  async function loadSection(row: SectionRow) {
     const requestId = ++sectionRequest.current
     setSelected(row)
     setActiveGroup('全部')
@@ -238,9 +236,46 @@ function App() {
     }
   }
 
+  async function navigateTo(row: SectionRow) {
+    setNavigation(current => {
+      if (current.index >= 0 && current.items[current.index]?.id === row.id) return current
+      const base = current.items.slice(0, current.index + 1)
+      return { items: [...base, row], index: base.length }
+    })
+    await loadSection(row)
+  }
+
+  async function navigateHistory(delta: -1 | 1) {
+    const targetIndex = navigation.index + delta
+    const row = navigation.items[targetIndex]
+    if (!row) return
+    setNavigation(current => ({ ...current, index: targetIndex }))
+    setUnitSearch('')
+    await loadSection(row)
+    setStatus(`${delta < 0 ? '后退' : '前进'}到 [${row.id}]`)
+  }
+
+  function beginResize(side: 'left' | 'right', event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const onMove = (move: PointerEvent) => {
+      if (side === 'left') setLeftPane(clamp(move.clientX, 180, 420))
+      else setRightPane(clamp(window.innerWidth - move.clientX, 300, 620))
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      document.body.classList.remove('resizingPanes')
+      setLeftPane(value => { localStorage.setItem('rulesmd.leftPane', String(value)); return value })
+      setRightPane(value => { localStorage.setItem('rulesmd.rightPane', String(value)); return value })
+    }
+    document.body.classList.add('resizingPanes')
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   async function jumpToReference(row: SectionRow) {
     setUnitSearch('')
-    await showSection(row)
+    await navigateTo(row)
     setStatus(`已跳转到 [${row.id}]`)
   }
 
@@ -253,12 +288,14 @@ function App() {
     setDocumentEpoch(value => value + 1)
     const first = firstUsefulRow(next)
     if (first) {
+      setNavigation({ items: [first], index: 0 })
       setSelected(first)
       const data = await workspaceApi.section(first.id)
       sectionCache.current.set(first.id, data)
       setSectionData(data)
       setSelectedOptionId(data.options[0]?.line_id ?? null)
     } else {
+      setNavigation({ items: [], index: -1 })
       setSelected(null)
       setSectionData(EMPTY_SECTION)
       setSelectedOptionId(null)
@@ -275,9 +312,7 @@ function App() {
       await enterDocument(next, `已打开 ${path}`)
     } catch (error) {
       setStatus(`打开失败：${String(error)}`)
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   async function newRules() {
@@ -287,9 +322,7 @@ function App() {
       await enterDocument(next, '已从清洗后的原版 rulesmd.ini 模板新建文档')
     } catch (error) {
       setStatus(`新建失败：${String(error)}`)
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   async function saveRules() {
@@ -311,9 +344,7 @@ function App() {
       setStatus(`已保存 ${path}`)
     } catch (error) {
       setStatus(`保存失败：${String(error)}`)
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   async function setValue(option: SectionOption, value: string) {
@@ -343,9 +374,7 @@ function App() {
       const data = await workspaceApi.section(selected.id)
       sectionCache.current.set(selected.id, data)
       setSectionData(data)
-    } finally {
-      setShowRaw(true)
-    }
+    } finally { setShowRaw(true) }
   }
 
   async function openOptionPicker() {
@@ -355,9 +384,7 @@ function App() {
     try {
       const result = await workspaceApi.optionCatalog('', selected.id, sectionKind(selected.category))
       setCatalog(result)
-    } catch (error) {
-      setStatus(`读取参数目录失败：${String(error)}`)
-    }
+    } catch (error) { setStatus(`读取参数目录失败：${String(error)}`) }
   }
 
   async function addOption(option: CatalogOption) {
@@ -373,9 +400,7 @@ function App() {
       setSnapshot(next)
       setCatalog(current => current.filter(item => item.key !== option.key))
       setStatus(`已添加 ${option.label || option.key} (${option.key})`)
-    } catch (error) {
-      setStatus(`添加参数失败：${String(error)}`)
-    }
+    } catch (error) { setStatus(`添加参数失败：${String(error)}`) }
   }
 
   async function toggleAres(enabled: boolean) {
@@ -383,39 +408,47 @@ function App() {
       await workspaceApi.setSettings(enabled)
       setSnapshot(current => current ? { ...current, settings: { ares_enabled: enabled } } : current)
       setStatus(enabled ? '已开启 Ares 智能辅助' : '已关闭 Ares 智能辅助；现有 Ares 标签仍会保留')
-    } catch (error) {
-      setStatus(`设置失败：${String(error)}`)
-    }
+    } catch (error) { setStatus(`设置失败：${String(error)}`) }
   }
+
+  const workspaceStyle = {
+    '--left-pane': `${leftPane}px`,
+    '--right-pane': `${rightPane}px`,
+  } as React.CSSProperties
 
   return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode="dark">
     <header className="titlebar">
       <div className="brand"><div className="brandMark">R</div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
       <nav className="toolbar">
-        <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={19}/></IconButton>
-        <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={19}/></IconButton>
-        <IconButton title="保存" primary disabled={!snapshot} onClick={() => void saveRules()}><Save size={19}/></IconButton>
+        <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={18}/></IconButton>
+        <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
+        <IconButton title="保存" primary disabled={!snapshot} onClick={() => void saveRules()}><Save size={18}/></IconButton>
         <span className="divider"/>
-        <IconButton title="启动游戏" disabled><Gamepad2 size={19}/></IconButton>
-        <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={19}/></IconButton>
+        <IconButton title="启动游戏" disabled><Gamepad2 size={18}/></IconButton>
+        <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
       </nav>
       <div className="titleMeta"><span className={`statusDot ${snapshot?.document.dirty ? 'dirty' : ''}`}/>{snapshot?.document.dirty ? '有未保存修改' : snapshot ? '已保存' : '未打开文档'}</div>
     </header>
 
-    <div className="workspace">
+    <div className="workspace" style={workspaceStyle}>
       <aside className="sidebar">
         <div className="panelTitle"><span>对象</span></div>
         <label className="searchBox"><Search size={16}/><input value={unitSearch} onChange={event => setUnitSearch(event.target.value)} placeholder="搜索中文名、Section、类型"/></label>
         <div className="treeList">
-          {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void showSection(row)}/>} 
+          {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void navigateTo(row)}/>} 
         </div>
         <div className="sideFooter"><button disabled={!snapshot}><Plus size={16}/> 添加 Section</button><button title="删除" disabled={!selected}><Trash2 size={16}/></button></div>
       </aside>
+      <div className="paneSplitter" role="separator" aria-label="调整对象栏宽度" onPointerDown={event => beginResize('left', event)}/>
 
       <main className="editor">
         {selected ? <>
           <div className="entityHeaderHost">
             <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={sectionData.description || selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id} pinned={pinned} onPin={() => setPinned(value => !value)}/>
+            <div className="entityNavigation">
+              <button disabled={!previousSection} title={previousSection ? `后退到 ${previousSection.label} [${previousSection.id}]` : '没有上一项'} onClick={() => void navigateHistory(-1)}><ArrowLeft size={15}/><span>{previousSection?.label || '后退'}</span></button>
+              <button disabled={!nextSection} title={nextSection ? `前进到 ${nextSection.label} [${nextSection.id}]` : '没有下一项'} onClick={() => void navigateHistory(1)}><span>{nextSection?.label || '前进'}</span><ArrowRight size={15}/></button>
+            </div>
             <div className="entityHeaderActions"><button className="chip"><MoreHorizontal size={15}/></button></div>
           </div>
           <section className="editorControls">
@@ -443,6 +476,7 @@ function App() {
         </> : <div className="emptyPane"><strong>Rulesmd Editor</strong><span>使用“新建”创建完整原版 rulesmd.ini，或打开已有文件。</span></div>}
       </main>
 
+      <div className="paneSplitter" role="separator" aria-label="调整帮助栏宽度" onPointerDown={event => beginResize('right', event)}/>
       <aside className="inspector">
         <div className="inspectorTabs"><button className={!showRaw ? 'active' : ''} onClick={() => setShowRaw(false)}><CircleHelp size={16}/> 帮助</button><button className={showRaw ? 'active' : ''} onClick={() => void refreshRaw()}>{'{ }'} 原文</button></div>
         {!showRaw ? <div className="helpContent">
@@ -452,9 +486,7 @@ function App() {
     </div>
 
     <footer className="statusbar"><span>{status}</span><div><span>{snapshot?.document.encoding ?? '—'}</span><span>{snapshot?.document.newline ?? '—'}</span><span>{sectionData.options.length} 参数</span><span className="aresStatus"><Sparkles size={13}/> {snapshot?.settings.ares_enabled === false ? 'Ares 辅助关闭' : 'Ares'}</span></div></footer>
-
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
-
     <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}><div className="settingsDialogBody"><div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div></div></Dialog>
   </div>
 }
