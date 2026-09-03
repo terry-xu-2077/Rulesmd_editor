@@ -10,6 +10,11 @@ $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
 $LegacyAssets = Join-Path $Frontend 'public\legacy'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
+$RuleResourceBuilder = Join-Path $Root 'tools\build_rule_resources.py'
+$RuleTemplate = Join-Path $Root 'src\rulesmd_editor\resources\generated\rulesmd.template.ini'
+$RuleSchema = Join-Path $Root 'src\rulesmd_editor\resources\generated\rules_schema.json'
+$LegacyHelp = Join-Path $Root 'src\rulesmd_editor\resources\legacy\HelpInfor.ini'
+$LegacyNames = Join-Path $Root 'src\rulesmd_editor\resources\legacy\NamesDesc.ini'
 $ProxyHost = '127.0.0.1'
 $ProxyPort = 7897
 $ProxyUrl = "http://${ProxyHost}:${ProxyPort}"
@@ -103,6 +108,23 @@ function Install-FrontendDependencies {
     }
 }
 
+function Build-RuleResources {
+    Write-Step 'Preparing rules metadata and clean default template'
+    Clear-ProxyEnv
+    & $Python $RuleResourceBuilder
+    if ($LASTEXITCODE -eq 0) { return $true }
+
+    if ($ProxyAvailable) {
+        Write-Host "Rules resource download failed directly. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+        Enable-ProxyEnv
+        & $Python $RuleResourceBuilder
+        $ok = $LASTEXITCODE -eq 0
+        Clear-ProxyEnv
+        return $ok
+    }
+    return $false
+}
+
 Set-Location $Root
 
 Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
@@ -124,7 +146,6 @@ if ($ProxyAvailable) {
 }
 Write-Host "Cargo source replacement: crates.io -> $RsProxyIndex" -ForegroundColor Green
 
-# Python backend
 $PythonBootstrap = $null
 if (Get-Command py -ErrorAction SilentlyContinue) { $PythonBootstrap = 'py' }
 elseif (Get-Command python -ErrorAction SilentlyContinue) { $PythonBootstrap = 'python' }
@@ -144,8 +165,14 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
-# Frontend dependencies are refreshed whenever package.json changes. This keeps
-# shared UI-library revisions in sync after a normal git pull without deleting node_modules.
+# Build the local runtime rule database only when it is missing. The generated bundle
+# contains the cleaned full rulesmd.pre template plus HelpInfor/NamesDesc-derived data.
+if ((-not (Test-Path $RuleTemplate)) -or (-not (Test-Path $RuleSchema)) -or (-not (Test-Path $LegacyHelp)) -or (-not (Test-Path $LegacyNames))) {
+    if (-not (Build-RuleResources)) { Fail 'Rules metadata/default-template generation failed.' }
+} else {
+    Write-Host 'Rules metadata and default template are ready.' -ForegroundColor DarkGray
+}
+
 $FrontendHash = (Get-FileHash -Algorithm SHA256 $FrontendPackage).Hash
 $InstalledHash = if (Test-Path $FrontendStamp) { (Get-Content $FrontendStamp -Raw).Trim() } else { '' }
 if ((-not (Test-Path $FrontendModules)) -or ($FrontendHash -ne $InstalledHash)) {
@@ -157,8 +184,6 @@ if ((-not (Test-Path $FrontendModules)) -or ($FrontendHash -ne $InstalledHash)) 
     Write-Host 'Frontend dependencies are up to date.' -ForegroundColor DarkGray
 }
 
-# Reuse the original RulesmdEditorWeb image assets. They are downloaded once and then
-# served locally by Vite/Tauri; the editor does not depend on the web repo at runtime.
 New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
 Write-Step 'Synchronizing legacy RulesmdEditorWeb UI assets'
 $LegacyBase = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
@@ -167,7 +192,6 @@ Sync-LegacyAsset 'countryTile.png' "$LegacyBase/countryTile.png"
 Sync-LegacyAsset 'bgIcon.png' "$LegacyBase/bgIcon.png"
 Sync-LegacyAsset 'RA2_NONE.png' "$LegacyBase/RA2_NONE.png"
 
-# The PNG is the single source of truth for all desktop icons.
 if (-not (Test-Path $IconSource)) {
     Fail "App icon source is missing: $IconSource"
 }
@@ -178,9 +202,6 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
 } finally { Pop-Location }
 
-# Cargo source is permanently replaced by .cargo/config.toml:
-# crates.io -> RsProxy sparse.
-# Only the network route changes here: direct first, then local proxy.
 Clear-ProxyEnv
 $env:CARGO_NET_RETRY = '2'
 $env:CARGO_HTTP_TIMEOUT = '30'
@@ -200,7 +221,6 @@ if ($FetchCode -ne 0) {
     Fail "Cargo dependency download from RsProxy failed. Local proxy checked: $ProxyUrl."
 }
 
-# Dependencies are cached now. Keep the app runtime independent of proxy settings.
 Clear-ProxyEnv
 $env:RULESMD_PYTHON = $Python
 $env:PYTHONUTF8 = '1'
