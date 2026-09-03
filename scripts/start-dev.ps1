@@ -2,6 +2,9 @@ $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
+$FrontendPackage = Join-Path $Frontend 'package.json'
+$FrontendModules = Join-Path $Frontend 'node_modules'
+$FrontendStamp = Join-Path $FrontendModules '.rulesmd-package.sha256'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
 $LegacyAssets = Join-Path $Frontend 'public\legacy'
@@ -79,6 +82,27 @@ function Sync-LegacyAsset([string]$Name, [string]$Url) {
     }
 }
 
+function Install-FrontendDependencies {
+    Push-Location $Frontend
+    try {
+        Clear-ProxyEnv
+        & npm install
+        if ($LASTEXITCODE -eq 0) { return $true }
+
+        if ($ProxyAvailable) {
+            Write-Host "npm direct install failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+            Enable-ProxyEnv
+            & npm install
+            $ok = $LASTEXITCODE -eq 0
+            Clear-ProxyEnv
+            return $ok
+        }
+        return $false
+    } finally {
+        Pop-Location
+    }
+}
+
 Set-Location $Root
 
 Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
@@ -120,14 +144,17 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
-# Frontend dependencies.
-if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
-    Write-Step 'Installing frontend dependencies (first run only)'
-    Push-Location $Frontend
-    try {
-        if (Test-Path 'package-lock.json') { & npm ci } else { & npm install }
-        if ($LASTEXITCODE -ne 0) { Fail 'npm dependency installation failed.' }
-    } finally { Pop-Location }
+# Frontend dependencies are refreshed whenever package.json changes. This keeps
+# shared UI-library revisions in sync after a normal git pull without deleting node_modules.
+$FrontendHash = (Get-FileHash -Algorithm SHA256 $FrontendPackage).Hash
+$InstalledHash = if (Test-Path $FrontendStamp) { (Get-Content $FrontendStamp -Raw).Trim() } else { '' }
+if ((-not (Test-Path $FrontendModules)) -or ($FrontendHash -ne $InstalledHash)) {
+    Write-Step 'Installing/updating frontend dependencies'
+    if (-not (Install-FrontendDependencies)) { Fail 'npm dependency installation failed.' }
+    New-Item -ItemType Directory -Path $FrontendModules -Force | Out-Null
+    Set-Content -Path $FrontendStamp -Value $FrontendHash -NoNewline
+} else {
+    Write-Host 'Frontend dependencies are up to date.' -ForegroundColor DarkGray
 }
 
 # Reuse the original RulesmdEditorWeb image assets. They are downloaded once and then
