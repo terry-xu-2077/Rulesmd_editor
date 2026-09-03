@@ -1,6 +1,6 @@
 /* Desktop-editor density pass inspired by the old Qt workflow: narrow navigation,
    dominant parameter workspace, compact help pane, and more rows visible per screen. */
-.workspace{grid-template-columns:230px minmax(620px,1fr) 270px!important}
+.workspace{grid-template-columns:230px minmax(620px,1fr) 285px!important}
 .sidebar{min-width:0}
 .inspector{min-width:0}
 
@@ -24,11 +24,12 @@
 .segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
 .editorControls .tc-button{height:28px!important;min-width:84px!important}
 
-/* Dense three-column business table. Controls remain UI Library components. */
+/* Dense three-column business table. Controls remain UI Library components.
+   Help text never belongs in this table; it lives in the inspector. */
 .parameterTablePane{padding:0!important;overflow:auto!important;background:#091525!important}
 .parameterTableHeader{
   position:sticky;top:0;z-index:20;
-  display:grid;grid-template-columns:minmax(145px,22%) minmax(170px,28%) minmax(320px,1fr);
+  display:grid;grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);
   min-width:650px;height:30px;align-items:center;
   background:#172943;border-bottom:1px solid rgba(112,238,255,.24);
   color:#8da7be;font-size:10.5px;font-weight:700;
@@ -44,7 +45,7 @@
 .parameterTableGroup .fieldGroupHeader span{font-size:11px!important}
 .parameterTableRow{
   position:relative;display:grid;
-  grid-template-columns:minmax(145px,22%) minmax(170px,28%) minmax(320px,1fr);
+  grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);
   min-height:34px;align-items:stretch;
   border-bottom:1px solid rgba(105,145,185,.13);
   background:#0d1a2a;color:#c8d7e4;
@@ -56,33 +57,40 @@
 .parameterKeyCell,.parameterLabelCell,.parameterValueCell{min-width:0;display:flex;align-items:center;border-right:1px solid rgba(105,145,185,.13);box-sizing:border-box}
 .parameterKeyCell{gap:7px;padding:0 9px 0 12px}
 .parameterKeyCell code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9db7cd;font:11px/1.2 "Cascadia Code",Consolas,monospace}
-.parameterLabelCell{padding:3px 9px;flex-direction:column;align-items:flex-start;justify-content:center}
+.parameterLabelCell{padding:0 9px}
 .parameterLabelCell strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e3edf5;font-size:11.5px;font-weight:600}
-.parameterLabelCell small{max-width:100%;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#70869b;font-size:9.5px}
-.parameterValueCell{border-right:0;padding:3px 54px 3px 8px;position:relative;overflow:visible}
-.parameterValueCell .rulesControlHost{width:100%;min-width:0}
+.parameterValueCell{border-right:0;padding:3px 8px;position:relative;overflow:visible}
+.parameterValueCell .rulesControlHost{width:100%;min-width:0;display:flex;align-items:center;gap:6px}
 .parameterValueCell .tc-control-wrap{max-width:100%}
-.parameterValueCell .tc-text,.parameterValueCell .tc-select,.parameterValueCell .tc-multi{width:min(100%,520px)!important;max-width:520px}
-.parameterValueCell .tc-slider{width:min(100%,520px)!important;max-width:520px}
+.parameterValueCell .tc-text,.parameterValueCell .tc-select,.parameterValueCell .tc-multi{width:min(100%,500px)!important;max-width:500px}
+.parameterValueCell .tc-slider{width:min(100%,500px)!important;max-width:500px}
 .parameterValueCell .tc-control{height:26px}
 .parameterValueCell .tc-text input,.parameterValueCell .tc-select-button,.parameterValueCell .tc-number,.parameterValueCell .tc-bool-knob{font-size:11.5px!important}
 .parameterValueCell .tc-reset{left:calc(100% + 6px)}
 .parameterTableRow .aresBadge{flex:0 0 auto;font-size:8px;padding:1px 4px}
+.referenceJump{
+  flex:0 0 27px;width:27px;height:26px;padding:0;border-radius:4px;
+  border:1px solid rgba(73,164,230,.55);background:rgba(16,67,102,.62);color:#70cfff;
+  display:grid;place-items:center;cursor:pointer;position:relative;z-index:4;
+}
+.referenceJump:hover{background:rgba(31,106,157,.8);border-color:#62cfff;color:#d8f5ff}
 
-/* Inspector is reference/help, not the primary working surface. */
+/* Inspector is the single home for parameter explanations. */
 .inspectorTabs{height:38px!important}
 .inspectorTabs button{font-size:11px!important}
 .helpContent{padding:12px!important}
 .helpHeader{margin-bottom:10px!important}
 .helpContent h3{font-size:14px!important;margin:9px 0!important}
 .helpContent h4{font-size:11.5px!important}
-.helpContent p{font-size:11.5px!important;line-height:1.55!important}
-.infoCard{font-size:10.5px!important}
+.helpContent p{font-size:11.5px!important;line-height:1.62!important}
+.infoCard{font-size:10.5px!important;grid-template-columns:64px minmax(0,1fr)!important}
+.infoCard b{min-width:0;overflow-wrap:anywhere}
+.docSource{color:#7f97ad!important;overflow-wrap:anywhere}
 .valueChoices{gap:4px!important}
 .valueChoices>span{padding:5px 6px!important;font-size:10.5px!important}
 
 @media(max-width:1200px){
-  .workspace{grid-template-columns:205px minmax(520px,1fr) 245px!important}
+  .workspace{grid-template-columns:205px minmax(520px,1fr) 255px!important}
   .editorControls .searchBox{width:180px!important;flex-basis:180px!important}
-  .parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,22%) minmax(150px,27%) minmax(280px,1fr)}
+  .parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,23%) minmax(110px,20%) minmax(290px,1fr)}
 }
