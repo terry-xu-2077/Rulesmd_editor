@@ -47,16 +47,25 @@ class IniDocument:
     hand-maintained ordering. This model edits only the touched lines.
     """
 
-    def __init__(self, lines: list[IniLine] | None = None, *, encoding: str = "utf-8", newline: str = "\n"):
+    def __init__(
+        self,
+        lines: list[IniLine] | None = None,
+        *,
+        encoding: str = "utf-8",
+        newline: str = "\n",
+        final_newline: bool = True,
+    ):
         self.lines = lines or []
         self.encoding = encoding
         self.newline = newline
+        self.final_newline = final_newline
         self.path: Path | None = None
         self.dirty = False
 
     @classmethod
     def from_text(cls, text: str, *, encoding: str = "utf-8") -> "IniDocument":
         newline = "\r\n" if "\r\n" in text else "\n"
+        final_newline = text.endswith(("\r\n", "\n", "\r"))
         raw_lines = text.splitlines()
         lines: list[IniLine] = []
         current: str | None = None
@@ -70,15 +79,25 @@ class IniDocument:
             if current is not None and km:
                 prefix, key, sep, tail = km.groups()
                 value, suffix = _split_inline_comment(tail)
-                lines.append(IniLine(raw=raw, kind="key", section=current, key=key.strip(), value=value,
-                                     prefix=prefix, separator=sep, suffix=suffix))
+                lines.append(
+                    IniLine(
+                        raw=raw,
+                        kind="key",
+                        section=current,
+                        key=key.strip(),
+                        value=value,
+                        prefix=prefix,
+                        separator=sep,
+                        suffix=suffix,
+                    )
+                )
             elif not raw.strip():
                 lines.append(IniLine(raw=raw, kind="blank", section=current))
             elif raw.lstrip().startswith((";", "#")):
                 lines.append(IniLine(raw=raw, kind="comment", section=current))
             else:
                 lines.append(IniLine(raw=raw, kind="raw", section=current))
-        return cls(lines, encoding=encoding, newline=newline)
+        return cls(lines, encoding=encoding, newline=newline, final_newline=final_newline)
 
     @classmethod
     def load(cls, path: str | Path) -> "IniDocument":
@@ -106,7 +125,7 @@ class IniDocument:
 
     def to_text(self) -> str:
         text = self.newline.join(line.render() for line in self.lines)
-        if self.lines:
+        if self.lines and self.final_newline:
             text += self.newline
         return text
 
@@ -144,7 +163,10 @@ class IniDocument:
 
     def has_option(self, section: str, key: str) -> bool:
         k = key.casefold()
-        return any(l.kind == "key" and l.section == section and (l.key or "").casefold() == k for l in self.lines)
+        return any(
+            l.kind == "key" and l.section == section and (l.key or "").casefold() == k
+            for l in self.lines
+        )
 
     def _section_bounds(self, section: str) -> tuple[int, int] | None:
         start = None
@@ -162,13 +184,14 @@ class IniDocument:
         if self.lines and self.lines[-1].kind != "blank":
             self.lines.append(IniLine("", "blank"))
         self.lines.append(IniLine(f"[{section}]", "section", section=section))
+        self.final_newline = True
         self.dirty = True
 
     def remove_section(self, section: str) -> None:
         bounds = self._section_bounds(section)
         if not bounds:
             return
-        del self.lines[bounds[0]:bounds[1]]
+        del self.lines[bounds[0] : bounds[1]]
         self.dirty = True
 
     def set(self, section: str, key: str, value: str) -> None:
@@ -188,13 +211,20 @@ class IniDocument:
         insert = bounds[1]
         while insert > bounds[0] + 1 and self.lines[insert - 1].kind == "blank":
             insert -= 1
-        self.lines.insert(insert, IniLine(raw="", kind="key", section=section, key=key, value=str(value)))
+        self.lines.insert(
+            insert,
+            IniLine(raw="", kind="key", section=section, key=key, value=str(value)),
+        )
         self.dirty = True
 
     def remove_option(self, section: str, key: str) -> None:
         k = key.casefold()
         old = len(self.lines)
-        self.lines = [l for l in self.lines if not (l.kind == "key" and l.section == section and (l.key or "").casefold() == k)]
+        self.lines = [
+            l
+            for l in self.lines
+            if not (l.kind == "key" and l.section == section and (l.key or "").casefold() == k)
+        ]
         self.dirty |= len(self.lines) != old
 
     def clone_section_text(self, section: str) -> str:
