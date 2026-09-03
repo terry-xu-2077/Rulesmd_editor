@@ -89,7 +89,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
     setSelectedKey(tree[source].get(category)?.[0]?.key ?? '')
   }
 
-  return <Dialog open={open} title="添加参数" onClose={onClose}>
+  return <Dialog open={open} title="添加参数" size="wide" onClose={onClose}>
     <div className="parameterExplorer">
       <div className="parameterExplorerNotice">
         <ShieldCheck size={18}/>
