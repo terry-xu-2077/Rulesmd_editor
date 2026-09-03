@@ -89,43 +89,25 @@ fn backend_call(method: String, params: Option<Value>, state: State<'_, BackendS
         .call(&method, params.unwrap_or_else(|| json!({})))
 }
 
-#[cfg(target_os = "windows")]
-fn powershell_dialog(script: &str) -> Result<Option<String>, String> {
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-STA", "-Command", script])
-        .output()
-        .map_err(|e| format!("无法打开文件对话框: {e}"))?;
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
-    }
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(if text.is_empty() { None } else { Some(text) })
+#[tauri::command]
+fn pick_rules_file(window: tauri::Window) -> Result<Option<String>, String> {
+    let path = rfd::FileDialog::new()
+        .set_parent(&window)
+        .set_title("打开 Rules 文件")
+        .add_filter("Rules INI", &["ini"])
+        .pick_file();
+    Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
 
 #[tauri::command]
-fn pick_rules_file() -> Result<Option<String>, String> {
-    #[cfg(target_os = "windows")]
-    {
-        return powershell_dialog(
-            "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='Rules INI|rulesmd.ini;rules.ini|INI 文件|*.ini|所有文件|*.*'; $d.Title='打开 Rules 文件'; if($d.ShowDialog() -eq 'OK'){[Console]::Write($d.FileName)}",
-        );
-    }
-    #[allow(unreachable_code)]
-    Ok(None)
-}
-
-#[tauri::command]
-fn pick_save_file(default_name: Option<String>) -> Result<Option<String>, String> {
-    #[cfg(target_os = "windows")]
-    {
-        let safe = default_name.unwrap_or_else(|| "rulesmd.ini".to_string()).replace('"', "");
-        let script = format!(
-            "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='INI 文件|*.ini|所有文件|*.*'; $d.FileName=\"{safe}\"; $d.Title='保存 Rules 文件'; if($d.ShowDialog() -eq 'OK'){{[Console]::Write($d.FileName)}}"
-        );
-        return powershell_dialog(&script);
-    }
-    #[allow(unreachable_code)]
-    Ok(None)
+fn pick_save_file(window: tauri::Window, default_name: Option<String>) -> Result<Option<String>, String> {
+    let path = rfd::FileDialog::new()
+        .set_parent(&window)
+        .set_title("保存 Rules 文件")
+        .set_file_name(default_name.unwrap_or_else(|| "rulesmd.ini".to_string()))
+        .add_filter("INI 文件", &["ini"])
+        .save_file();
+    Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
