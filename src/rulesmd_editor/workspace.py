@@ -17,22 +17,38 @@ class DocumentInfo:
     section_count: int
 
 
+@dataclass
+class WorkspaceSettings:
+    # Ares is part of the normal editing experience by default. Disabling it only
+    # removes Ares-specific suggestions/insert helpers; parsing always stays lossless
+    # and permissive so hand-written or third-party tags are never rejected.
+    ares_enabled: bool = True
+
+
 class RulesWorkspace:
     """Application-facing service around the lossless INI model.
 
-    React/Tauri should talk to this service rather than depending on parser internals.
-    The payloads are deliberately JSON-friendly so the same API can be exposed over
-    a Tauri command, stdio sidecar, or tests.
+    Yuri's Revenge and Ares metadata are intentionally presented through one option
+    catalog. `ares_enabled` affects assistance, never parsing compatibility.
     """
 
-    def __init__(self, schema: SchemaCatalog | None = None):
+    def __init__(self, schema: SchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
         self.schema = schema or SchemaCatalog()
+        self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
 
     def _doc(self) -> IniDocument:
         if self.document is None:
             raise RuntimeError("No rules document is open")
         return self.document
+
+    def get_settings(self) -> dict:
+        return asdict(self.settings)
+
+    def set_settings(self, *, ares_enabled: bool | None = None) -> dict:
+        if ares_enabled is not None:
+            self.settings.ares_enabled = bool(ares_enabled)
+        return self.get_settings()
 
     def new_document(self) -> dict:
         self.document = IniDocument.new()
@@ -58,6 +74,7 @@ class RulesWorkspace:
         categories = categorized_sections(doc)
         return {
             "document": asdict(self.info()),
+            "settings": self.get_settings(),
             "categories": [
                 {
                     "name": category,
@@ -89,6 +106,9 @@ class RulesWorkspace:
                     "description": meta.help_text,
                     "category": meta.category,
                     "source": meta.source,
+                    "value_type": meta.value_type,
+                    "values": [{"value": value, "label": label} for value, label in meta.values],
+                    "docs": meta.docs,
                 }
             )
         return {
@@ -101,6 +121,32 @@ class RulesWorkspace:
                 for source_section, key in doc.references_to(actual)
             ],
         }
+
+    def option_catalog(self, query: str = "", applies_to: str | None = None) -> list[dict]:
+        """Return insertable options as one merged YR/Ares catalog.
+
+        When Ares assistance is disabled, Ares options disappear from this picker,
+        but existing/manual Ares keys remain fully editable because the parser never
+        validates or rejects unknown keys.
+        """
+        rows = self.schema.available_options(query=query, applies_to=applies_to)
+        if not self.settings.ares_enabled:
+            rows = [meta for meta in rows if meta.source.casefold() != "ares"]
+        return [
+            {
+                "key": meta.name,
+                "label": meta.description or meta.name,
+                "description": meta.help_text,
+                "category": meta.category,
+                "source": meta.source,
+                "value_type": meta.value_type,
+                "applies_to": list(meta.applies_to),
+                "default": meta.default,
+                "values": [{"value": value, "label": label} for value, label in meta.values],
+                "docs": meta.docs,
+            }
+            for meta in rows
+        ]
 
     def set_value(self, line_id: int, value: str) -> dict:
         doc = self._doc()
@@ -115,10 +161,12 @@ class RulesWorkspace:
             "dirty": doc.dirty,
         }
 
-    def add_option(self, section: str, key: str, value: str = "") -> dict:
+    def add_option(self, section: str, key: str, value: str | None = None) -> dict:
         doc = self._doc()
-        line_id = doc.set(section, key, value)
-        return self.set_value(line_id, value)
+        meta = self.schema.option(key)
+        resolved = meta.default if value is None else value
+        line_id = doc.set(section, key, resolved)
+        return self.set_value(line_id, resolved)
 
     def remove_line(self, line_id: int) -> dict:
         doc = self._doc()
