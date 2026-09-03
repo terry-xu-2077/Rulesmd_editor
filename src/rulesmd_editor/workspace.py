@@ -5,12 +5,9 @@ from pathlib import Path
 
 from .control_schema import ControlSchema, ControlSpec
 from .ini_document import IniDocument, categorized_sections
-from .schema import SchemaCatalog
+from .runtime_catalog import GENERATED_ROOT, RuntimeSchemaCatalog
 
 
-RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
-LEGACY_ROOT = RESOURCE_ROOT / "legacy"
-GENERATED_ROOT = RESOURCE_ROOT / "generated"
 DEFAULT_TEMPLATE = GENERATED_ROOT / "rulesmd.template.ini"
 
 
@@ -30,23 +27,45 @@ class WorkspaceSettings:
 
 
 class RulesWorkspace:
-    """Application-facing service around the lossless INI model.
+    """Lossless rules editor service used by the Tauri bridge.
 
-    The editor uses the compiled legacy/Web metadata for presentation while the INI
-    document itself remains lossless. Ares assistance affects suggestions only; hand
-    written/unknown tags are always preserved.
+    Runtime presentation metadata comes from compiled legacy Web resources plus Ares.
+    Editing is line-id based, and the workspace keeps a baseline so restoring a value
+    to its original content also clears its modified state.
     """
 
-    def __init__(self, schema: SchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
-        self.schema = schema or SchemaCatalog(LEGACY_ROOT if LEGACY_ROOT.exists() else None)
+    def __init__(self, schema: RuntimeSchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
+        self.schema = schema or RuntimeSchemaCatalog()
         self.controls = ControlSchema()
         self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
+        self._original_values: dict[int, str] = {}
+        self._structural_dirty = False
 
     def _doc(self) -> IniDocument:
         if self.document is None:
             raise RuntimeError("No rules document is open")
         return self.document
+
+    def _capture_baseline(self) -> None:
+        doc = self._doc()
+        self._original_values = {
+            line.line_id: line.value or ""
+            for line in doc.lines
+            if line.kind == "key"
+        }
+        self._structural_dirty = False
+        doc.dirty = False
+
+    def _refresh_dirty(self) -> None:
+        doc = self._doc()
+        changed_value = any(
+            line.kind == "key"
+            and line.line_id in self._original_values
+            and (line.value or "") != self._original_values[line.line_id]
+            for line in doc.lines
+        )
+        doc.dirty = self._structural_dirty or changed_value
 
     def get_settings(self) -> dict:
         return asdict(self.settings)
@@ -60,13 +79,14 @@ class RulesWorkspace:
         if DEFAULT_TEMPLATE.exists():
             self.document = IniDocument.load(DEFAULT_TEMPLATE)
             self.document.path = None
-            self.document.dirty = False
         else:
             self.document = IniDocument.new()
+        self._capture_baseline()
         return self.snapshot()
 
     def open_file(self, path: str | Path) -> dict:
         self.document = IniDocument.load(path)
+        self._capture_baseline()
         return self.snapshot()
 
     def info(self) -> DocumentInfo:
@@ -171,27 +191,18 @@ class RulesWorkspace:
             value = line.value or ""
             meta = self.schema.option(key)
             control = self._control_for(key, value, meta)
-            ui_value_type = meta.value_type
-            if control.widget == "multi-select":
-                ui_value_type = "list-legacy"
-            elif control.widget == "select":
-                ui_value_type = "enum"
-            elif control.widget == "boolean":
-                ui_value_type = "boolean"
-            elif control.widget == "slider":
-                ui_value_type = "number"
             options.append(
                 {
                     "line_id": line.line_id,
                     "key": key,
                     "value": value,
+                    "raw_value": self._original_values.get(line.line_id),
                     "suffix": line.suffix,
                     "label": meta.description or key,
                     "description": meta.help_text,
                     "category": meta.category,
                     "source": meta.source,
-                    "value_type": ui_value_type,
-                    "semantic_type": meta.value_type,
+                    "value_type": meta.value_type,
                     "widget": control.widget,
                     "values": [{"value": item_value, "label": label} for item_value, label in control.values],
                     "docs": meta.docs,
@@ -231,6 +242,7 @@ class RulesWorkspace:
     def set_value(self, line_id: int, value: str) -> dict:
         doc = self._doc()
         doc.set_line_value(line_id, value)
+        self._refresh_dirty()
         line = doc.line(line_id)
         assert line is not None
         return {
@@ -238,6 +250,7 @@ class RulesWorkspace:
             "section": line.section,
             "key": line.key,
             "value": line.value,
+            "raw_value": self._original_values.get(line_id),
             "dirty": doc.dirty,
         }
 
@@ -246,7 +259,18 @@ class RulesWorkspace:
         meta = self.schema.option(key)
         resolved = meta.default if value is None else value
         line_id = doc.set(section, key, resolved)
-        return self.set_value(line_id, resolved)
+        self._structural_dirty = True
+        self._refresh_dirty()
+        line = doc.line(line_id)
+        assert line is not None
+        return {
+            "line_id": line.line_id,
+            "section": line.section,
+            "key": line.key,
+            "value": line.value,
+            "raw_value": None,
+            "dirty": doc.dirty,
+        }
 
     def remove_line(self, line_id: int) -> dict:
         doc = self._doc()
@@ -255,10 +279,13 @@ class RulesWorkspace:
             raise KeyError(f"Unknown line id: {line_id}")
         section = line.section
         doc.remove_line(line_id)
+        self._structural_dirty = True
+        self._refresh_dirty()
         return {"line_id": line_id, "section": section, "dirty": doc.dirty}
 
     def save(self, path: str | Path | None = None) -> dict:
         target = self._doc().save(path)
+        self._capture_baseline()
         return {"path": str(target), "dirty": False}
 
     def raw_text(self) -> str:
