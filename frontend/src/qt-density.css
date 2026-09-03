@@ -1,0 +1,53 @@
+/* Desktop-editor density pass inspired by the old Qt workflow: narrow navigation,
+   dominant parameter workspace, compact help pane, and more rows visible per screen. */
+.workspace{grid-template-columns:230px minmax(620px,1fr) 270px!important}
+.sidebar{min-width:0}
+.inspector{min-width:0}
+
+/* Keep the document browser compact. */
+.panelTitle{height:38px!important;padding-left:12px!important}
+.sidebar>.searchBox{height:32px!important;margin:7px!important}
+.sideFooter{height:38px!important}
+
+/* The current object header is useful, but should not consume editor height. */
+.editor{grid-template-rows:66px 44px minmax(0,1fr)!important}
+.entityHeaderHost{min-height:0!important}
+.entityHeaderHost .tc-entity-header{min-height:66px!important;height:66px!important}
+.entityHeaderHost .tc-entity-icon{width:68px!important;height:66px!important}
+.entityHeaderHost .tc-entity-watermark{font-size:54px!important;line-height:58px!important}
+.entityHeaderHost .tc-entity-title strong{font-size:17px!important}
+.entityHeaderHost .tc-entity-title span{font-size:10.5px!important}
+
+/* Old desktop editor kept search and value actions close to the table. */
+.editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}
+.editorControls .searchBox{height:30px!important;width:210px!important;flex-basis:210px!important}
+.segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
+.editorControls .tc-button{height:28px!important;min-width:84px!important}
+
+/* Property table density. Application layout only; control internals stay in UI Library. */
+.propertyRowHost .tc-property-row{min-height:42px!important;grid-template-columns:34% 66%!important}
+.propertyRowHost .tc-property-label{padding-right:7px!important}
+.propertyRowHost .tc-property-label strong{font-size:12.5px!important}
+.propertyRowHost .tc-property-label span{font-size:10px!important}
+.propertyRowHost .tc-property-value{padding-left:7px!important}
+.propertyRowHost.focused{box-shadow:inset 6px 0 0 rgba(70,157,234,.92)!important}
+.fieldGroupHeader{height:31px!important;padding:0 12px!important}
+.fieldGroupHeader span{font-size:11.5px!important}
+.fieldsPane{padding-bottom:18px!important}
+
+/* Inspector is reference/help, not the primary working surface. */
+.inspectorTabs{height:38px!important}
+.inspectorTabs button{font-size:11px!important}
+.helpContent{padding:12px!important}
+.helpHeader{margin-bottom:10px!important}
+.helpContent h3{font-size:14px!important;margin:9px 0!important}
+.helpContent h4{font-size:11.5px!important}
+.helpContent p{font-size:11.5px!important;line-height:1.55!important}
+.infoCard{font-size:10.5px!important}
+.valueChoices{gap:4px!important}
+.valueChoices>span{padding:5px 6px!important;font-size:10.5px!important}
+
+@media(max-width:1200px){
+  .workspace{grid-template-columns:205px minmax(520px,1fr) 245px!important}
+  .editorControls .searchBox{width:180px!important;flex-basis:180px!important}
+}
