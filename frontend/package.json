@@ -16,7 +16,7 @@
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "terry-react-ui-library": "https://github.com/terry-xu-2077/Terry_React_UI_Library/archive/69a501fc7ac9bcbb52f6a8f4112fa1eff1e03249.tar.gz"
+    "terry-react-ui-library": "https://github.com/terry-xu-2077/Terry_React_UI_Library/archive/1bd5190bdb615698252b9c9a9728a29ad37c6253.tar.gz"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.0",
