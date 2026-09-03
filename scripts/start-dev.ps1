@@ -70,7 +70,12 @@ function Refresh-RustPath {
 
 function Install-RustToolchain {
     Write-Step 'Rust/Cargo not found - installing Rust automatically'
-    $RustupInstaller = Join-Path $env:TEMP 'rulesmd-rustup-init.exe'
+
+    # rustup-init inspects argv[0] / its executable filename on Windows to decide whether
+    # it is the installer or one of rustup's proxy tools. Keep the canonical filename.
+    $RustupInstallerDir = Join-Path $env:TEMP 'rulesmd-rustup'
+    $RustupInstaller = Join-Path $RustupInstallerDir 'rustup-init.exe'
+    New-Item -ItemType Directory -Path $RustupInstallerDir -Force | Out-Null
     Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
 
     Clear-ProxyEnv
@@ -79,25 +84,27 @@ function Install-RustToolchain {
         Invoke-WebRequest -UseBasicParsing -Uri $RustupUrl -OutFile $RustupInstaller -TimeoutSec 60
     } catch {
         if (-not $ProxyAvailable) {
+            Remove-Item $RustupInstallerDir -Recurse -Force -ErrorAction SilentlyContinue
             Fail 'Rust could not be downloaded from rustup.rs and the local proxy is unavailable.'
         }
         Write-Host "Rust direct download failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
         try {
             Invoke-WebRequest -UseBasicParsing -Uri $RustupUrl -OutFile $RustupInstaller -Proxy $ProxyUrl -TimeoutSec 90
         } catch {
-            Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
+            Remove-Item $RustupInstallerDir -Recurse -Force -ErrorAction SilentlyContinue
             Fail 'Rust automatic download failed both directly and through the local proxy.'
         }
     }
 
     if (-not (Test-Path $RustupInstaller)) {
+        Remove-Item $RustupInstallerDir -Recurse -Force -ErrorAction SilentlyContinue
         Fail 'Rust installer download did not produce a usable file.'
     }
 
     Write-Host 'Installing Rust stable toolchain (minimal profile)...' -ForegroundColor DarkGray
     & $RustupInstaller -y --profile minimal --default-toolchain stable
     $RustupExit = $LASTEXITCODE
-    Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
+    Remove-Item $RustupInstallerDir -Recurse -Force -ErrorAction SilentlyContinue
     if ($RustupExit -ne 0) {
         Fail "rustup installation failed with exit code $RustupExit."
     }
