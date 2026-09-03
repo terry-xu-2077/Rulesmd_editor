@@ -158,13 +158,13 @@ function Install-FrontendDependencies {
     Push-Location $Frontend
     try {
         Clear-ProxyEnv
-        & npm install
+        & npm install --package-lock=false
         if ($LASTEXITCODE -eq 0) { return $true }
 
         if ($ProxyAvailable) {
             Write-Host "npm direct install failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
             Enable-ProxyEnv
-            & npm install
+            & npm install --package-lock=false
             $ok = $LASTEXITCODE -eq 0
             Clear-ProxyEnv
             return $ok
