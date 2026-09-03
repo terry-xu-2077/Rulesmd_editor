@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .control_schema import ControlSchema, ControlSpec
 from .ini_document import IniDocument, categorized_sections
 from .schema import SchemaCatalog
 
@@ -34,6 +35,7 @@ class RulesWorkspace:
 
     def __init__(self, schema: SchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
         self.schema = schema or SchemaCatalog()
+        self.controls = ControlSchema()
         self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
 
@@ -87,6 +89,64 @@ class RulesWorkspace:
             ],
         }
 
+    def _dynamic_values(self, spec: ControlSpec) -> tuple[tuple[str, str], ...]:
+        doc = self._doc()
+        dynamic = spec.dynamic or ""
+        if not dynamic:
+            return ()
+
+        if dynamic == "buildings":
+            values: list[tuple[str, str]] = []
+            for _, section in doc.items("BuildingTypes"):
+                if not doc.has_section(section):
+                    continue
+                try:
+                    if float(doc.get(section, "TechLevel", "-1")) <= -1:
+                        continue
+                except ValueError:
+                    continue
+                values.append((section, self.schema.section_description(section) or section))
+            return tuple(values)
+
+        if not dynamic.startswith("unit:"):
+            return ()
+
+        entity_type = dynamic.split(":", 1)[1]
+        root_sections = {
+            "Infantry": "InfantryTypes",
+            "Vehicle": "VehicleTypes",
+            "Building": "BuildingTypes",
+            "Aircraft": "AircraftTypes",
+            "SuperWeapon": "SuperWeaponTypes",
+        }
+        root = root_sections.get(entity_type)
+        if root:
+            return tuple(
+                (section, self.schema.section_description(section) or section)
+                for _, section in doc.items(root)
+                if doc.has_section(section)
+            )
+
+        category_names = {"Warhead": "弹头", "Projectile": "弹体", "Weapon": "武器"}
+        category = category_names.get(entity_type)
+        if category:
+            return tuple(
+                (section, self.schema.section_description(section) or section)
+                for section, _ in categorized_sections(doc).get(category, [])
+            )
+        return ()
+
+    def _control_for(self, key: str, value: str, meta) -> ControlSpec:
+        explicit = self.controls.explicit(key)
+        dynamic_values = self._dynamic_values(explicit) if explicit else ()
+        return self.controls.resolve(
+            key,
+            value,
+            dynamic_values=dynamic_values,
+            fallback_values=meta.values,
+            fallback_type=meta.value_type,
+        )
+
     def section(self, section: str) -> dict:
         doc = self._doc()
         actual = doc._section_name(section)
@@ -95,19 +155,22 @@ class RulesWorkspace:
         options = []
         for line in doc.section_lines(actual, keys_only=True):
             key = line.key or ""
+            value = line.value or ""
             meta = self.schema.option(key)
+            control = self._control_for(key, value, meta)
             options.append(
                 {
                     "line_id": line.line_id,
                     "key": key,
-                    "value": line.value or "",
+                    "value": value,
                     "suffix": line.suffix,
                     "label": meta.description or key,
                     "description": meta.help_text,
                     "category": meta.category,
                     "source": meta.source,
                     "value_type": meta.value_type,
-                    "values": [{"value": value, "label": label} for value, label in meta.values],
+                    "widget": control.widget,
+                    "values": [{"value": item_value, "label": label} for item_value, label in control.values],
                     "docs": meta.docs,
                 }
             )
