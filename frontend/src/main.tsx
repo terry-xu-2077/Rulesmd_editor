@@ -20,7 +20,6 @@ import {
   FilePlus2,
   FolderOpen,
   Gamepad2,
-  MoreHorizontal,
   Plus,
   Save,
   Search,
@@ -38,6 +37,13 @@ import './styles.css'
 type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
 type SectionRow = { id: string; label: string; type: string; category: string; side: Side }
 type NavigationState = { items: SectionRow[]; index: number }
+type LocalEditorSettings = {
+  gamePath: string
+  tableMode: boolean
+  autoSaveRules: boolean
+  autoSaveDesc: boolean
+  appearance: 'dark' | 'light' | 'system'
+}
 
 const EMPTY_SECTION: SectionData = { section: '', description: '', options: [], raw: '', references: [] }
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
@@ -45,6 +51,17 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 function storedPaneWidth(key: string, fallback: number) {
   const value = Number.parseInt(localStorage.getItem(key) || '', 10)
   return Number.isFinite(value) ? value : fallback
+}
+
+function storedBool(key: string, fallback: boolean) {
+  const value = localStorage.getItem(key)
+  if (value == null) return fallback
+  return value === 'true'
+}
+
+function storedAppearance(): LocalEditorSettings['appearance'] {
+  const value = localStorage.getItem('rulesmd.appearance')
+  return value === 'light' || value === 'system' ? value : 'dark'
 }
 
 function sideForId(id: string): Side {
@@ -178,11 +195,17 @@ function App() {
   const [showPicker, setShowPicker] = useState(false)
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
   const [showSettings, setShowSettings] = useState(false)
-  const [pinned, setPinned] = useState(false)
   const [documentEpoch, setDocumentEpoch] = useState(0)
   const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
   const [leftPane, setLeftPane] = useState(() => storedPaneWidth('rulesmd.leftPane', 230))
   const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
+  const [localSettings, setLocalSettings] = useState<LocalEditorSettings>(() => ({
+    gamePath: localStorage.getItem('rulesmd.gamePath') || '',
+    tableMode: storedBool('rulesmd.tableMode', true),
+    autoSaveRules: storedBool('rulesmd.autoSaveRules', false),
+    autoSaveDesc: storedBool('rulesmd.autoSaveDesc', false),
+    appearance: storedAppearance(),
+  }))
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
 
@@ -206,11 +229,17 @@ function App() {
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
   const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
   const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
+  const headerSectionReady = Boolean(selected && sectionData.section && sectionData.section.toLowerCase() === selected.id.toLowerCase())
 
   function referenceTarget(option: SectionOption) {
     const value = option.value.trim()
     if (!value || value.includes(',')) return null
     return rowById.get(value.toLowerCase()) ?? null
+  }
+
+  function updateLocalSetting<K extends keyof LocalEditorSettings>(key: K, value: LocalEditorSettings[K]) {
+    setLocalSettings(current => ({ ...current, [key]: value }))
+    localStorage.setItem(`rulesmd.${key}`, String(value))
   }
 
   async function loadSection(row: SectionRow) {
@@ -310,6 +339,7 @@ function App() {
     try {
       const next = await workspaceApi.openFile(path)
       await enterDocument(next, `已打开 ${path}`)
+      localStorage.setItem('rulesmd.lastFile', path)
     } catch (error) {
       setStatus(`打开失败：${String(error)}`)
     } finally { setBusy(false) }
@@ -333,6 +363,7 @@ function App() {
       if (!path) path = (await workspaceApi.pickSaveFile('rulesmd.ini')) ?? undefined
       if (!path) return
       await workspaceApi.save(path)
+      localStorage.setItem('rulesmd.lastFile', path)
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
       sectionCache.current.clear()
@@ -358,6 +389,11 @@ function App() {
       const result = await workspaceApi.setValue(option.line_id, value) as { dirty: boolean }
       setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: result.dirty } } : current)
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
+      if (localSettings.autoSaveRules && result.dirty && snapshot.document.path) {
+        await workspaceApi.save(snapshot.document.path)
+        const next = await workspaceApi.snapshot()
+        setSnapshot(next)
+      }
     } catch (error) {
       setStatus(`写入失败：${String(error)}`)
       if (selected) {
@@ -416,7 +452,7 @@ function App() {
     '--right-pane': `${rightPane}px`,
   } as React.CSSProperties
 
-  return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode="dark">
+  return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode={localSettings.appearance === 'light' ? 'light' : 'dark'}>
     <header className="titlebar">
       <div className="brand"><div className="brandMark">R</div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
       <nav className="toolbar">
@@ -424,7 +460,7 @@ function App() {
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
         <IconButton title="保存" primary disabled={!snapshot} onClick={() => void saveRules()}><Save size={18}/></IconButton>
         <span className="divider"/>
-        <IconButton title="启动游戏" disabled><Gamepad2 size={18}/></IconButton>
+        <IconButton title="启动游戏" disabled={!localSettings.gamePath}><Gamepad2 size={18}/></IconButton>
         <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
       </nav>
       <div className="titleMeta"><span className={`statusDot ${snapshot?.document.dirty ? 'dirty' : ''}`}/>{snapshot?.document.dirty ? '有未保存修改' : snapshot ? '已保存' : '未打开文档'}</div>
@@ -444,12 +480,11 @@ function App() {
       <main className="editor">
         {selected ? <>
           <div className="entityHeaderHost">
-            <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={sectionData.description || selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id} pinned={pinned} onPin={() => setPinned(value => !value)}/>
+            <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={headerSectionReady ? (sectionData.description || selected.label) : selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id}/>
             <div className="entityNavigation">
               <button disabled={!previousSection} title={previousSection ? `后退到 ${previousSection.label} [${previousSection.id}]` : '没有上一项'} onClick={() => void navigateHistory(-1)}><ArrowLeft size={15}/><span>{previousSection?.label || '后退'}</span></button>
               <button disabled={!nextSection} title={nextSection ? `前进到 ${nextSection.label} [${nextSection.id}]` : '没有下一项'} onClick={() => void navigateHistory(1)}><span>{nextSection?.label || '前进'}</span><ArrowRight size={15}/></button>
             </div>
-            <div className="entityHeaderActions"><button className="chip"><MoreHorizontal size={15}/></button></div>
           </div>
           <section className="editorControls">
             <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="搜索 Key、参数名或值"/></label>
@@ -487,7 +522,19 @@ function App() {
 
     <footer className="statusbar"><span>{status}</span><div><span>{snapshot?.document.encoding ?? '—'}</span><span>{snapshot?.document.newline ?? '—'}</span><span>{sectionData.options.length} 参数</span><span className="aresStatus"><Sparkles size={13}/> {snapshot?.settings.ares_enabled === false ? 'Ares 辅助关闭' : 'Ares'}</span></div></footer>
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
-    <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}><div className="settingsDialogBody"><div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div></div></Dialog>
+
+    <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}>
+      <div className="settingsDialogBody settingsGrid">
+        <div className="settingsSectionTitle">编辑器</div>
+        <div className="settingRow settingPathRow"><div><strong>游戏路径</strong><span>用于“启动游戏”。旧版 Config.ini 的 gamePath。</span></div><TextField value={localSettings.gamePath} onChange={value => updateLocalSetting('gamePath', value)} placeholder="Yuri's Revenge.exe"/></div>
+        <div className="settingRow"><div><strong>紧凑表格视图</strong><span>参考旧版 tableMode，优先显示更多参数。</span></div><BoolSwitch value={localSettings.tableMode ? 'yes' : 'no'} onChange={value => updateLocalSetting('tableMode', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>自动保存 Rules</strong><span>已有保存路径时，修改参数后自动写入文件。</span></div><BoolSwitch value={localSettings.autoSaveRules ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveRules', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>自动保存描述</strong><span>保留旧版 autoSaveDesc 配置，为描述编辑功能预留。</span></div><BoolSwitch value={localSettings.autoSaveDesc ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveDesc', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>外观</strong><span>替代旧版 useTheme 布尔设置。</span></div><Select value={localSettings.appearance} options={[{value:'dark',label:'深色'},{value:'light',label:'浅色'},{value:'system',label:'跟随系统'}]} onChange={value => updateLocalSetting('appearance', value as LocalEditorSettings['appearance'])}/></div>
+        <div className="settingsSectionTitle">规则兼容</div>
+        <div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div>
+      </div>
+    </Dialog>
   </div>
 }
 
