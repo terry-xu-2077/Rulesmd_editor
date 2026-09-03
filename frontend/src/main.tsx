@@ -189,7 +189,6 @@ function App() {
   const [fieldSearch, setFieldSearch] = useState('')
   const [activeGroup, setActiveGroup] = useState('全部')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const [showRaw, setShowRaw] = useState(false)
   const [status, setStatus] = useState('新建或打开 rulesmd.ini 开始编辑')
   const [busy, setBusy] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
@@ -263,6 +262,11 @@ function App() {
     } catch (error) {
       if (requestId === sectionRequest.current) setStatus(`读取 Section 失败：${String(error)}`)
     }
+  }
+
+  async function manualSelect(row: SectionRow) {
+    setNavigation({ items: [row], index: 0 })
+    await loadSection(row)
   }
 
   async function navigateTo(row: SectionRow) {
@@ -380,13 +384,24 @@ function App() {
 
   async function setValue(option: SectionOption, value: string) {
     if (!snapshot || option.line_id <= 0) return
+    setSelectedOptionId(option.line_id)
     setSectionData(current => {
       const next = { ...current, options: current.options.map(item => item.line_id === option.line_id ? { ...item, value } : item) }
       if (selected) sectionCache.current.set(selected.id, next)
       return next
     })
     try {
-      const result = await workspaceApi.setValue(option.line_id, value) as { dirty: boolean }
+      const result = await workspaceApi.setValue(option.line_id, value)
+      setSectionData(current => {
+        if (current.section.toLowerCase() !== result.section.toLowerCase()) return current
+        const next = {
+          ...current,
+          raw: result.raw,
+          options: current.options.map(item => item.line_id === result.line_id ? { ...item, value: result.value } : item),
+        }
+        sectionCache.current.set(result.section, next)
+        return next
+      })
       setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: result.dirty } } : current)
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
       if (localSettings.autoSaveRules && result.dirty && snapshot.document.path) {
@@ -402,15 +417,6 @@ function App() {
         setSectionData(data)
       }
     }
-  }
-
-  async function refreshRaw() {
-    if (!selected || !snapshot) { setShowRaw(true); return }
-    try {
-      const data = await workspaceApi.section(selected.id)
-      sectionCache.current.set(selected.id, data)
-      setSectionData(data)
-    } finally { setShowRaw(true) }
   }
 
   async function openOptionPicker() {
@@ -471,7 +477,7 @@ function App() {
         <div className="panelTitle"><span>对象</span></div>
         <label className="searchBox"><Search size={16}/><input value={unitSearch} onChange={event => setUnitSearch(event.target.value)} placeholder="搜索中文名、Section、类型"/></label>
         <div className="treeList">
-          {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void navigateTo(row)}/>} 
+          {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void manualSelect(row)}/>} 
         </div>
         <div className="sideFooter"><button disabled={!snapshot}><Plus size={16}/> 添加 Section</button><button title="删除" disabled={!selected}><Trash2 size={16}/></button></div>
       </aside>
@@ -503,7 +509,7 @@ function App() {
                 return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
-                  <div className="parameterValueCell" onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
+                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
@@ -512,11 +518,17 @@ function App() {
       </main>
 
       <div className="paneSplitter" role="separator" aria-label="调整帮助栏宽度" onPointerDown={event => beginResize('right', event)}/>
-      <aside className="inspector">
-        <div className="inspectorTabs"><button className={!showRaw ? 'active' : ''} onClick={() => setShowRaw(false)}><CircleHelp size={16}/> 帮助</button><button className={showRaw ? 'active' : ''} onClick={() => void refreshRaw()}>{'{ }'} 原文</button></div>
-        {!showRaw ? <div className="helpContent">
-          {selectedOption ? <><div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div><span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p><div className="infoCard"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>{selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}{selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}</> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
-        </div> : <pre className="rawView">{sectionData.raw}</pre>}
+      <aside className="inspector inspectorCombined">
+        <div className="inspectorHeading"><CircleHelp size={16}/><strong>参数帮助</strong></div>
+        <div className="inspectorScroll">
+          <div className="helpContent">
+            {selectedOption ? <><div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div><span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p><div className="infoCard"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>{selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}{selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}</> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
+          </div>
+          <details className="rawInspector">
+            <summary><span>{'{ }'} Section 原文</span><small>{sectionData.section || '—'}</small></summary>
+            <pre className="rawView rawInline">{sectionData.raw}</pre>
+          </details>
+        </div>
       </aside>
     </div>
 
