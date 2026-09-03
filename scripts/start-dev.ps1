@@ -117,6 +117,16 @@ function Install-RustToolchain {
     Write-Host 'Rust/Cargo installed successfully.' -ForegroundColor Green
 }
 
+function Test-VenvPython {
+    if (-not (Test-Path $Python)) { return $false }
+    try {
+        & $Python -c "import sys; raise SystemExit(0 if sys.executable else 1)" *> $null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
+
 function Invoke-CargoFetch([string]$Mode) {
     Write-Step "Preparing Rust dependencies ($Mode)"
     & cargo fetch --manifest-path $TauriManifest
@@ -212,11 +222,20 @@ if (Get-Command py -ErrorAction SilentlyContinue) { $PythonBootstrap = 'py' }
 elseif (Get-Command python -ErrorAction SilentlyContinue) { $PythonBootstrap = 'python' }
 else { Fail 'Python 3.10+ was not found. Install Python and run this launcher again.' }
 
+# A Python venv is not portable between Windows installations because pyvenv.cfg and
+# the launcher inside Scripts keep references to the interpreter that created it.
+# If somebody copies the whole project folder to another machine, validate the venv by
+# actually starting its Python rather than merely checking whether python.exe exists.
+if ((Test-Path $Venv) -and (-not (Test-VenvPython))) {
+    Write-Step 'Existing Python virtual environment is stale - rebuilding it for this computer'
+    Remove-Item $Venv -Recurse -Force -ErrorAction Stop
+}
+
 if (-not (Test-Path $Python)) {
     Write-Step 'Creating Python virtual environment (.venv)'
     if ($PythonBootstrap -eq 'py') { & py -3 -m venv $Venv } else { & python -m venv $Venv }
 }
-if (-not (Test-Path $Python)) { Fail 'Python virtual environment could not be created.' }
+if (-not (Test-VenvPython)) { Fail 'Python virtual environment could not be created or started.' }
 
 $PackageStamp = Join-Path $Venv '.rulesmd-editor-installed'
 if (-not (Test-Path $PackageStamp)) {
