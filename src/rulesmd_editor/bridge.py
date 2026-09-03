@@ -8,11 +8,7 @@ from .workspace import RulesWorkspace
 
 
 class Bridge:
-    """Small JSON-RPC-like dispatcher used by the desktop sidecar.
-
-    One request and one response are exchanged per line. We intentionally keep the
-    protocol tiny and dependency-free so it can later be bundled with PyInstaller.
-    """
+    """Small JSON-RPC-like dispatcher used by the desktop sidecar."""
 
     def __init__(self, workspace: RulesWorkspace | None = None):
         self.workspace = workspace or RulesWorkspace()
@@ -33,14 +29,17 @@ class Bridge:
             return {
                 "id": request_id,
                 "ok": False,
-                "error": {
-                    "type": type(exc).__name__,
-                    "message": str(exc),
-                },
+                "error": {"type": type(exc).__name__, "message": str(exc)},
             }
 
     def rpc_ping(self) -> dict[str, str]:
         return {"service": "rulesmd-editor-python", "status": "ok"}
+
+    def rpc_get_settings(self) -> dict:
+        return self.workspace.get_settings()
+
+    def rpc_set_settings(self, ares_enabled: bool | None = None) -> dict:
+        return self.workspace.set_settings(ares_enabled=ares_enabled)
 
     def rpc_new_document(self) -> dict:
         return self.workspace.new_document()
@@ -54,10 +53,13 @@ class Bridge:
     def rpc_section(self, section: str) -> dict:
         return self.workspace.section(section)
 
+    def rpc_option_catalog(self, query: str = "", applies_to: str | None = None) -> list[dict]:
+        return self.workspace.option_catalog(query=query, applies_to=applies_to)
+
     def rpc_set_value(self, line_id: int, value: str) -> dict:
         return self.workspace.set_value(line_id, value)
 
-    def rpc_add_option(self, section: str, key: str, value: str = "") -> dict:
+    def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)
 
     def rpc_remove_line(self, line_id: int) -> dict:
