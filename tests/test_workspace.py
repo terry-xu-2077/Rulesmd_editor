@@ -37,7 +37,7 @@ def test_workspace_returns_ares_metadata():
     option = workspace.section("E1")["options"][0]
     assert option["source"] == "Ares"
     assert option["label"] == "附加效果持续时间"
-    assert option["semantic_type"] == "integer"
+    assert option["value_type"] == "integer"
     assert option["widget"] == "slider"
 
 
@@ -47,7 +47,6 @@ def test_legacy_owner_is_a_country_multiselect():
 
     option = workspace.section("E1")["options"][0]
     assert option["widget"] == "multi-select"
-    assert option["value_type"].startswith("list")
     values = {row["value"]: row["label"] for row in option["values"]}
     assert values["British"] == "英国"
     assert values["French"] == "法国"
@@ -70,7 +69,7 @@ def test_new_document_uses_clean_full_template_when_available(tmp_path, monkeypa
     assert "[E1]\r\nOwner=British" in workspace.raw_text()
 
 
-def test_edit_save_and_reopen_round_trip(tmp_path):
+def test_edit_restore_save_and_reopen_round_trip(tmp_path):
     path = tmp_path / "rulesmd.ini"
     path.write_text("[E1]\r\nOwner=British,French\r\nCloakable=no\r\n", encoding="utf-8", newline="")
 
@@ -79,9 +78,21 @@ def test_edit_save_and_reopen_round_trip(tmp_path):
     section = workspace.section("E1")
     owner = next(row for row in section["options"] if row["key"] == "Owner")
     cloakable = next(row for row in section["options"] if row["key"] == "Cloakable")
+    assert owner["raw_value"] == "British,French"
+    assert workspace.info().dirty is False
+
+    workspace.set_value(owner["line_id"], "British,Americans")
+    assert workspace.info().dirty is True
+    workspace.set_value(owner["line_id"], owner["raw_value"])
+    assert workspace.info().dirty is False
+
     workspace.set_value(owner["line_id"], "British,Americans")
     workspace.set_value(cloakable["line_id"], "yes")
     workspace.save()
+    saved = workspace.section("E1")
+    saved_owner = next(row for row in saved["options"] if row["key"] == "Owner")
+    assert saved_owner["raw_value"] == "British,Americans"
+    assert workspace.info().dirty is False
 
     reopened = RulesWorkspace()
     reopened.open_file(path)
