@@ -76,6 +76,6 @@ export const workspaceApi = {
   removeLine: (lineId: number) => call('remove_line', { line_id: lineId }),
   save: (path?: string) => call<{ path: string; dirty: boolean }>('save', { path }),
   rawText: () => call<string>('raw_text'),
-  optionCatalog: (query = '', appliesTo?: string) => call<CatalogOption[]>('option_catalog', { query, applies_to: appliesTo }),
+  optionCatalog: (query = '', section?: string, appliesTo?: string) => call<CatalogOption[]>('option_catalog', { query, section, applies_to: appliesTo }),
   setSettings: (aresEnabled: boolean) => call<{ ares_enabled: boolean }>('set_settings', { ares_enabled: aresEnabled }),
 }
