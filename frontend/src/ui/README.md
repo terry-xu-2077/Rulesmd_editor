@@ -1,36 +1,45 @@
-# Rulesmd Legacy UI Library
+# Legacy UI Library
 
-React/TypeScript implementation of the visual language from `RulesmdEditorWeb`.
+Project-agnostic React/TypeScript implementation of the visual language originally developed in `RulesmdEditorWeb`.
 
-## Fidelity rule
+## Core rule
 
-The old Web UI is the visual reference. Preserve its dimensions, gradients, colors, borders, shadows, hover/focus/active feedback and animation timing unless the old implementation contains a functional bug. Implementation details may be modernized freely.
+The library must not depend on Rulesmd, Red Alert, units, factions, INI files, or any other product/domain concept. Product code composes generic UI primitives and may add domain-specific adapters outside the library.
+
+The old Web UI remains the visual reference. Preserve its dimensions, gradients, colors, borders, shadows, hover/focus/active feedback and animation timing unless the old implementation contains a functional bug. Implementation details may be modernized freely.
 
 ## Components
 
-- `TextField` — legacy text input with hover glow, focus state and reset action.
+- `TextField` — text input with legacy hover glow, focus state and reset action.
 - `BoolSwitch` — 220x26 ON/OFF switch using the original traveling knob and green gradient.
-- `Select` — legacy single-value dropdown.
+- `Select` — single-value dropdown.
 - `Slider` — original range + numeric input composition.
 - `MultiSelect` — popup multiple-choice selector.
-- `SideSelect` — faction-oriented multiple selector.
 - `LegacyTooltip` — light-blue legacy tooltip.
 - `ResetButton` — contextual reset control.
-- `FactionHeader` — Allied/Soviet/Yuri/Preview unit header with watermark and pin motion.
-- `PropertyRow` — original option/value row including hover and changed state.
-- `LegacyDialog` — legacy elastic popup dialog.
-- `ActiveParticleField` — rising-particle active background from `itemEffect.scss`.
-- `LegacyButton` — original rounded gray/blue action button.
-- `StatusPill` — small status primitive for the rewritten editor.
+- `EntityHeader` — generic icon/title/subtitle/watermark header with accent tone and pin motion.
+- `PropertyRow` — generic label/value row including hover and changed state.
+- `LegacyDialog` — elastic popup dialog.
+- `ActiveParticleField` — rising-particle active background extracted from the original effect layer.
+- `LegacyButton` — rounded gray/blue action button.
+- `StatusPill` — small status primitive.
+
+## Compatibility adapters
+
+Rulesmd-specific names such as `FactionHeader` and `SideSelect` may temporarily remain as deprecated adapters so existing editor code does not break. New code must use the generic primitives (`EntityHeader`, `MultiSelect`, etc.).
+
+## Themes
+
+Blue, red, purple and neutral accent presets are generic visual themes. Products may map their own concepts to these presets or supply custom styles without changing component semantics.
 
 ## Design tokens
 
-All reusable colors and dimensions live in `legacy-tokens.css`. Do not duplicate literal colors in editor feature code when a token exists.
+Reusable colors and dimensions live in `legacy-tokens.css`. Feature code should not duplicate literal colors when a token exists. Token names will progressively move from historical `ra2-*` aliases to project-neutral `legacy-*` names while retaining compatibility aliases during migration.
 
 ## Motion
 
-Motion is CSS-first so Tauri WebView behavior remains deterministic. Reduced-motion users are respected through `prefers-reduced-motion` while the default theme keeps the original UI's motion character.
+Motion is CSS-first so desktop WebView behavior remains deterministic. Reduced-motion users are respected through `prefers-reduced-motion` while the default theme keeps the original UI's motion character.
 
 ## Development
 
-Use `LegacyUiShowcase` as the visual regression playground. New controls should be added to the showcase before being consumed by the real Rulesmd editor.
+Use `LegacyUiShowcase` as the visual regression playground. New controls should be added to the showcase before being consumed by any product-specific application.
