@@ -11,6 +11,7 @@ import {
   TextField,
 } from 'terry-react-ui-library'
 import {
+  ArrowRight,
   Box,
   ChevronDown,
   ChevronRight,
@@ -18,7 +19,6 @@ import {
   FilePlus2,
   FolderOpen,
   Gamepad2,
-  History,
   MoreHorizontal,
   Plus,
   Save,
@@ -147,7 +147,7 @@ function FieldControl({ option, onChange }: { option: SectionOption; onChange: (
   if (option.widget === 'select') {
     const options = option.values.map(value => ({ value: value.value, label: value.label ? `${value.label} · ${value.value}` : value.value }))
     if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: option.value })
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} tooltip={option.description || undefined}/>
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange}/>
   }
   if (option.widget === 'slider') {
     const range = numericRange(option)
@@ -156,7 +156,7 @@ function FieldControl({ option, onChange }: { option: SectionOption; onChange: (
     const value = Number.isFinite(numeric) ? Math.min(range.max, Math.max(range.min, numeric)) : range.min
     return <Slider value={value} rawValue={rawNumeric != null && Number.isFinite(rawNumeric) ? rawNumeric : undefined} min={range.min} max={range.max} step={range.step} onChange={next => onChange(`${next}${range.suffix}`)}/>
   }
-  return <TextField value={option.value} rawValue={raw} onChange={onChange} placeholder={option.label || option.key} tooltip={option.description || undefined}/>
+  return <TextField value={option.value} rawValue={raw} onChange={onChange} placeholder={option.label || option.key}/>
 }
 
 function App() {
@@ -180,6 +180,7 @@ function App() {
   const sectionRequest = useRef(0)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
+  const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
   const groups = useMemo(() => ['全部', ...Array.from(new Set(sectionData.options.map(option => displayGroup(option.category))))], [sectionData])
   const visibleFields = useMemo(() => sectionData.options.filter(option => {
     const groupOk = activeGroup === '全部' || displayGroup(option.category) === activeGroup
@@ -196,6 +197,12 @@ function App() {
     return [...result.entries()]
   }, [visibleFields])
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
+
+  function referenceTarget(option: SectionOption) {
+    const value = option.value.trim()
+    if (!value || value.includes(',')) return null
+    return rowById.get(value.toLowerCase()) ?? null
+  }
 
   async function showSection(row: SectionRow) {
     const requestId = ++sectionRequest.current
@@ -218,6 +225,12 @@ function App() {
     } catch (error) {
       if (requestId === sectionRequest.current) setStatus(`读取 Section 失败：${String(error)}`)
     }
+  }
+
+  async function jumpToReference(row: SectionRow) {
+    setUnitSearch('')
+    await showSection(row)
+    setStatus(`已跳转到 [${row.id}]`)
   }
 
   async function enterDocument(next: WorkspaceSnapshot, message: string) {
@@ -392,25 +405,26 @@ function App() {
         {selected ? <>
           <div className="entityHeaderHost">
             <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={sectionData.description || selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id} pinned={pinned} onPin={() => setPinned(value => !value)}/>
-            <div className="entityHeaderActions"><button className="chip"><History size={15}/> 引用</button><button className="chip"><MoreHorizontal size={15}/></button></div>
+            <div className="entityHeaderActions"><button className="chip"><MoreHorizontal size={15}/></button></div>
           </div>
           <section className="editorControls">
-            <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="搜索参数、中文说明或值"/></label>
+            <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="搜索 Key、参数名或值"/></label>
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
             <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
           </section>
           <section className="fieldsPane parameterTablePane">
-            <div className="parameterTableHeader"><span>Key</span><span>中文说明</span><span>值</span></div>
+            <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
             {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加已确认兼容的参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => setCollapsed(value => ({ ...value, [group]: !value[group] }))}>{collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {!collapsed[group] && list.map(option => {
                 const changed = option.raw_value == null ? true : option.value !== option.raw_value
                 const focused = selectedOption?.line_id === option.line_id
+                const target = referenceTarget(option)
                 return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
-                  <div className="parameterLabelCell" title={option.description || option.label || option.key}><strong>{option.label || option.key}</strong>{option.description && <small>{option.description}</small>}</div>
-                  <div className="parameterValueCell" onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/></div></div>
+                  <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
+                  <div className="parameterValueCell" onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
@@ -421,8 +435,7 @@ function App() {
       <aside className="inspector">
         <div className="inspectorTabs"><button className={!showRaw ? 'active' : ''} onClick={() => setShowRaw(false)}><CircleHelp size={16}/> 帮助</button><button className={showRaw ? 'active' : ''} onClick={() => void refreshRaw()}>{'{ }'} 原文</button></div>
         {!showRaw ? <div className="helpContent">
-          {selectedOption ? <><div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div><span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p><div className="infoCard"><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>{selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}</> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
-          {selected && <><div className="helpDivider"/><h4>引用关系</h4><div className="relation"><div className="relationIcon">S</div><div><strong>{selected.id}</strong><span>{sectionData.description || selected.type}</span></div></div>{sectionData.references.slice(0, 8).map(reference => <React.Fragment key={`${reference.section}.${reference.key}`}><div className="relationLine"/><div className="relation"><div className="relationIcon weapon">R</div><div><strong>{reference.section}</strong><span>{reference.key}</span></div></div></React.Fragment>)}</>}
+          {selectedOption ? <><div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div><span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p><div className="infoCard"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>{selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}{selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}</> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
         </div> : <pre className="rawView">{sectionData.raw}</pre>}
       </aside>
     </div>
