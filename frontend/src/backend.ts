@@ -14,7 +14,7 @@ export type WorkspaceSnapshot = {
   settings: { ares_enabled: boolean }
   categories: Array<{
     name: string
-    items: Array<{ section: string; registration_id: string | null }>
+    items: Array<{ section: string; registration_id: string | null; label?: string }>
   }>
 }
 
@@ -31,6 +31,7 @@ export type SectionOption = {
   category: string
   source: string
   value_type: string
+  semantic_type?: string
   widget?: WidgetType
   values: OptionValue[]
   docs: string
