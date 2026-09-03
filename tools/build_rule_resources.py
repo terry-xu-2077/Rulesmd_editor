@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-"""Build the runtime rules database from the legacy editor resources.
+"""Build the original Yuri's Revenge runtime rules database.
 
 The legacy INI files remain useful as source material, but the application should not
 re-parse several loose INI files for every lookup. This tool downloads/synchronizes the
-legacy text resources, normalizes them, merges curated corrections and the built-in
-Ares catalog, and writes compact JSON files plus a cleaned Yuri's Revenge template.
+legacy text resources, normalizes them, applies curated YR corrections, and writes
+compact JSON files plus a cleaned Yuri's Revenge template.
+
+Ares is intentionally NOT merged here. Ares metadata is maintained separately in
+``resources/generated/ares_schema.json`` and loaded by ``ares_schema.py``.
 
 Run from the repository root:
     python tools/build_rule_resources.py
 """
 
 from collections import OrderedDict
-from dataclasses import asdict
 import json
 from pathlib import Path
 import re
@@ -55,9 +57,7 @@ CURATED_FIXES: dict[str, dict[str, object]] = {
     "CanRetaliate": {"description": "可自动反击", "value_type": "boolean"},
 }
 
-BOOL_HINTS = {
-    "yes", "no", "true", "false"
-}
+BOOL_HINTS = {"yes", "no", "true", "false"}
 
 CATEGORY_LABELS = {
     "General": "通用",
@@ -183,27 +183,18 @@ def build_schema() -> tuple[dict[str, dict[str, object]], dict[str, str], dict[s
 
     for key, patch in CURATED_FIXES.items():
         row = rows.setdefault(key, {
-            "key": key, "description": key, "help": "", "category": "特殊", "source": "YR",
-            "values": [], "value_type": "text", "applies_to": [], "default": "", "docs": "",
+            "key": key,
+            "description": key,
+            "help": "",
+            "category": "特殊",
+            "source": "YR",
+            "values": [],
+            "value_type": "text",
+            "applies_to": [],
+            "default": "",
+            "docs": "",
         })
         row.update(patch)
-
-    # Merge Ares as first-class metadata. Runtime still allows unknown/manual Ares keys.
-    from rulesmd_editor.schema import ARES_OPTIONS
-    for key, meta in ARES_OPTIONS.items():
-        old = rows.get(key, {})
-        rows[key] = {
-            "key": key,
-            "description": meta.description or old.get("description", key),
-            "help": meta.help_text or old.get("help", ""),
-            "category": meta.category or old.get("category", "Ares"),
-            "source": "Ares",
-            "values": [{"value": value, "label": label} for value, label in meta.values],
-            "value_type": meta.value_type,
-            "applies_to": list(meta.applies_to),
-            "default": meta.default,
-            "docs": meta.docs,
-        }
 
     names = _section_dict(names_ini, "NameDesc")
     identify = {
@@ -213,10 +204,7 @@ def build_schema() -> tuple[dict[str, dict[str, object]], dict[str, str], dict[s
         }
         for section, entries in identify_ini.items()
     }
-    mod_data = {
-        section: dict(entries)
-        for section, entries in mod_ini.items()
-    }
+    mod_data = {section: dict(entries) for section, entries in mod_ini.items()}
     return rows, names, identify, mod_data
 
 
@@ -312,11 +300,11 @@ def main() -> None:
         "source": "terry-xu-2077/RulesmdEditor Resources",
         "schema_options": len(rows),
         "section_names": len(names),
-        "ares_options": sum(1 for row in rows.values() if row.get("source") == "Ares"),
         "template": clean_report,
         "notes": [
-            "Legacy metadata is treated as source material and corrected through overlays.",
-            "Ares metadata is merged into the same option catalog as Yuri's Revenge.",
+            "rules_schema.json contains original Yuri's Revenge metadata only.",
+            "Ares metadata is maintained independently in ares_schema.json.",
+            "Runtime merges both sources only for the unified editor experience.",
             "Unknown/manual Ares tags remain losslessly editable even if not catalogued.",
             "Template cleaning follows ModEnc CorrectRulesCode.py semantics but splits key/value only once.",
         ],
