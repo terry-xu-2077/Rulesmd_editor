@@ -8,8 +8,359 @@
 - 桌面壳：Tauri 2
 - 后端：Python
 - 前后端通信：Python stdio JSON bridge
+- UI 组件：`Terry_React_UI_Library`
 - 主分支：`main`
 - Windows 一键开发启动：根目录 `启动项目.bat`
+
+## 当前优先级：先完成 rulesmd.ini 编辑闭环
+
+当前阶段先不扩展游戏启动、备份、Mental Omega 特化等外围能力，优先保证以下完整闭环：
+
+```text
+新建完整 rulesmd.ini
+        ↓
+读取 / 分类 / 中文名称
+        ↓
+按旧 Web 规则生成正确控件
+        ↓
+编辑 + 修改状态 + 还原
+        ↓
+右侧中文帮助
+        ↓
+保存 / 另存为
+        ↓
+重新打开后值与控件一致
+```
+
+闭环验收重点：
+
+1. `新建` 不是创建空 `[General]`，而是使用清洗后的完整原版 `rulesmd.pre`。
+2. `打开` 保持用户文件的注释、顺序、未知标签、重复 Key 等数据，不进行破坏性格式整理。
+3. 控件类型由旧版 Web 的 `OptionsDesc.ini` 规则驱动，不由前端猜测。
+4. 修改后的值实时写入 Python 无损文档模型。
+5. 只有当前值与打开/保存时原值不同时，UI Library 控件才显示“还原”。
+6. 保存后当前值成为新的原值，修改状态清空。
+7. 保存文件重新打开后，值、对象分类、下拉/多选/开关类型必须保持一致。
+8. 右侧帮助来自真实旧资源与 Ares 内置说明，不使用临时占位文案作为主要数据。
+
+## rules 资源体系
+
+旧项目的以下资源仍然具有价值：
+
+```text
+RulesmdEditor/Resources/
+```
+
+主要包括：
+
+- `rulesmd.pre`：原版 `rulesmd.ini`，仅改了扩展名。
+- `OptionsDesc.ini`：参数中文名、候选列表等。
+- `HelpInfor.ini`：参数详细中文帮助。
+- `NamesDesc.ini`：Section / 对象中文名称。
+- `OptionCategory.ini`：参数分类。
+- `IdentType.ini`：对象类型识别资料。
+- `ModDesc.ini`：旧版 Mod 元数据。
+
+另外，旧 Web：
+
+```text
+RulesmdEditorWeb/desc/OptionsDesc.ini
+```
+
+是控件显示关系的重要权威来源。
+
+### 目录约定
+
+运行资源分两层：
+
+```text
+src/rulesmd_editor/resources/
+  legacy/
+    HelpInfor.ini
+    IdentType.ini
+    ModDesc.ini
+    NamesDesc.ini
+    OptionCategory.ini
+    OptionsDesc.ini
+    rulesmd.pre
+
+  generated/
+    control_schema.json
+    rules_schema.json
+    section_names.json
+    identify_rules.json
+    mod_metadata.json
+    rulesmd.template.ini
+    build_report.json
+```
+
+含义：
+
+- `legacy/` 保存旧版原始资料，便于追溯，不作为普通运行时反复解析的数据源设计目标。
+- `generated/` 保存规范化后的运行资源。
+- `control_schema.json` 由旧 Web 控件 DSL 转换而来。
+- `rulesmd.template.ini` 是新建文件的默认完整模板。
+
+资源编译工具：
+
+```text
+tools/build_rule_resources.py
+tools/build_control_schema.py
+```
+
+开发启动器发现模板/规则帮助资源缺失时，会自动运行资源编译器；生成后不需要每次重新下载。
+
+## rulesmd.pre 默认模板策略
+
+`rulesmd.pre` 的含义固定为：**原版 Yuri's Revenge `rulesmd.ini` 的模板来源**。
+
+处理流程：
+
+```text
+旧版 rulesmd.pre
+      ↓
+仅用于模板生成的清洗
+      ↓
+rulesmd.template.ini
+      ↓
+用户点击“新建”
+      ↓
+创建完整 rulesmd.ini 文档模型
+```
+
+清洗只用于默认模板，不用于用户自己打开的文件。
+
+模板清洗采用 ModEnc `CorrectRulesCode.py` 的核心思想，并做安全修正：
+
+- 删除 Tab 和无意义尾部空格。
+- 规范 `=` 两侧空格。
+- 去除纯注释与值尾 `;` 注释。
+- 无效、没有 `=` 的 Section 内容行删除。
+- 重复 Section 合并。
+- 同一 Section 重复 Key 按后定义覆盖前定义，符合原清洗脚本字典语义。
+- Key/Value 按第一个 `=` 分割，避免值内部包含 `=` 时被错误截断。
+- 生成 UTF-8 + CRLF 模板。
+
+`RulesWorkspace.new_document()` 加载生成后的完整模板后，会将 `document.path` 清空，因此第一次保存会要求选择新的 `rulesmd.ini`，不会覆盖项目模板。
+
+## 旧 Web 控件 DSL → UI Library
+
+控件类型必须忠实继承旧 Web，而不是根据 Key 名随意猜测。
+
+### 1. 布尔开关
+
+值语义为 Yes/No：
+
+```ini
+Cloakable=yes
+Trainable=no
+```
+
+映射：
+
+```text
+BoolSwitch
+```
+
+### 2. `[Key_List]` 单选菜单
+
+例如：
+
+```text
+Armor_List       -> Armor
+TechLevel_List   -> TechLevel
+MovementZone_List -> MovementZone
+Locomotor_List   -> Locomotor
+BuildCat_List    -> BuildCat
+InfDeath_List    -> InfDeath
+```
+
+映射：
+
+```text
+Select
+```
+
+### 3. `[MultipleMenu]` 多选菜单
+
+旧 Web 关系：
+
+```text
+Country_Type
+  Owner
+  RequiredHouses
+  ForbiddenHouses
+  SecretHouses
+    -> Country_List
+
+Abilities_Type
+  VeteranAbilities
+  EliteAbilities
+    -> Abilities_List
+
+Buildings_Type
+  Prerequisite
+  PrerequisiteOverride
+  Dock
+    -> Buildings_List + 当前 rulesmd.ini 动态建筑
+```
+
+映射：
+
+```text
+MultiSelect
+```
+
+例如：
+
+```ini
+Owner=British,French,Americans
+```
+
+必须显示为国家多选菜单，而不是普通文本框。
+
+### 4. `[UnitMenu]` 动态对象选择
+
+候选项来自当前打开的 `rulesmd.ini`：
+
+```text
+Enslaves       -> Infantry
+UndeploysInto  -> Vehicle
+DeploysInto    -> Building
+Spawns         -> Aircraft
+Warhead        -> Warhead
+Projectile     -> Projectile
+SuperWeapon    -> SuperWeapon
+```
+
+映射：
+
+```text
+Select
+```
+
+### 5. 数值
+
+旧 Web 中普通数值编辑使用滑块风格。当前数据层输出：
+
+```text
+widget = slider
+```
+
+映射：
+
+```text
+Slider
+```
+
+Speed / Sight / Strength / Cost 等使用更合理的专用范围；其他数值使用通用范围，后续再逐项补精确元数据。
+
+### 6. 其他
+
+没有明确菜单/布尔/数值关系的参数：
+
+```text
+TextField
+```
+
+### 前后端职责
+
+Python 后端返回明确：
+
+```json
+{
+  "widget": "multi-select",
+  "values": [
+    {"value": "British", "label": "英国"}
+  ]
+}
+```
+
+React 不应重新根据 Key 猜控件，应优先服从 `widget`。
+
+UI 控件本身来自：
+
+```text
+Terry_React_UI_Library
+```
+
+通用控件视觉、尺寸、动效和交互问题应优先修 UI Library，不在 Rulesmd Editor 内写近似组件或覆盖补丁。
+
+`BoolSwitch` 是固定短宽度开关，不继承 Text/Select 的宽控件尺寸。
+
+`PropertyRow` 不包含 Copy/onCopy 等业务操作。若以后某业务需要复制，应由业务层单独实现，不能污染通用组件 API。
+
+## 修改与还原语义
+
+加载一个 Section 时，前端记录每条 `line_id` 对应的原始值。
+
+规则：
+
+```text
+current == rawValue
+    -> 未修改
+    -> 不显示还原按钮
+
+current != rawValue
+    -> 已修改
+    -> UI Library 控件显示还原按钮
+```
+
+点击还原会通过正常 `onChange(rawValue)` 路径写回 Python 文档模型，不做只改 UI 的假还原。
+
+保存成功后：
+
+```text
+当前值 -> 新 rawValue
+changed -> 清空
+```
+
+## 中文名称与帮助信息
+
+### 参数中文名
+
+来源：
+
+```text
+OptionsDesc.ini [OptionDesc]
+```
+
+### 参数详细帮助
+
+来源：
+
+```text
+HelpInfor.ini [HelpInfo]
+```
+
+`\n` 转换为真实换行后显示在右侧帮助面板。
+
+### 对象 / Section 中文名
+
+来源：
+
+```text
+NamesDesc.ini [NameDesc]
+```
+
+左侧对象树同时显示：
+
+```text
+中文名称
+Section ID
+```
+
+### Ares
+
+Ares 与 YR 使用同一个参数目录和帮助系统，不单独做“Ares 编辑器”。
+
+Ares 开关的含义只影响：
+
+- 参数推荐
+- 参数插入
+- Ares 帮助辅助
+
+关闭 Ares 后，用户文件里已有或手写的 Ares/第三方标签仍必须无损读取、编辑和保存。
 
 ## Windows 开发启动
 
@@ -30,10 +381,12 @@ scripts/start-dev.ps1
 1. 检查 Node / npm / Rust / Cargo / Python。
 2. 首次创建 `.venv`。
 3. 首次以 editable 模式注册 Python backend。
-4. 首次安装前端依赖。
-5. 由 `frontend/src-tauri/app-icon.png` 调用 Tauri 官方 `tauri icon` 生成平台图标。
-6. 预取 Rust/Cargo 依赖。
-7. 启动 `tauri dev`。
+4. 若 rules 运行资源不存在，下载旧资料、生成帮助数据库和清洗后的完整默认模板。
+5. `package.json` 变化时自动更新前端依赖，包括 UI Library 固定提交版本。
+6. 同步旧 Web 图标资源。
+7. 由 `frontend/src-tauri/app-icon.png` 调用 Tauri 官方 `tauri icon` 生成平台图标。
+8. 预取 Rust/Cargo 依赖。
+9. 启动 `tauri dev`。
 
 ## Cargo / crates.io 网络问题与最终解决方案
 
@@ -184,4 +537,5 @@ git clean -fd
 - README 只保留项目简介、用户入口和最基本使用说明。
 - 构建方案、开发环境、架构决策和踩坑记录统一写入本文件。
 - 启动器能自动处理的开发环境问题，不要求开发者重复手工输入命令。
-- 网络、图标、sidecar 等环境问题一旦形成稳定方案，应同步记录在此文档，避免未来重复排查。
+- 网络、图标、sidecar、资源生成、控件映射等稳定方案形成后，应同步记录在本文件。
+- UI Library 属于通用层的问题必须回到 `Terry_React_UI_Library` 修复，Rulesmd Editor 不维护一套“看起来像”的替代实现。
