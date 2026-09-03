@@ -279,9 +279,6 @@ class RulesWorkspace:
             for _, key, _ in self._doc().items_with_ids(section)
         } if section else set()
 
-        # Conservative add-menu policy: explicit schema applicability is trusted. Legacy
-        # entries without applies_to are offered only when the same key is already used
-        # by another object in the same object family in this document/template.
         rows = self.schema.available_options(query=query)
         safe_rows = []
         observed = self._observed_keys.get(family or target_type or "", set())
@@ -354,6 +351,7 @@ class RulesWorkspace:
             "key": line.key,
             "value": line.value,
             "raw_value": self._original_values.get(line_id),
+            "raw": doc.clone_section_text(line.section),
             "dirty": doc.dirty,
         }
 
