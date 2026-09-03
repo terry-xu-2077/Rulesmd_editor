@@ -1,15 +1,24 @@
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
+  BoolSwitch,
+  Button,
+  Dialog,
+  EntityHeader,
+  MultiSelect,
+  PropertyRow,
+  Select,
+  Slider,
+  TextField,
+} from 'terry-react-ui-library'
+import {
   Box,
   ChevronDown,
   ChevronRight,
   CircleHelp,
-  Copy,
   FilePlus2,
   FolderOpen,
   Gamepad2,
-  GitCompareArrows,
   History,
   MoreHorizontal,
   Pin,
@@ -20,7 +29,6 @@ import {
   Sparkles,
   Trash2,
   WandSparkles,
-  X,
 } from 'lucide-react'
 import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { hasLegacyIcon, legacyIconStyle } from './legacyIcons'
@@ -69,6 +77,13 @@ function sideForId(id: string): Side {
   return 'neutral'
 }
 
+function toneForSide(side: Side): 'blue' | 'red' | 'purple' | 'neutral' {
+  if (side === 'allied') return 'blue'
+  if (side === 'soviet') return 'red'
+  if (side === 'yuri') return 'purple'
+  return 'neutral'
+}
+
 function displayGroup(category: string) {
   return category.replace(/^Ares\s*·\s*/i, '').trim() || '其他'
 }
@@ -101,38 +116,36 @@ function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: 
 }
 
 function FieldControl({ option, onChange }: { option: SectionOption; onChange: (value: string) => void }) {
-  const isBoolean = option.value_type === 'boolean' || /^(yes|no)$/i.test(option.value) && option.values.some(v => /^(yes|no)$/i.test(v.value))
+  const isBoolean = option.value_type === 'boolean' || (/^(yes|no)$/i.test(option.value) && option.values.some(v => /^(yes|no)$/i.test(v.value)))
   if (isBoolean) {
-    const on = option.value.toLowerCase() === 'yes'
-    return <button className={`legacySwitch ${on ? 'on' : 'off'}`} onClick={() => onChange(on ? 'no' : 'yes')}>
-      <span className="switchKnob">{on ? 'ON 开' : 'OFF 关'}</span>
-    </button>
+    return <BoolSwitch value={option.value} onChange={onChange} trueValue="yes" falseValue="no" />
+  }
+
+  const listType = /^list/i.test(option.value_type)
+  if (listType && option.values.length > 0) {
+    return <MultiSelect
+      values={option.value.split(',').map(v => v.trim()).filter(Boolean)}
+      options={option.values.map(v => ({ value: v.value, label: v.label || v.value }))}
+      onChange={values => onChange(values.join(','))}
+      mode="menu"
+    />
   }
 
   if (option.values.length > 0 && option.value_type !== 'enum-or-integer') {
-    const hasCurrent = option.values.some(v => v.value === option.value)
-    return <div className="selectWrap">
-      <select value={option.value} onChange={e => onChange(e.target.value)}>
-        {!hasCurrent && <option value={option.value}>{option.value}</option>}
-        {option.values.map(v => <option key={v.value} value={v.value}>{v.label ? `${v.label} · ${v.value}` : v.value}</option>)}
-      </select>
-      <ChevronDown size={15}/>
-    </div>
+    const options = option.values.map(v => ({ value: v.value, label: v.label ? `${v.label} · ${v.value}` : v.value }))
+    if (!options.some(v => v.value === option.value)) options.unshift({ value: option.value, label: option.value })
+    return <Select value={option.value} options={options} onChange={onChange} />
   }
 
   const range = rangeFor(option)
   if (range) {
     const raw = option.value.replace('%','')
     const numeric = Number.parseFloat(raw)
-    const value = Number.isFinite(numeric) ? numeric : range.min
-    return <div className="sliderEditor">
-      <input type="range" min={range.min} max={range.max} step={range.step} value={Math.min(range.max, Math.max(range.min, value))} onChange={e => onChange(`${e.target.value}${range.suffix ?? ''}`)}/>
-      <input className="numericBox" value={option.value} onChange={e => onChange(e.target.value)}/>
-    </div>
+    const value = Number.isFinite(numeric) ? Math.min(range.max, Math.max(range.min, numeric)) : range.min
+    return <Slider value={value} min={range.min} max={range.max} step={range.step} onChange={next => onChange(`${next}${range.suffix ?? ''}`)} />
   }
 
-  const numeric = ['integer','float'].includes(option.value_type)
-  return <input className="legacyTextInput" type={numeric ? 'number' : 'text'} value={option.value} onChange={e => onChange(e.target.value)}/>
+  return <TextField value={option.value} onChange={onChange} placeholder={option.label || option.key} tooltip={option.description || undefined} />
 }
 
 function App() {
@@ -153,6 +166,7 @@ function App() {
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [pinned, setPinned] = useState(false)
 
   const rows = useMemo<SectionRow[]>(() => {
     if (!snapshot) return demoRows
@@ -310,7 +324,7 @@ function App() {
   const filteredCatalog = useMemo(() => catalog.filter(option => `${option.label} ${option.key} ${option.description}`.toLowerCase().includes(catalogSearch.toLowerCase())), [catalog, catalogSearch])
 
   return (
-    <div className={`app side-${selected.side} ${busy ? 'busy' : ''}`}>
+    <div className={`app tc-theme side-${selected.side} ${busy ? 'busy' : ''}`} data-mode="dark">
       <header className="titlebar">
         <div className="brand"><div className="brandMark">R</div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
         <nav className="toolbar">
@@ -346,17 +360,23 @@ function App() {
         </aside>
 
         <main className="editor">
-          <section className="hero">
-            <div className="heroGhost">{selected.id}</div>
-            <div className="heroIcon"><LegacyUnitIcon id={selected.id} size={58}/></div>
-            <div className="heroInfo"><div className="eyebrow">{selected.type} · {selected.id}</div><h1>{sectionData.description || selected.label || selected.id}</h1><p>{snapshot ? '正在编辑真实 Rules / Ares 参数；所有未知标签也会无损保留。' : '示例界面。点击顶部“打开”载入真实 rulesmd.ini。'}</p></div>
-            <div className="heroActions"><button className="chip"><Pin size={15}/> 固定</button><button className="chip"><History size={15}/> 引用</button><button className="chip"><MoreHorizontal size={15}/></button></div>
-          </section>
+          <div className="entityHeaderHost">
+            <EntityHeader
+              tone={toneForSide(selected.side)}
+              icon={<LegacyUnitIcon id={selected.id} size={52}/>} 
+              title={sectionData.description || selected.label || selected.id}
+              subtitle={`${selected.type} · ${selected.id}`}
+              watermark={selected.id}
+              pinned={pinned}
+              onPin={() => setPinned(v => !v)}
+            />
+            <div className="entityHeaderActions"><button className="chip"><History size={15}/> 引用</button><button className="chip"><MoreHorizontal size={15}/></button></div>
+          </div>
 
           <section className="editorControls">
             <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={e => setFieldSearch(e.target.value)} placeholder="搜索参数、中文说明或值"/></label>
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
-            <button className="textButton" onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</button>
+            <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
           </section>
 
           <section className="fieldsPane">
@@ -365,14 +385,18 @@ function App() {
               <button className="fieldGroupHeader" onClick={() => setCollapsed(v => ({...v,[group]:!v[group]}))}>
                 {collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em>
               </button>
-              {!collapsed[group] && list.map(option => <div className={`fieldRow ${selectedOption?.line_id === option.line_id ? 'focused' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
-                <div className="fieldLabel"><div><strong>{option.label || option.key}</strong>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div><small>{option.key}</small></div>
-                <div className="fieldValueWrap" onClick={e => e.stopPropagation()}>
-                  <FieldControl option={option} onChange={value => setValue(option, value)}/>
-                  {/weapon|warhead|projectile|animation|reference/i.test(option.value_type) && <button className="jumpButton" title="跳转引用"><GitCompareArrows size={16}/></button>}
-                  <button className="copyButton" title="复制值" onClick={() => void navigator.clipboard?.writeText(option.value)}><Copy size={15}/></button>
-                </div>
-                <div className="fieldState">{changed.has(option.line_id) ? <span className="changed">已修改</span> : <span>{option.source === 'Ares' ? '扩展' : '当前值'}</span>}</div>
+              {!collapsed[group] && list.map(option => <div className={`propertyRowHost ${selectedOption?.line_id === option.line_id ? 'focused' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
+                <PropertyRow
+                  label={option.label || option.key}
+                  description={option.key}
+                  changed={changed.has(option.line_id)}
+                  onCopy={() => void navigator.clipboard?.writeText(option.value)}
+                >
+                  <div className="rulesControlHost" onClick={e => e.stopPropagation()}>
+                    <FieldControl option={option} onChange={value => setValue(option, value)}/>
+                    {option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}
+                  </div>
+                </PropertyRow>
               </div>)}
             </div>)}
           </section>
@@ -399,19 +423,22 @@ function App() {
 
       <footer className="statusbar"><span>{status}</span><div><span>{snapshot?.document.encoding ?? 'UTF-8'}</span><span>{snapshot?.document.newline ?? 'CRLF'}</span><span>{sectionData.options.length} 参数</span><span className="aresStatus"><Sparkles size={13}/> {snapshot?.settings.ares_enabled === false ? 'Ares 辅助关闭' : 'Ares'}</span></div></footer>
 
-      {showPicker && <div className="modalBackdrop" onMouseDown={() => setShowPicker(false)}><div className="modal parameterPicker" onMouseDown={e => e.stopPropagation()}>
-        <div className="modalHeader"><div><strong>添加参数</strong><span>YR 与 Ares 作为同一参数库提供；Ares 仅以来源徽标区分。</span></div><button onClick={() => setShowPicker(false)}><X size={18}/></button></div>
-        <label className="searchBox modalSearch"><Search size={16}/><input autoFocus value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} placeholder="搜索中文名、标签或说明"/></label>
-        <div className="catalogList">{filteredCatalog.slice(0,250).map(option => <button key={option.key} className="catalogItem" onClick={() => void addOption(option)}>
-          <div><strong>{option.label || option.key}</strong>{option.source === 'Ares' && <span className="aresBadge">ARES</span>}<small>{option.key}</small></div>
-          <p>{option.description || '暂无中文说明'}</p><span className="catalogCategory">{displayGroup(option.category)}</span>
-        </button>)}</div>
-      </div></div>}
+      <Dialog open={showPicker} title="添加参数" onClose={() => setShowPicker(false)}>
+        <div className="parameterPickerBody">
+          <p className="dialogHint">YR 与 Ares 作为同一参数库提供；Ares 仅以来源徽标区分。</p>
+          <label className="searchBox modalSearch"><Search size={16}/><input autoFocus value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} placeholder="搜索中文名、标签或说明"/></label>
+          <div className="catalogList">{filteredCatalog.slice(0,250).map(option => <button key={option.key} className="catalogItem" onClick={() => void addOption(option)}>
+            <div><strong>{option.label || option.key}</strong>{option.source === 'Ares' && <span className="aresBadge">ARES</span>}<small>{option.key}</small></div>
+            <p>{option.description || '暂无中文说明'}</p><span className="catalogCategory">{displayGroup(option.category)}</span>
+          </button>)}</div>
+        </div>
+      </Dialog>
 
-      {showSettings && <div className="modalBackdrop" onMouseDown={() => setShowSettings(false)}><div className="modal settingsModal" onMouseDown={e => e.stopPropagation()}>
-        <div className="modalHeader"><div><strong>设置</strong><span>编辑器辅助功能，不影响 INI 的宽容解析。</span></div><button onClick={() => setShowSettings(false)}><X size={18}/></button></div>
-        <div className="settingRow"><div><strong>Ares 支持</strong><span>开启后在同一个参数库中提供 Ares 中文说明和可插入标签。关闭后不再推荐，但手写/已有 Ares 标签仍可正常编辑保存。</span></div><button className={`legacySwitch ${(snapshot?.settings.ares_enabled ?? true) ? 'on' : 'off'}`} onClick={() => void toggleAres(!(snapshot?.settings.ares_enabled ?? true))}><span className="switchKnob">{(snapshot?.settings.ares_enabled ?? true) ? 'ON 开' : 'OFF 关'}</span></button></div>
-      </div></div>}
+      <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}>
+        <div className="settingsDialogBody">
+          <div className="settingRow"><div><strong>Ares 支持</strong><span>开启后在同一个参数库中提供 Ares 中文说明和可插入标签。关闭后不再推荐，但手写/已有 Ares 标签仍可正常编辑保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')} /></div>
+        </div>
+      </Dialog>
     </div>
   )
 }
