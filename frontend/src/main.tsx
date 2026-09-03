@@ -106,19 +106,30 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
 }
 
 function numericRange(option: SectionOption) {
+  const sourceValue = option.raw_value ?? option.value
+  const parsed = Number.parseFloat(sourceValue.replace('%', ''))
+  const decimal = sourceValue.includes('.')
   const key = option.key.toLowerCase()
-  if (key === 'speed' || key === 'sight') return { min: 0, max: 30, step: 1, suffix: '' }
-  if (key === 'strength') return { min: 0, max: 5000, step: 25, suffix: '' }
-  if (key === 'cost') return { min: 0, max: 10000, step: 50, suffix: '' }
-  if (option.value.includes('%') || option.value_type === 'percent') return { min: 0, max: 500, step: 5, suffix: '%' }
-  const numeric = Number.parseFloat(option.value)
-  const decimal = option.value.includes('.')
-  if (!Number.isFinite(numeric)) return { min: 0, max: 100, step: decimal ? 0.1 : 1, suffix: '' }
-  const abs = Math.max(1, Math.abs(numeric))
+
+  // Explicit documented constraints override the legacy Web heuristic.
+  // Chance/percent values in YR/Ares are conventionally bounded to 0..100.
+  if (option.value.includes('%') || option.value_type === 'percent' || /chance$|percent$/.test(key)) {
+    return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: option.value.includes('%') ? '%' : '' }
+  }
+
+  if (!Number.isFinite(parsed)) return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: '' }
+
+  // Match the old RulesmdEditorWeb behavior, but calculate from raw_value so the
+  // range is stable while dragging. Recomputing max from the edited value caused
+  // a runaway range and values that exploded into the hundreds of thousands.
+  const factor = decimal ? 6 : 4
+  const magnitude = Math.abs(parsed)
+  const max = magnitude === 0 ? (decimal ? 1 : 4) : magnitude * factor
+  const min = parsed < 0 ? parsed * factor : 0
   return {
-    min: numeric < 0 ? -Math.max(100, Math.ceil(abs * 2)) : 0,
-    max: Math.max(100, Math.ceil(abs * 2)),
-    step: decimal ? 0.1 : 1,
+    min,
+    max,
+    step: decimal ? 0.01 : 1,
     suffix: '',
   }
 }
