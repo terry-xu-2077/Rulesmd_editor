@@ -1,0 +1,77 @@
+.app.tc-theme{
+  --tc-base:#011437;
+  --tc-accent:#2ad5b8;
+  --tc-effect:#70eeff;
+  --tc-text-main:#ffffff;
+  --tc-text-bright:#7fe8d8;
+}
+
+.entityHeaderHost{
+  position:relative;
+  min-width:0;
+  height:82px;
+  overflow:hidden;
+}
+.entityHeaderHost .tc-entity-header{height:82px}
+.entityHeaderHost .tc-entity-icon{width:92px;height:82px}
+.entityHeaderHost .tc-entity-watermark{font-size:78px;line-height:82px;top:-4px}
+.entityHeaderActions{
+  position:absolute;
+  right:54px;
+  top:27px;
+  z-index:3;
+  display:flex;
+  gap:5px;
+}
+
+.editorControls>.tc-button{margin-left:auto;min-width:78px;border-radius:6px}
+
+.propertyRowHost{min-width:0}
+.propertyRowHost.focused .tc-property-row{
+  box-shadow:inset 3px 0 0 var(--tc-effect),0 4px 12px var(--tc-shadow);
+}
+.propertyRowHost .tc-property-row{
+  min-height:56px;
+  grid-template-columns:38% 62%;
+}
+.propertyRowHost .tc-property-label{padding-right:12px}
+.propertyRowHost .tc-property-label strong{font-size:13px;font-weight:600}
+.propertyRowHost .tc-property-label span{
+  max-width:240px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font:11px "Cascadia Code",Consolas,monospace;
+}
+.propertyRowHost .tc-property-value{min-width:0;padding:7px 78px 7px 12px}
+.propertyRowHost .tc-changed{left:auto;right:12px;top:50%;transform:translateY(-50%)}
+.propertyRowHost .tc-copy{left:8px}
+
+.rulesControlHost{
+  min-width:0;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.rulesControlHost .tc-control-wrap{min-width:0;max-width:100%}
+.rulesControlHost .tc-control{width:clamp(220px,32vw,430px)}
+.rulesControlHost .tc-text input{font-size:13px}
+.rulesControlHost .tc-select-button,
+.rulesControlHost .tc-number,
+.rulesControlHost .tc-bool-knob{font-size:13px}
+.rulesControlHost .tc-slider{width:clamp(250px,32vw,430px)}
+.rulesControlHost .tc-range{flex:1;width:auto;min-width:120px}
+.rulesControlHost .tc-number{width:62px}
+
+.parameterPickerBody{width:min(680px,75vw)}
+.dialogHint{margin:0 0 10px;color:var(--tc-text-muted);font-size:12px;line-height:1.6}
+.parameterPickerBody .catalogList{max-height:58vh}
+.settingsDialogBody{width:min(620px,70vw)}
+.settingsDialogBody .settingRow{padding:8px 0}
+.settingsDialogBody .tc-control-wrap{flex:none}
+
+@media(max-width:1180px){
+  .rulesControlHost .tc-control,.rulesControlHost .tc-slider{width:clamp(190px,29vw,330px)}
+  .propertyRowHost .tc-property-row{grid-template-columns:35% 65%}
+}
