@@ -26,26 +26,6 @@
 
 .editorControls>.tc-button{margin-left:auto;min-width:78px;border-radius:6px}
 
-.propertyRowHost{min-width:0;position:relative}
-.propertyRowHost.focused .tc-property-row{
-  box-shadow:inset 6px 0 0 var(--tc-effect);
-}
-.propertyRowHost .tc-property-row{
-  min-height:56px;
-  grid-template-columns:38% 62%;
-}
-.propertyRowHost .tc-property-label{padding-right:12px}
-.propertyRowHost .tc-property-label strong{font-size:13px;font-weight:600}
-.propertyRowHost .tc-property-label span{
-  max-width:240px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  font:11px "Cascadia Code",Consolas,monospace;
-}
-.propertyRowHost .tc-property-value{min-width:0;padding:7px 78px 7px 12px}
-.propertyRowHost .tc-changed{left:auto;right:12px;top:50%;transform:translateY(-50%)}
-
 .rulesControlHost{
   min-width:0;
   width:100%;
@@ -93,5 +73,4 @@
   .rulesControlHost .tc-select,
   .rulesControlHost .tc-multi,
   .rulesControlHost .tc-slider{width:clamp(190px,29vw,330px)}
-  .propertyRowHost .tc-property-row{grid-template-columns:35% 65%}
 }
