@@ -44,3 +44,13 @@
 ## UI 架构约束
 
 Rulesmd Editor 不再维护 `frontend/src/ui` 形式的 UI Library 副本。通用控件的尺寸、视觉、动效、Reset 行为等问题统一在 `Terry_React_UI_Library` 修复；项目只保留业务布局和必要的尺寸接入规则。
+
+### 浮层与动画约束
+
+- `PropertyRow` 不应使用 `transform` 型入场动画或 hover 位移动画。大量参数行同时动画会造成明显重绘开销，而且 `transform` 会创建 stacking context，使行内 `Select / MultiSelect` 的高 `z-index` 仍可能被后续参数行或 sticky 分组标题盖住。
+- 参数行默认不做整行 hover 染色或阴影；交互反馈由具体控件自身承担。
+- `Select / MultiSelect` 弹层统一使用 UI Library 的高层级 popover，不在业务页面自行覆盖层级。
+- `BoolSwitch` 使用固定 104px 宽度；滑块位移使用 `transform`，避免用 `left` 做动画导致布局重算和错位。
+- 下拉/弹窗动画只使用短时 `opacity + translate`，不使用大比例 scale bounce；参数列表本身保持静态。
+- Rulesmd Editor 当前参数焦点线属于业务选中状态，使用 6px 左侧强调线；这不是 UI Library 通用 PropertyRow hover 状态。
+- 设置页等业务表单负责为说明文字与固定宽控件提供明确网格布局，通用 BoolSwitch 不应被父容器拉伸。
