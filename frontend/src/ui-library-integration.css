@@ -26,9 +26,9 @@
 
 .editorControls>.tc-button{margin-left:auto;min-width:78px;border-radius:6px}
 
-.propertyRowHost{min-width:0}
+.propertyRowHost{min-width:0;position:relative}
 .propertyRowHost.focused .tc-property-row{
-  box-shadow:inset 3px 0 0 var(--tc-effect),0 4px 12px var(--tc-shadow);
+  box-shadow:inset 6px 0 0 var(--tc-effect);
 }
 .propertyRowHost .tc-property-row{
   min-height:56px;
@@ -45,7 +45,6 @@
 }
 .propertyRowHost .tc-property-value{min-width:0;padding:7px 78px 7px 12px}
 .propertyRowHost .tc-changed{left:auto;right:12px;top:50%;transform:translateY(-50%)}
-.propertyRowHost .tc-copy{left:8px}
 
 .rulesControlHost{
   min-width:0;
@@ -69,9 +68,25 @@
 .parameterPickerBody{width:min(680px,75vw)}
 .dialogHint{margin:0 0 10px;color:var(--tc-text-muted);font-size:12px;line-height:1.6}
 .parameterPickerBody .catalogList{max-height:58vh}
+
 .settingsDialogBody{width:min(620px,70vw)}
-.settingsDialogBody .settingRow{padding:8px 0}
-.settingsDialogBody .tc-control-wrap{flex:none}
+.settingsDialogBody .settingRow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:28px;
+  padding:16px 8px;
+}
+.settingsDialogBody .settingRow>div{min-width:0}
+.settingsDialogBody .settingRow>div>strong,
+.settingsDialogBody .settingRow>div>span{display:block}
+.settingsDialogBody .settingRow>div>strong{margin-bottom:7px}
+.settingsDialogBody .settingRow>div>span{line-height:1.65}
+.settingsDialogBody .tc-control-wrap{
+  flex:none;
+  align-self:center;
+  justify-self:end;
+}
 
 @media(max-width:1180px){
   .rulesControlHost .tc-text,
