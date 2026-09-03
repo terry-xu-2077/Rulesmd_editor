@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
+$TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
 $ProxyHost = '127.0.0.1'
@@ -23,9 +24,7 @@ function Test-LocalPort([string]$HostName, [int]$Port) {
     $client = New-Object System.Net.Sockets.TcpClient
     try {
         $result = $client.BeginConnect($HostName, $Port, $null, $null)
-        if (-not $result.AsyncWaitHandle.WaitOne(700)) {
-            return $false
-        }
+        if (-not $result.AsyncWaitHandle.WaitOne(700)) { return $false }
         $client.EndConnect($result)
         return $true
     } catch {
@@ -35,75 +34,60 @@ function Test-LocalPort([string]$HostName, [int]$Port) {
     }
 }
 
-Set-Location $Root
-
-Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
-Write-Host "Project: $Root"
-
-# Required desktop toolchain.
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Fail 'Node.js was not found. Install Node.js LTS and run this launcher again.'
-}
-if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-    Fail 'npm was not found. Reinstall Node.js LTS and run this launcher again.'
-}
-if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
-    Fail 'Rust/Cargo was not found. Install Rust with rustup, then run this launcher again.'
+function Clear-ProxyEnv {
+    'HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','CARGO_HTTP_PROXY','GIT_HTTP_PROXY','GIT_HTTPS_PROXY' | ForEach-Object {
+        Remove-Item "Env:$_" -ErrorAction SilentlyContinue
+    }
 }
 
-# Cargo compatibility for unstable HTTP/2 links.
-$env:CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse'
-$env:CARGO_HTTP_MULTIPLEXING = 'false'
-$env:CARGO_NET_RETRY = '10'
-$env:CARGO_HTTP_TIMEOUT = '120'
-
-# Terry's local proxy. When 127.0.0.1:7897 is listening, dependency downloads
-# automatically use it. If the proxy app is closed, the launcher falls back to direct access.
-$ProxyEnabled = Test-LocalPort $ProxyHost $ProxyPort
-if ($ProxyEnabled) {
+function Enable-ProxyEnv {
     $env:HTTP_PROXY = $ProxyUrl
     $env:HTTPS_PROXY = $ProxyUrl
     $env:ALL_PROXY = $ProxyUrl
     $env:CARGO_HTTP_PROXY = $ProxyUrl
     $env:GIT_HTTP_PROXY = $ProxyUrl
     $env:GIT_HTTPS_PROXY = $ProxyUrl
-    Write-Host "Proxy detected: $ProxyUrl (Cargo / Git / npm downloads will use it)" -ForegroundColor Green
-} else {
-    # Do not inherit stale proxy variables from an old terminal session.
-    Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
-    Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
-    Remove-Item Env:ALL_PROXY -ErrorAction SilentlyContinue
-    Remove-Item Env:CARGO_HTTP_PROXY -ErrorAction SilentlyContinue
-    Remove-Item Env:GIT_HTTP_PROXY -ErrorAction SilentlyContinue
-    Remove-Item Env:GIT_HTTPS_PROXY -ErrorAction SilentlyContinue
-    Write-Host "Local proxy $ProxyHost`:$ProxyPort is not listening; using direct network." -ForegroundColor Yellow
 }
 
-# Python is required by the Rules backend. Prefer py launcher on Windows.
-$PythonBootstrap = $null
-if (Get-Command py -ErrorAction SilentlyContinue) {
-    $PythonBootstrap = 'py'
-} elseif (Get-Command python -ErrorAction SilentlyContinue) {
-    $PythonBootstrap = 'python'
-} else {
-    Fail 'Python 3.10+ was not found. Install Python and run this launcher again.'
+function Invoke-CargoFetch([string]$Mode) {
+    Write-Step "Preparing Rust dependencies ($Mode)"
+    & cargo fetch --manifest-path $TauriManifest
+    return $LASTEXITCODE
 }
+
+Set-Location $Root
+
+Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
+Write-Host "Project: $Root"
+
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js was not found. Install Node.js LTS and run this launcher again.' }
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { Fail 'npm was not found. Reinstall Node.js LTS and run this launcher again.' }
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Fail 'Rust/Cargo was not found. Install Rust with rustup, then run this launcher again.' }
+
+$env:CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse'
+$env:CARGO_HTTP_MULTIPLEXING = 'false'
+$env:CARGO_NET_RETRY = '3'
+$env:CARGO_HTTP_TIMEOUT = '60'
+
+$ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
+if ($ProxyAvailable) {
+    Write-Host "Fallback proxy available: $ProxyUrl" -ForegroundColor Green
+} else {
+    Write-Host "Fallback proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
+}
+
+# Python backend
+$PythonBootstrap = $null
+if (Get-Command py -ErrorAction SilentlyContinue) { $PythonBootstrap = 'py' }
+elseif (Get-Command python -ErrorAction SilentlyContinue) { $PythonBootstrap = 'python' }
+else { Fail 'Python 3.10+ was not found. Install Python and run this launcher again.' }
 
 if (-not (Test-Path $Python)) {
     Write-Step 'Creating Python virtual environment (.venv)'
-    if ($PythonBootstrap -eq 'py') {
-        & py -3 -m venv $Venv
-    } else {
-        & python -m venv $Venv
-    }
+    if ($PythonBootstrap -eq 'py') { & py -3 -m venv $Venv } else { & python -m venv $Venv }
 }
+if (-not (Test-Path $Python)) { Fail 'Python virtual environment could not be created.' }
 
-if (-not (Test-Path $Python)) {
-    Fail 'Python virtual environment could not be created.'
-}
-
-# The backend is currently stdlib-only. Install the local package without pulling
-# the legacy PySide UI dependency; this keeps first-run setup fast.
 $PackageStamp = Join-Path $Venv '.rulesmd-editor-installed'
 if (-not (Test-Path $PackageStamp)) {
     Write-Step 'Registering Python backend in the virtual environment'
@@ -112,45 +96,54 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
+# Frontend dependencies. Keep inherited proxy settings out of the default path.
 if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
     Write-Step 'Installing frontend dependencies (first run only)'
     Push-Location $Frontend
     try {
-        if (Test-Path 'package-lock.json') {
-            & npm ci
-        } else {
-            & npm install
-        }
+        if (Test-Path 'package-lock.json') { & npm ci } else { & npm install }
         if ($LASTEXITCODE -ne 0) { Fail 'npm dependency installation failed.' }
-    } finally {
-        Pop-Location
+    } finally { Pop-Location }
+}
+
+# Cargo network strategy: direct first, local proxy only as fallback.
+Clear-ProxyEnv
+$FetchCode = Invoke-CargoFetch 'direct'
+$NetworkMode = 'direct'
+
+if ($FetchCode -ne 0) {
+    if (-not $ProxyAvailable) {
+        Fail "Cargo direct download failed and fallback proxy $ProxyUrl is not listening."
+    }
+
+    Write-Host "Direct Cargo download failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+    Enable-ProxyEnv
+    $env:CARGO_NET_RETRY = '6'
+    $env:CARGO_HTTP_TIMEOUT = '120'
+    $FetchCode = Invoke-CargoFetch "proxy $ProxyUrl"
+    $NetworkMode = 'proxy'
+
+    if ($FetchCode -ne 0) {
+        Fail "Cargo dependency download failed both directly and through $ProxyUrl. Check the proxy mode/port or TLS settings."
     }
 }
 
-# Make the venv backend available to future Tauri sidecar/bootstrap code.
+# Dependencies are now cached. Do not force the whole app process through the proxy.
+Clear-ProxyEnv
 $env:RULESMD_PYTHON = $Python
 $env:PYTHONUTF8 = '1'
 
 Write-Step 'Starting Rulesmd Editor (Tauri development mode)'
-Write-Host 'Cargo compatibility: sparse registry, HTTP/2 multiplexing disabled, retry=10.' -ForegroundColor DarkGray
-if ($ProxyEnabled) {
-    Write-Host "Network: proxy $ProxyUrl" -ForegroundColor DarkGray
-} else {
-    Write-Host 'Network: direct' -ForegroundColor DarkGray
-}
+Write-Host "Rust dependency route used: $NetworkMode" -ForegroundColor DarkGray
+Write-Host 'Cargo compatibility: sparse registry, HTTP/2 multiplexing disabled.' -ForegroundColor DarkGray
 Write-Host 'Close the app window or press Ctrl+C here to stop.' -ForegroundColor DarkGray
+
 Push-Location $Frontend
 try {
     & npm run desktop:dev
     $ExitCode = $LASTEXITCODE
-} finally {
-    Pop-Location
-}
+} finally { Pop-Location }
 
 if ($ExitCode -ne 0) {
-    if ($ProxyEnabled) {
-        Fail "Tauri exited with code $ExitCode. Proxy $ProxyUrl was enabled; check the messages above."
-    } else {
-        Fail "Tauri exited with code $ExitCode. The local proxy on port $ProxyPort was unavailable, so direct networking was used."
-    }
+    Fail "Tauri exited with code $ExitCode. Rust dependencies were already prefetched, so the messages above should now be a real build/runtime error rather than a crates.io download error."
 }
