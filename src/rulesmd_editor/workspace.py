@@ -9,6 +9,18 @@ from .runtime_catalog import GENERATED_ROOT, RuntimeSchemaCatalog
 
 
 DEFAULT_TEMPLATE = GENERATED_ROOT / "rulesmd.template.ini"
+ROOT_SECTIONS = {"InfantryTypes", "VehicleTypes", "AircraftTypes", "BuildingTypes", "SuperWeaponTypes"}
+CATEGORY_TYPES = {
+    "步兵": "InfantryType",
+    "载具": "VehicleType",
+    "飞机": "AircraftType",
+    "建筑": "BuildingType",
+    "超级武器": "SuperWeapon",
+    "武器": "Weapon",
+    "弹头": "Warhead",
+    "弹体": "Projectile",
+}
+TECHNO_TYPES = {"InfantryType", "VehicleType", "AircraftType", "BuildingType"}
 
 
 @dataclass(frozen=True)
@@ -29,9 +41,9 @@ class WorkspaceSettings:
 class RulesWorkspace:
     """Lossless rules editor service used by the Tauri bridge.
 
-    Runtime presentation metadata comes from compiled legacy Web resources plus Ares.
-    Editing is line-id based, and the workspace keeps a baseline so restoring a value
-    to its original content also clears its modified state.
+    The full document is indexed once after open/new. Normal section switching then
+    performs only section-local parsing plus O(1) lookups for dynamic menus and reverse
+    references instead of repeatedly scanning the entire rulesmd.ini.
     """
 
     def __init__(self, schema: RuntimeSchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
@@ -41,11 +53,52 @@ class RulesWorkspace:
         self.document: IniDocument | None = None
         self._original_values: dict[int, str] = {}
         self._structural_dirty = False
+        self._categories_cache: dict[str, list[tuple[str, str]]] = {}
+        self._section_types: dict[str, str] = {}
+        self._reference_index: dict[str, list[tuple[str, str]]] = {}
+        self._dynamic_cache: dict[str, tuple[tuple[str, str], ...]] = {}
+        self._last_values: dict[tuple[str, str], str] = {}
+        self._observed_keys: dict[str, set[str]] = {}
 
     def _doc(self) -> IniDocument:
         if self.document is None:
             raise RuntimeError("No rules document is open")
         return self.document
+
+    @staticmethod
+    def _family_type(section_type: str | None) -> str | None:
+        return "TechnoType" if section_type in TECHNO_TYPES else section_type
+
+    def _rebuild_indexes(self) -> None:
+        doc = self._doc()
+        self._categories_cache = categorized_sections(doc)
+        self._section_types = {}
+        for category, entries in self._categories_cache.items():
+            section_type = CATEGORY_TYPES.get(category)
+            if not section_type:
+                continue
+            for section, _ in entries:
+                self._section_types[section.casefold()] = section_type
+
+        self._reference_index = {}
+        self._last_values = {}
+        self._observed_keys = {}
+        for line in doc.lines:
+            if line.kind != "key" or not line.section or not line.key:
+                continue
+            section_fold = line.section.casefold()
+            key_fold = line.key.casefold()
+            self._last_values[(section_fold, key_fold)] = line.value or ""
+            section_type = self._section_types.get(section_fold)
+            if section_type:
+                self._observed_keys.setdefault(section_type, set()).add(key_fold)
+                family = self._family_type(section_type)
+                if family:
+                    self._observed_keys.setdefault(family, set()).add(key_fold)
+            for token in (part.strip() for part in (line.value or "").split(",")):
+                if token:
+                    self._reference_index.setdefault(token.casefold(), []).append((line.section, line.key))
+        self._dynamic_cache.clear()
 
     def _capture_baseline(self) -> None:
         doc = self._doc()
@@ -56,6 +109,7 @@ class RulesWorkspace:
         }
         self._structural_dirty = False
         doc.dirty = False
+        self._rebuild_indexes()
 
     def _refresh_dirty(self) -> None:
         doc = self._doc()
@@ -101,8 +155,6 @@ class RulesWorkspace:
         )
 
     def snapshot(self) -> dict:
-        doc = self._doc()
-        categories = categorized_sections(doc)
         return {
             "document": asdict(self.info()),
             "settings": self.get_settings(),
@@ -118,56 +170,54 @@ class RulesWorkspace:
                         for section, registration_id in entries
                     ],
                 }
-                for category, entries in categories.items()
+                for category, entries in self._categories_cache.items()
             ],
         }
 
     def _dynamic_values(self, spec: ControlSpec) -> tuple[tuple[str, str], ...]:
-        doc = self._doc()
         dynamic = spec.dynamic or ""
         if not dynamic:
             return ()
+        if dynamic in self._dynamic_cache:
+            return self._dynamic_cache[dynamic]
 
         if dynamic == "buildings":
             values: list[tuple[str, str]] = []
-            for _, section in doc.items("BuildingTypes"):
-                if not doc.has_section(section):
-                    continue
+            for section, _ in self._categories_cache.get("建筑", []):
+                raw_level = self._last_values.get((section.casefold(), "techlevel"), "-1")
                 try:
-                    if float(doc.get(section, "TechLevel", "-1")) <= -1:
+                    if float(raw_level) <= -1:
                         continue
                 except ValueError:
                     continue
                 values.append((section, self.schema.section_description(section) or section))
-            return tuple(values)
+            result = tuple(values)
+            self._dynamic_cache[dynamic] = result
+            return result
 
         if not dynamic.startswith("unit:"):
             return ()
 
         entity_type = dynamic.split(":", 1)[1]
-        root_sections = {
-            "Infantry": "InfantryTypes",
-            "Vehicle": "VehicleTypes",
-            "Building": "BuildingTypes",
-            "Aircraft": "AircraftTypes",
-            "SuperWeapon": "SuperWeaponTypes",
+        categories = {
+            "Infantry": "步兵",
+            "Vehicle": "载具",
+            "Building": "建筑",
+            "Aircraft": "飞机",
+            "SuperWeapon": "超级武器",
+            "Warhead": "弹头",
+            "Projectile": "弹体",
+            "Weapon": "武器",
         }
-        root = root_sections.get(entity_type)
-        if root:
-            return tuple(
-                (section, self.schema.section_description(section) or section)
-                for _, section in doc.items(root)
-                if doc.has_section(section)
-            )
-
-        category_names = {"Warhead": "弹头", "Projectile": "弹体", "Weapon": "武器"}
-        category = category_names.get(entity_type)
-        if category:
-            return tuple(
-                (section, self.schema.section_description(section) or section)
-                for section, _ in categorized_sections(doc).get(category, [])
-            )
-        return ()
+        category = categories.get(entity_type)
+        if not category:
+            return ()
+        result = tuple(
+            (section, self.schema.section_description(section) or section)
+            for section, _ in self._categories_cache.get(category, [])
+        )
+        self._dynamic_cache[dynamic] = result
+        return result
 
     def _control_for(self, key: str, value: str, meta) -> ControlSpec:
         explicit = self.controls.explicit(key)
@@ -215,14 +265,41 @@ class RulesWorkspace:
             "raw": doc.clone_section_text(actual),
             "references": [
                 {"section": source_section, "key": key}
-                for source_section, key in doc.references_to(actual)
+                for source_section, key in self._reference_index.get(actual.casefold(), [])
             ],
         }
 
-    def option_catalog(self, query: str = "", applies_to: str | None = None) -> list[dict]:
-        rows = self.schema.available_options(query=query, applies_to=applies_to)
-        if not self.settings.ares_enabled:
-            rows = [meta for meta in rows if meta.source.casefold() != "ares"]
+    def option_catalog(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
+        target_type = applies_to
+        if section:
+            target_type = self._section_types.get(section.casefold()) or applies_to
+        family = self._family_type(target_type)
+        existing = {
+            key.casefold()
+            for _, key, _ in self._doc().items_with_ids(section)
+        } if section else set()
+
+        # Conservative add-menu policy: explicit schema applicability is trusted. Legacy
+        # entries without applies_to are offered only when the same key is already used
+        # by another object in the same object family in this document/template.
+        rows = self.schema.available_options(query=query)
+        safe_rows = []
+        observed = self._observed_keys.get(family or target_type or "", set())
+        for meta in rows:
+            if not self.settings.ares_enabled and meta.source.casefold() == "ares":
+                continue
+            if meta.name.casefold() in existing:
+                continue
+            allowed = False
+            if target_type and meta.applies_to:
+                allowed = target_type in meta.applies_to or (family == "TechnoType" and "TechnoType" in meta.applies_to)
+            elif target_type and not meta.applies_to:
+                allowed = meta.name.casefold() in observed
+            elif not target_type:
+                allowed = bool(meta.applies_to)
+            if allowed:
+                safe_rows.append(meta)
+
         return [
             {
                 "key": meta.name,
@@ -236,15 +313,41 @@ class RulesWorkspace:
                 "values": [{"value": value, "label": label} for value, label in meta.values],
                 "docs": meta.docs,
             }
-            for meta in rows
+            for meta in safe_rows
         ]
+
+    def _remove_reference_tokens(self, section: str, key: str, value: str) -> None:
+        pair = (section, key)
+        for token in (part.strip().casefold() for part in value.split(",")):
+            if not token:
+                continue
+            refs = self._reference_index.get(token)
+            if not refs:
+                continue
+            self._reference_index[token] = [item for item in refs if item != pair]
+            if not self._reference_index[token]:
+                self._reference_index.pop(token, None)
+
+    def _add_reference_tokens(self, section: str, key: str, value: str) -> None:
+        pair = (section, key)
+        for token in (part.strip().casefold() for part in value.split(",")):
+            if token:
+                self._reference_index.setdefault(token, []).append(pair)
 
     def set_value(self, line_id: int, value: str) -> dict:
         doc = self._doc()
-        doc.set_line_value(line_id, value)
-        self._refresh_dirty()
         line = doc.line(line_id)
-        assert line is not None
+        if line is None or line.kind != "key" or not line.section or not line.key:
+            raise KeyError(f"Unknown line id: {line_id}")
+        old_value = line.value or ""
+        self._remove_reference_tokens(line.section, line.key, old_value)
+        doc.set_line_value(line_id, value)
+        self._add_reference_tokens(line.section, line.key, value)
+        self._last_values[(line.section.casefold(), line.key.casefold())] = value
+        self._dynamic_cache.clear()
+        if line.section in ROOT_SECTIONS:
+            self._rebuild_indexes()
+        self._refresh_dirty()
         return {
             "line_id": line.line_id,
             "section": line.section,
@@ -260,6 +363,7 @@ class RulesWorkspace:
         resolved = meta.default if value is None else value
         line_id = doc.set(section, key, resolved)
         self._structural_dirty = True
+        self._rebuild_indexes()
         self._refresh_dirty()
         line = doc.line(line_id)
         assert line is not None
@@ -280,6 +384,7 @@ class RulesWorkspace:
         section = line.section
         doc.remove_line(line_id)
         self._structural_dirty = True
+        self._rebuild_indexes()
         self._refresh_dirty()
         return {"line_id": line_id, "section": section, "dirty": doc.dirty}
 
