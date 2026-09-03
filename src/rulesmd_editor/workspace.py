@@ -158,6 +158,15 @@ class RulesWorkspace:
             value = line.value or ""
             meta = self.schema.option(key)
             control = self._control_for(key, value, meta)
+            # Keep the explicit widget contract while also translating it to the
+            # current frontend's compatibility value_type so old-Web lists work now.
+            ui_value_type = meta.value_type
+            if control.widget == "multi-select":
+                ui_value_type = "list-legacy"
+            elif control.widget == "select":
+                ui_value_type = "enum"
+            elif control.widget == "boolean":
+                ui_value_type = "boolean"
             options.append(
                 {
                     "line_id": line.line_id,
@@ -168,7 +177,8 @@ class RulesWorkspace:
                     "description": meta.help_text,
                     "category": meta.category,
                     "source": meta.source,
-                    "value_type": meta.value_type,
+                    "value_type": ui_value_type,
+                    "semantic_type": meta.value_type,
                     "widget": control.widget,
                     "values": [{"value": item_value, "label": label} for item_value, label in control.values],
                     "docs": meta.docs,
