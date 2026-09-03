@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .ini_document import IniDocument, categorized_sections
-from .schema import SchemaRegistry
+from .schema import SchemaCatalog
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,8 @@ class RulesWorkspace:
     a Tauri command, stdio sidecar, or tests.
     """
 
-    def __init__(self, schema: SchemaRegistry | None = None):
-        self.schema = schema or SchemaRegistry()
+    def __init__(self, schema: SchemaCatalog | None = None):
+        self.schema = schema or SchemaCatalog()
         self.document: IniDocument | None = None
 
     def _doc(self) -> IniDocument:
@@ -78,21 +78,22 @@ class RulesWorkspace:
         options = []
         for line in doc.section_lines(actual, keys_only=True):
             key = line.key or ""
-            meta = self.schema.get(key)
+            meta = self.schema.option(key)
             options.append(
                 {
                     "line_id": line.line_id,
                     "key": key,
                     "value": line.value or "",
                     "suffix": line.suffix,
-                    "label": meta.label if meta else key,
-                    "description": meta.description if meta else "",
-                    "category": meta.category if meta else "其他",
-                    "source": meta.source if meta else ("Ares/扩展" if "." in key else "自定义"),
+                    "label": meta.description or key,
+                    "description": meta.help_text,
+                    "category": meta.category,
+                    "source": meta.source,
                 }
             )
         return {
             "section": actual,
+            "description": self.schema.section_description(actual),
             "options": options,
             "raw": doc.clone_section_text(actual),
             "references": [
