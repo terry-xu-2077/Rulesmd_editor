@@ -55,7 +55,9 @@
   gap:9px;
 }
 .rulesControlHost .tc-control-wrap{min-width:0;max-width:100%}
-.rulesControlHost .tc-control{width:clamp(220px,32vw,430px)}
+.rulesControlHost .tc-text,
+.rulesControlHost .tc-select,
+.rulesControlHost .tc-multi{width:clamp(220px,32vw,430px)}
 .rulesControlHost .tc-text input{font-size:13px}
 .rulesControlHost .tc-select-button,
 .rulesControlHost .tc-number,
@@ -72,6 +74,9 @@
 .settingsDialogBody .tc-control-wrap{flex:none}
 
 @media(max-width:1180px){
-  .rulesControlHost .tc-control,.rulesControlHost .tc-slider{width:clamp(190px,29vw,330px)}
+  .rulesControlHost .tc-text,
+  .rulesControlHost .tc-select,
+  .rulesControlHost .tc-multi,
+  .rulesControlHost .tc-slider{width:clamp(190px,29vw,330px)}
   .propertyRowHost .tc-property-row{grid-template-columns:35% 65%}
 }
