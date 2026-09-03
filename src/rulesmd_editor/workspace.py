@@ -8,6 +8,12 @@ from .ini_document import IniDocument, categorized_sections
 from .schema import SchemaCatalog
 
 
+RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
+LEGACY_ROOT = RESOURCE_ROOT / "legacy"
+GENERATED_ROOT = RESOURCE_ROOT / "generated"
+DEFAULT_TEMPLATE = GENERATED_ROOT / "rulesmd.template.ini"
+
+
 @dataclass(frozen=True)
 class DocumentInfo:
     path: str | None
@@ -20,21 +26,19 @@ class DocumentInfo:
 
 @dataclass
 class WorkspaceSettings:
-    # Ares is part of the normal editing experience by default. Disabling it only
-    # removes Ares-specific suggestions/insert helpers; parsing always stays lossless
-    # and permissive so hand-written or third-party tags are never rejected.
     ares_enabled: bool = True
 
 
 class RulesWorkspace:
     """Application-facing service around the lossless INI model.
 
-    Yuri's Revenge and Ares metadata are intentionally presented through one option
-    catalog. `ares_enabled` affects assistance, never parsing compatibility.
+    The editor uses the compiled legacy/Web metadata for presentation while the INI
+    document itself remains lossless. Ares assistance affects suggestions only; hand
+    written/unknown tags are always preserved.
     """
 
     def __init__(self, schema: SchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
-        self.schema = schema or SchemaCatalog()
+        self.schema = schema or SchemaCatalog(LEGACY_ROOT if LEGACY_ROOT.exists() else None)
         self.controls = ControlSchema()
         self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
@@ -53,7 +57,12 @@ class RulesWorkspace:
         return self.get_settings()
 
     def new_document(self) -> dict:
-        self.document = IniDocument.new()
+        if DEFAULT_TEMPLATE.exists():
+            self.document = IniDocument.load(DEFAULT_TEMPLATE)
+            self.document.path = None
+            self.document.dirty = False
+        else:
+            self.document = IniDocument.new()
         return self.snapshot()
 
     def open_file(self, path: str | Path) -> dict:
@@ -81,7 +90,11 @@ class RulesWorkspace:
                 {
                     "name": category,
                     "items": [
-                        {"section": section, "registration_id": registration_id}
+                        {
+                            "section": section,
+                            "registration_id": registration_id,
+                            "label": self.schema.section_description(section) or section,
+                        }
                         for section, registration_id in entries
                     ],
                 }
@@ -158,8 +171,6 @@ class RulesWorkspace:
             value = line.value or ""
             meta = self.schema.option(key)
             control = self._control_for(key, value, meta)
-            # Keep the explicit widget contract while also translating it to the
-            # current frontend's compatibility value_type so old-Web lists work now.
             ui_value_type = meta.value_type
             if control.widget == "multi-select":
                 ui_value_type = "list-legacy"
@@ -167,6 +178,8 @@ class RulesWorkspace:
                 ui_value_type = "enum"
             elif control.widget == "boolean":
                 ui_value_type = "boolean"
+            elif control.widget == "slider":
+                ui_value_type = "number"
             options.append(
                 {
                     "line_id": line.line_id,
@@ -196,12 +209,6 @@ class RulesWorkspace:
         }
 
     def option_catalog(self, query: str = "", applies_to: str | None = None) -> list[dict]:
-        """Return insertable options as one merged YR/Ares catalog.
-
-        When Ares assistance is disabled, Ares options disappear from this picker,
-        but existing/manual Ares keys remain fully editable because the parser never
-        validates or rejects unknown keys.
-        """
         rows = self.schema.available_options(query=query, applies_to=applies_to)
         if not self.settings.ares_enabled:
             rows = [meta for meta in rows if meta.source.casefold() != "ares"]
