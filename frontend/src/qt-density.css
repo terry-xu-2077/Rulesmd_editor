@@ -1,8 +1,25 @@
 /* Desktop-editor density pass inspired by the old Qt workflow: narrow navigation,
-   dominant parameter workspace, compact help pane, and more rows visible per screen. */
-.workspace{grid-template-columns:230px minmax(620px,1fr) 285px!important}
-.sidebar{min-width:0}
-.inspector{min-width:0}
+   dominant parameter workspace, wider contextual help, and more rows visible per screen. */
+.workspace{
+  grid-template-columns:var(--left-pane,230px) 5px minmax(560px,1fr) 5px var(--right-pane,390px)!important;
+}
+.sidebar,.inspector{min-width:0}
+.paneSplitter{position:relative;z-index:40;cursor:col-resize;background:rgba(112,238,255,.035);border-left:1px solid rgba(112,238,255,.08);border-right:1px solid rgba(112,238,255,.05)}
+.paneSplitter::after{content:"";position:absolute;left:1px;top:42%;width:2px;height:16%;border-radius:2px;background:rgba(112,238,255,.24);opacity:.45}
+.paneSplitter:hover,.resizingPanes .paneSplitter{background:rgba(42,213,184,.13)}
+.paneSplitter:hover::after,.resizingPanes .paneSplitter::after{background:var(--tc-effect);opacity:.9}
+.resizingPanes{cursor:col-resize!important;user-select:none!important}
+.resizingPanes *{cursor:col-resize!important}
+
+/* Top commands are explicit icon + text actions, never mystery glyphs. */
+.titlebar{gap:14px!important}
+.brand{min-width:220px!important}
+.toolbar{gap:4px!important}
+.iconButton{
+  width:auto!important;min-width:58px!important;height:34px!important;padding:0 9px!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
+}
+.iconButtonLabel{display:inline-block;font-size:11.5px;white-space:nowrap;color:inherit}
 
 /* Keep the document browser compact. */
 .panelTitle{height:38px!important;padding-left:12px!important}
@@ -11,12 +28,26 @@
 
 /* The current object header is useful, but should not consume editor height. */
 .editor{grid-template-rows:66px 44px minmax(0,1fr)!important}
-.entityHeaderHost{min-height:0!important}
+.entityHeaderHost{min-height:0!important;position:relative!important;overflow:hidden}
 .entityHeaderHost .tc-entity-header{min-height:66px!important;height:66px!important}
 .entityHeaderHost .tc-entity-icon{width:68px!important;height:66px!important}
 .entityHeaderHost .tc-entity-watermark{font-size:54px!important;line-height:58px!important}
 .entityHeaderHost .tc-entity-title strong{font-size:17px!important}
 .entityHeaderHost .tc-entity-title span{font-size:10.5px!important}
+.entityNavigation{
+  position:absolute;right:58px;top:50%;transform:translateY(-50%);z-index:5;
+  display:flex;align-items:center;gap:5px;max-width:54%;
+}
+.entityNavigation button{
+  min-width:38px;max-width:210px;height:28px;padding:0 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;
+  background:rgba(5,20,36,.34);color:rgba(255,255,255,.9);display:flex;align-items:center;gap:5px;cursor:pointer;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);backdrop-filter:blur(3px);
+}
+.entityNavigation button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px}
+.entityNavigation button:hover:not(:disabled){background:rgba(5,20,36,.56);border-color:rgba(255,255,255,.42);box-shadow:0 5px 14px rgba(0,0,0,.22)}
+.entityNavigation button:disabled{opacity:.32;cursor:default}
+.entityHeaderActions{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6}
+.entityHeaderActions .chip{width:32px;padding:0;justify-content:center}
 
 /* Search/filter actions sit directly above the parameter table. */
 .editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}
@@ -78,22 +109,26 @@
 }
 .referenceJump:hover{background:rgba(31,106,157,.8);border-color:#62cfff;color:#d8f5ff}
 
-/* Inspector is the single home for parameter explanations. */
+/* Inspector is the single, wider home for parameter explanations. */
 .inspectorTabs{height:38px!important}
 .inspectorTabs button{font-size:11px!important}
-.helpContent{padding:12px!important}
+.helpContent{padding:14px!important}
 .helpHeader{margin-bottom:10px!important}
-.helpContent h3{font-size:14px!important;margin:9px 0!important}
+.helpContent h3{font-size:15px!important;margin:9px 0!important}
 .helpContent h4{font-size:11.5px!important}
-.helpContent p{font-size:11.5px!important;line-height:1.62!important}
-.infoCard{font-size:10.5px!important;grid-template-columns:64px minmax(0,1fr)!important}
+.helpContent p{font-size:12px!important;line-height:1.68!important}
+.infoCard{font-size:10.8px!important;grid-template-columns:72px minmax(0,1fr)!important}
 .infoCard b{min-width:0;overflow-wrap:anywhere}
 .docSource{color:#7f97ad!important;overflow-wrap:anywhere}
 .valueChoices{gap:4px!important}
 .valueChoices>span{padding:5px 6px!important;font-size:10.5px!important}
 
 @media(max-width:1200px){
-  .workspace{grid-template-columns:205px minmax(520px,1fr) 255px!important}
+  .workspace{grid-template-columns:var(--left-pane,205px) 5px minmax(500px,1fr) 5px var(--right-pane,330px)!important}
   .editorControls .searchBox{width:180px!important;flex-basis:180px!important}
   .parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,23%) minmax(110px,20%) minmax(290px,1fr)}
+  .iconButton{min-width:36px!important;padding:0 7px!important}
+  .iconButtonLabel{display:none}
+  .entityNavigation{max-width:46%}
+  .entityNavigation button span{display:none}
 }
