@@ -6,7 +6,6 @@ import {
   Dialog,
   EntityHeader,
   MultiSelect,
-  PropertyRow,
   Select,
   Slider,
   TextField,
@@ -303,7 +302,6 @@ function App() {
     try {
       const result = await workspaceApi.setValue(option.line_id, value) as { dirty: boolean }
       setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: result.dirty } } : current)
-      if (/^(Owner|RequiredHouses|ForbiddenHouses)$/i.test(option.key)) setDocumentEpoch(epoch => epoch + 1)
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
     } catch (error) {
       setStatus(`写入失败：${String(error)}`)
@@ -350,7 +348,6 @@ function App() {
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
       setCatalog(current => current.filter(item => item.key !== option.key))
-      if (/^(Owner|RequiredHouses|ForbiddenHouses)$/i.test(option.key)) setDocumentEpoch(epoch => epoch + 1)
       setStatus(`已添加 ${option.label || option.key} (${option.key})`)
     } catch (error) {
       setStatus(`添加参数失败：${String(error)}`)
@@ -402,16 +399,18 @@ function App() {
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
             <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
           </section>
-          <section className="fieldsPane">
+          <section className="fieldsPane parameterTablePane">
+            <div className="parameterTableHeader"><span>Key</span><span>中文说明</span><span>值</span></div>
             {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加已确认兼容的参数。</span></div>}
-            {groupedFields.map(([group, list]) => <div className="fieldGroup" key={group}>
+            {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => setCollapsed(value => ({ ...value, [group]: !value[group] }))}>{collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {!collapsed[group] && list.map(option => {
                 const changed = option.raw_value == null ? true : option.value !== option.raw_value
-                return <div className={`propertyRowHost ${selectedOption?.line_id === option.line_id ? 'focused' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
-                  <PropertyRow label={option.label || option.key} description={option.key} changed={changed}>
-                    <div className="rulesControlHost" onClick={event => event.stopPropagation()}><FieldControl option={option} onChange={value => void setValue(option, value)}/>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
-                  </PropertyRow>
+                const focused = selectedOption?.line_id === option.line_id
+                return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
+                  <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
+                  <div className="parameterLabelCell" title={option.description || option.label || option.key}><strong>{option.label || option.key}</strong>{option.description && <small>{option.description}</small>}</div>
+                  <div className="parameterValueCell" onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/></div></div>
                 </div>
               })}
             </div>)}
