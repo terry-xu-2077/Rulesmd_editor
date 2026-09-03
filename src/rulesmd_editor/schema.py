@@ -5,13 +5,15 @@ from pathlib import Path
 import configparser
 import json
 
+from .category_rules import categorize_yr_option
+
 
 @dataclass(frozen=True)
 class OptionMeta:
     name: str
     description: str = ""
     help_text: str = ""
-    category: str = "特殊"
+    category: str = "其他"
     source: str = "YR"
     values: tuple[tuple[str, str], ...] = ()
     value_type: str = "text"
@@ -79,11 +81,12 @@ class SchemaCatalog:
                 list_section = f"{key}_List"
                 if desc.has_section(list_section):
                     values = list(desc.items(list_section))
+                legacy_category = category_map.get(key, old.category if old else "")
                 self.options[key] = OptionMeta(
                     key,
                     text,
                     help_text or (old.help_text if old else ""),
-                    category_map.get(key, old.category if old else "特殊"),
+                    categorize_yr_option(key, legacy_category),
                     "YR",
                     tuple(values) or (old.values if old else ()),
                     old.value_type if old else "text",
@@ -111,11 +114,12 @@ class SchemaCatalog:
             return
         for key, row in data.items():
             old = self.options.get(key)
+            requested_category = row.get("category", old.category if old else "")
             self.options[key] = OptionMeta(
                 key,
                 row.get("description", old.description if old else ""),
                 row.get("help", old.help_text if old else ""),
-                row.get("category", old.category if old else "特殊"),
+                categorize_yr_option(key, str(requested_category)),
                 "YR",
                 tuple(tuple(x) for x in row.get("values", old.values if old else ())),
                 row.get("value_type", old.value_type if old else "text"),
