@@ -18,6 +18,7 @@ class IniLine:
     prefix: str = ""
     separator: str = "="
     suffix: str = ""
+    line_id: int = -1
 
     def render(self) -> str:
         if self.kind == "key" and self.key is not None and self.value is not None:
@@ -26,8 +27,6 @@ class IniLine:
 
 
 def _split_inline_comment(value: str) -> tuple[str, str]:
-    # Westwood INIs commonly use ';' as an inline comment. Keep it losslessly.
-    # We deliberately do not treat '#' as inline comment because it is used by some mods.
     quote = None
     for i, ch in enumerate(value):
         if ch in ('\"', "'"):
@@ -42,9 +41,9 @@ def _split_inline_comment(value: str) -> tuple[str, str]:
 class IniDocument:
     """Lossless Westwood/Ares INI document.
 
-    The editor must not normalize a rulesmd.ini through ConfigParser: real mods can
-    contain duplicate keys, unknown Ares tags, comments in meaningful locations and
-    hand-maintained ordering. This model edits only the touched lines.
+    Real rulesmd.ini files may contain duplicate keys, unknown Ares tags, hand-maintained
+    comments and meaningful ordering. Each parsed line therefore receives a stable
+    ``line_id`` so the UI can edit one duplicate occurrence without touching another.
     """
 
     def __init__(
@@ -61,6 +60,16 @@ class IniDocument:
         self.final_newline = final_newline
         self.path: Path | None = None
         self.dirty = False
+        self._next_line_id = 0
+        for line in self.lines:
+            if line.line_id < 0:
+                line.line_id = self._next_line_id
+            self._next_line_id = max(self._next_line_id, line.line_id + 1)
+
+    def _new_line(self, *args, **kwargs) -> IniLine:
+        line = IniLine(*args, **kwargs, line_id=self._next_line_id)
+        self._next_line_id += 1
+        return line
 
     @classmethod
     def from_text(cls, text: str, *, encoding: str = "utf-8") -> "IniDocument":
@@ -69,11 +78,11 @@ class IniDocument:
         raw_lines = text.splitlines()
         lines: list[IniLine] = []
         current: str | None = None
-        for raw in raw_lines:
+        for line_id, raw in enumerate(raw_lines):
             sm = SECTION_RE.match(raw)
             if sm:
                 current = sm.group(1).strip()
-                lines.append(IniLine(raw=raw, kind="section", section=current))
+                lines.append(IniLine(raw=raw, kind="section", section=current, line_id=line_id))
                 continue
             km = KEY_RE.match(raw)
             if current is not None and km:
@@ -89,14 +98,15 @@ class IniDocument:
                         prefix=prefix,
                         separator=sep,
                         suffix=suffix,
+                        line_id=line_id,
                     )
                 )
             elif not raw.strip():
-                lines.append(IniLine(raw=raw, kind="blank", section=current))
+                lines.append(IniLine(raw=raw, kind="blank", section=current, line_id=line_id))
             elif raw.lstrip().startswith((";", "#")):
-                lines.append(IniLine(raw=raw, kind="comment", section=current))
+                lines.append(IniLine(raw=raw, kind="comment", section=current, line_id=line_id))
             else:
-                lines.append(IniLine(raw=raw, kind="raw", section=current))
+                lines.append(IniLine(raw=raw, kind="raw", section=current, line_id=line_id))
         return cls(lines, encoding=encoding, newline=newline, final_newline=final_newline)
 
     @classmethod
@@ -133,48 +143,74 @@ class IniDocument:
         target = Path(path) if path else self.path
         if target is None:
             raise ValueError("No output path")
-        target.write_bytes(self.to_text().encode(self.encoding, errors="replace"))
+        # Never silently replace characters. The UI can offer an explicit UTF-8 save
+        # when the original encoding cannot represent newly entered text.
+        target.write_bytes(self.to_text().encode(self.encoding, errors="strict"))
         self.path = target
         self.dirty = False
         return target
 
+    def _section_name(self, section: str) -> str | None:
+        needle = section.casefold()
+        for line in self.lines:
+            if line.kind == "section" and line.section and line.section.casefold() == needle:
+                return line.section
+        return None
+
     def sections(self) -> list[str]:
         out: list[str] = []
-        seen = set()
+        seen: set[str] = set()
         for line in self.lines:
-            if line.kind == "section" and line.section and line.section not in seen:
-                out.append(line.section)
-                seen.add(line.section)
+            if line.kind == "section" and line.section:
+                folded = line.section.casefold()
+                if folded not in seen:
+                    out.append(line.section)
+                    seen.add(folded)
         return out
 
     def has_section(self, section: str) -> bool:
-        return section in self.sections()
+        return self._section_name(section) is not None
+
+    def line(self, line_id: int) -> IniLine | None:
+        return next((line for line in self.lines if line.line_id == line_id), None)
+
+    def section_lines(self, section: str, *, keys_only: bool = False) -> list[IniLine]:
+        actual = self._section_name(section)
+        if actual is None:
+            return []
+        return [
+            line for line in self.lines
+            if line.section == actual and (not keys_only or line.kind == "key")
+        ]
 
     def items(self, section: str) -> list[tuple[str, str]]:
-        return [(l.key or "", l.value or "") for l in self.lines if l.kind == "key" and l.section == section]
+        return [(l.key or "", l.value or "") for l in self.section_lines(section, keys_only=True)]
+
+    def items_with_ids(self, section: str) -> list[tuple[int, str, str]]:
+        return [(l.line_id, l.key or "", l.value or "") for l in self.section_lines(section, keys_only=True)]
 
     def get(self, section: str, key: str, default: str = "") -> str:
         result = default
         k = key.casefold()
-        for line in self.lines:
-            if line.kind == "key" and line.section == section and (line.key or "").casefold() == k:
+        for line in self.section_lines(section, keys_only=True):
+            if (line.key or "").casefold() == k:
                 result = line.value or ""
         return result
 
     def has_option(self, section: str, key: str) -> bool:
         k = key.casefold()
-        return any(
-            l.kind == "key" and l.section == section and (l.key or "").casefold() == k
-            for l in self.lines
-        )
+        return any((l.key or "").casefold() == k for l in self.section_lines(section, keys_only=True))
 
     def _section_bounds(self, section: str) -> tuple[int, int] | None:
+        actual = self._section_name(section)
+        if actual is None:
+            return None
         start = None
         for i, line in enumerate(self.lines):
             if line.kind == "section":
                 if start is not None:
                     return start, i
-                if line.section == section:
+                if line.section == actual:
                     start = i
         return (start, len(self.lines)) if start is not None else None
 
@@ -182,8 +218,8 @@ class IniDocument:
         if self.has_section(section):
             return
         if self.lines and self.lines[-1].kind != "blank":
-            self.lines.append(IniLine("", "blank"))
-        self.lines.append(IniLine(f"[{section}]", "section", section=section))
+            self.lines.append(self._new_line("", "blank"))
+        self.lines.append(self._new_line(f"[{section}]", "section", section=section))
         self.final_newline = True
         self.dirty = True
 
@@ -194,38 +230,62 @@ class IniDocument:
         del self.lines[bounds[0] : bounds[1]]
         self.dirty = True
 
-    def set(self, section: str, key: str, value: str) -> None:
-        if not self.has_section(section):
+    def set_line_value(self, line_id: int, value: str) -> None:
+        line = self.line(line_id)
+        if line is None or line.kind != "key":
+            raise KeyError(f"No editable INI key line with id {line_id}")
+        line.value = str(value)
+        self.dirty = True
+
+    def remove_line(self, line_id: int) -> None:
+        for index, line in enumerate(self.lines):
+            if line.line_id == line_id:
+                del self.lines[index]
+                self.dirty = True
+                return
+        raise KeyError(f"No INI line with id {line_id}")
+
+    def set(self, section: str, key: str, value: str) -> int:
+        actual = self._section_name(section)
+        if actual is None:
             self.add_section(section)
+            actual = section
         k = key.casefold()
-        found = None
-        for line in self.lines:
-            if line.kind == "key" and line.section == section and (line.key or "").casefold() == k:
+        found: IniLine | None = None
+        for line in self.section_lines(actual, keys_only=True):
+            if (line.key or "").casefold() == k:
                 found = line
         if found is not None:
             found.value = str(value)
             self.dirty = True
-            return
-        bounds = self._section_bounds(section)
+            return found.line_id
+        bounds = self._section_bounds(actual)
         assert bounds
         insert = bounds[1]
         while insert > bounds[0] + 1 and self.lines[insert - 1].kind == "blank":
             insert -= 1
-        self.lines.insert(
-            insert,
-            IniLine(raw="", kind="key", section=section, key=key, value=str(value)),
-        )
+        line = self._new_line(raw="", kind="key", section=actual, key=key, value=str(value))
+        self.lines.insert(insert, line)
         self.dirty = True
+        return line.line_id
 
-    def remove_option(self, section: str, key: str) -> None:
-        k = key.casefold()
-        old = len(self.lines)
-        self.lines = [
-            l
-            for l in self.lines
-            if not (l.kind == "key" and l.section == section and (l.key or "").casefold() == k)
+    def remove_option(self, section: str, key: str, *, occurrence: str = "all") -> None:
+        matches = [
+            line for line in self.section_lines(section, keys_only=True)
+            if (line.key or "").casefold() == key.casefold()
         ]
-        self.dirty |= len(self.lines) != old
+        if not matches:
+            return
+        if occurrence == "last":
+            self.remove_line(matches[-1].line_id)
+        elif occurrence == "first":
+            self.remove_line(matches[0].line_id)
+        elif occurrence == "all":
+            ids = {line.line_id for line in matches}
+            self.lines = [line for line in self.lines if line.line_id not in ids]
+            self.dirty = True
+        else:
+            raise ValueError("occurrence must be 'first', 'last', or 'all'")
 
     def clone_section_text(self, section: str) -> str:
         bounds = self._section_bounds(section)
@@ -256,21 +316,19 @@ ROOT_TYPES = {
 
 def categorized_sections(doc: IniDocument) -> dict[str, list[tuple[str, str]]]:
     result: dict[str, list[tuple[str, str]]] = {v: [] for v in ROOT_TYPES.values()}
-    registered = set(ROOT_TYPES)
+    registered = {name.casefold() for name in ROOT_TYPES}
     for root, label in ROOT_TYPES.items():
         for reg_id, section in doc.items(root):
             if doc.has_section(section):
-                result[label].append((section, reg_id))
-                registered.add(section)
+                result[label].append((doc._section_name(section) or section, reg_id))
+                registered.add(section.casefold())
 
-    # Legacy editor identified these by characteristic tags. Keep that behavior but
-    # make it tolerant enough for Ares/custom tags.
     result["武器"] = []
     result["弹头"] = []
     result["弹体"] = []
     result["其他"] = []
     for sec in doc.sections():
-        if sec in registered:
+        if sec.casefold() in registered:
             continue
         keys = {k.casefold() for k, _ in doc.items(sec)}
         if "warhead" in keys and ("damage" in keys or "projectile" in keys or "speed" in keys):
