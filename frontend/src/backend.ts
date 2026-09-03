@@ -25,6 +25,7 @@ export type SectionOption = {
   line_id: number
   key: string
   value: string
+  raw_value?: string | null
   suffix: string
   label: string
   description: string
