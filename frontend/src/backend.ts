@@ -46,6 +46,16 @@ export type SectionData = {
   references: Array<{ section: string; key: string }>
 }
 
+export type SetValueResult = {
+  line_id: number
+  section: string
+  key: string
+  value: string
+  raw_value?: string | null
+  raw: string
+  dirty: boolean
+}
+
 export type CatalogOption = {
   key: string
   label: string
@@ -71,7 +81,7 @@ export const workspaceApi = {
   newDocument: () => call<WorkspaceSnapshot>('new_document'),
   snapshot: () => call<WorkspaceSnapshot>('snapshot'),
   section: (section: string) => call<SectionData>('section', { section }),
-  setValue: (lineId: number, value: string) => call('set_value', { line_id: lineId, value }),
+  setValue: (lineId: number, value: string) => call<SetValueResult>('set_value', { line_id: lineId, value }),
   addOption: (section: string, key: string, value?: string) => call('add_option', { section, key, value }),
   removeLine: (lineId: number) => call('remove_line', { line_id: lineId }),
   save: (path?: string) => call<{ path: string; dirty: boolean }>('save', { path }),
