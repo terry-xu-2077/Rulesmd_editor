@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "source": "RulesmdEditorWeb/desc/OptionsDesc.ini",
+  "multiple_menu": {
+    "Owner": "Country",
+    "RequiredHouses": "Country",
+    "ForbiddenHouses": "Country",
+    "SecretHouses": "Country",
+    "VeteranAbilities": "Abilities",
+    "EliteAbilities": "Abilities",
+    "Prerequisite": "Buildings",
+    "PrerequisiteOverride": "Buildings",
+    "Dock": "Buildings"
+  },
+  "unit_menu": {
+    "Enslaves": "Infantry",
+    "UndeploysInto": "Vehicle",
+    "DeploysInto": "Building",
+    "Spawns": "Aircraft",
+    "Warhead": "Warhead",
+    "Projectile": "Projectile",
+    "SuperWeapon": "SuperWeapon"
+  },
+  "lists": {
+    "Buildings": [
+      {"value":"TECH","label":"科技类建筑"},
+      {"value":"BARRACKS","label":"兵营类建筑"},
+      {"value":"POWER","label":"发电厂类建筑"},
+      {"value":"PROC","label":"矿厂类建筑"},
+      {"value":"RADAR","label":"雷达类建筑"}
+    ],
+    "TechLevel": [
+      {"value":"-1","label":"禁止建造"},{"value":"1","label":"1"},{"value":"2","label":"2"},{"value":"3","label":"3"},{"value":"4","label":"4"},{"value":"5","label":"5"},{"value":"6","label":"6"},{"value":"7","label":"7"},{"value":"8","label":"8"},{"value":"9","label":"9"},{"value":"10","label":"10"}
+    ],
+    "Pip": [
+      {"value":"green","label":"绿"},{"value":"yellow","label":"黄"},{"value":"white","label":"白"},{"value":"red","label":"红"},{"value":"blue","label":"蓝"}
+    ],
+    "Abilities": [
+      {"value":"FASTER","label":"移动速度加强"},{"value":"STRONGER","label":"生命值加强"},{"value":"SCATTER","label":"自动分散火力"},{"value":"FIREPOWER","label":"攻击力加强"},{"value":"SIGHT","label":"视力加强"},{"value":"CLOAK","label":"可以隐形"},{"value":"TIBERIUM_PROOF","label":"免疫气体损害"},{"value":"VEIN_PROOF","label":"免受VXL误伤"},{"value":"SELF_HEAL","label":"自动治愈"},{"value":"EXPLODES","label":"可以爆炸"},{"value":"RADAR_INVISIBLE","label":"屏蔽雷达检测"},{"value":"SENSORS","label":"侦测隐形单位"},{"value":"FEARLESS","label":"不会畏惧"},{"value":"TIBERIUM_HEAL","label":"矿石上治愈"},{"value":"GUARD_AREA","label":"可以警戒"},{"value":"CRUSHER","label":"可以碾压"},{"value":"C4","label":"拥有C4炸弹"},{"value":"ROF","label":"攻击速度加快"}
+    ],
+    "SpeedType": [
+      {"value":"Underground","label":"潜地"},{"value":"FloatBeach","label":"沙滩浮动"},{"value":"Float","label":"浮动"},{"value":"Winged","label":"飞行"},{"value":"Hover","label":"盘旋"},{"value":"Wheel","label":"车轮"},{"value":"Track","label":"轨迹"},{"value":"Foot","label":"行走"},{"value":"Amphibious","label":"两栖"}
+    ],
+    "Country": [
+      {"value":"British","label":"英国"},{"value":"French","label":"法国"},{"value":"Germans","label":"德国"},{"value":"Americans","label":"美国"},{"value":"Alliance","label":"盟军"},{"value":"Russians","label":"苏联"},{"value":"Confederation","label":"古巴"},{"value":"Africans","label":"利比亚"},{"value":"Arabs","label":"伊拉克"},{"value":"YuriCountry","label":"尤里"}
+    ],
+    "BuildCat": [
+      {"value":"Combat","label":"防御建筑"},{"value":"Infrastructure","label":"基础设施"},{"value":"Resource","label":"资源建筑"},{"value":"Power","label":"电力建筑"},{"value":"Tech","label":"科技建筑"},{"value":"DontCare","label":"随便"}
+    ],
+    "PipScale": [
+      {"value":"Passengers","label":"乘客"},{"value":"Ammo","label":"弹药"},{"value":"Power","label":"电力"},{"value":"Tiberium","label":"矿石"}
+    ],
+    "NavalTargeting": [
+      {"value":"0","label":"能够攻击水下单位，攻击武器为主武"},{"value":"1","label":"能够攻击水下单位，攻击武器为副武"},{"value":"2","label":"只能攻击水下单位，攻击武器为主武"},{"value":"3","label":"使用副武攻击海上单位"},{"value":"4","label":"使用主武攻击海上单位，副武攻击水下单位"},{"value":"5","label":"使用主武攻击所有海军单位"},{"value":"6","label":"不能攻击海上单位"}
+    ],
+    "MovementRestrictedTo": [
+      {"value":"Clear","label":"一般，没有特殊效果"},{"value":"Road","label":"在公路上移动"},{"value":"Rock","label":"在岩石上移动"},{"value":"Beach","label":"在海滩上移动"},{"value":"Rough","label":"在粗糙的地域上移动"},{"value":"Tunnel","label":"在隧道中移动"}
+    ],
+    "MovementZone": [
+      {"value":"Infantry","label":"步兵行走运动"},{"value":"WaterBeach","label":"能在海滩上和水上运动但不能在陆地上运动"},{"value":"Water","label":"能在水上运动但不能在陆地上运动"},{"value":"Fly","label":"能在空中运动"},{"value":"InfantryDestroyer","label":"常用于手雷兵、导弹兵之类步兵运动"},{"value":"Subterranean","label":"能在地下潜地运动"},{"value":"Amphibious","label":"能在水陆运动，即两栖"},{"value":"AmphibiousDestroyer","label":"能在水陆运动，但其他地方不能运动"},{"value":"Destroyer","label":"常用于战车的运动"},{"value":"Crusher","label":"常用于矿车的运动"},{"value":"Normal","label":"正规的运动方式，没有特殊效果"}
+    ],
+    "Locomotor": [
+      {"value":"{4A582741-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：普通"},{"value":"{4A582742-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：悬浮"},{"value":"{4A582743-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：潜地"},{"value":"{4A582744-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：行走"},{"value":"{4A582745-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：降落"},{"value":"{4A582746-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：飞行"},{"value":"{4A582747-9839-11d1-B709-00A024DDAFD1}","label":"运动方式：传送"},{"value":"{55D141B8-DB94-11d1-AC98-006008055BB5}","label":"运动方式：机械"},{"value":"{92612C46-F71F-11d1-AC9F-006008055BB5}","label":"运动方式：跳跃飞行"},{"value":"{2BEA74E1-7CCA-11d3-BE14-00104B62A16C}","label":"运动方式：航运"},{"value":"{B7B49766-E576-11d3-9BD9-00104B972FE8}","label":"运动方式：弹道"}
+    ],
+    "Factory": [
+      {"value":"BuildingType","label":"建筑工厂"},{"value":"VehicleType","label":"战车工厂"},{"value":"AircraftType","label":"战机工厂"},{"value":"InfantryType","label":"步兵工厂"}
+    ],
+    "FactoryPlant": [
+      {"value":"InfantryCostBonus","label":"步兵造价倍数"},{"value":"UnitsCostBonus","label":"战车造价倍数"},{"value":"AircraftCostBonus","label":"飞机造价倍数"},{"value":"BuildingsCostBonus","label":"建筑造价倍数"},{"value":"DefensesCostBonus","label":"防御造价倍数"}
+    ],
+    "Armor": [
+      {"value":"None","label":"无装甲"},{"value":"Flak","label":"布质"},{"value":"Plate","label":"铁质"},{"value":"Light","label":"金属"},{"value":"Medium","label":"中型"},{"value":"Heavy","label":"重型"},{"value":"Wood","label":"木质"},{"value":"Steel","label":"钢铁"},{"value":"Concrete","label":"混凝土"},{"value":"special_1","label":"恐怖机器人-装甲"},{"value":"special_2","label":"导弹-装甲"}
+    ],
+    "Category": [
+      {"value":"AirLift","label":"运输机"},{"value":"AirPower","label":"战斗机和直升机"},{"value":"Transport","label":"运输载具"},{"value":"Support","label":"可展开建筑"},{"value":"LRFS","label":"远射程战车"},{"value":"IFV","label":"步兵战车"},{"value":"AFV","label":"战车"},{"value":"VIP","label":"重要的步兵单位"},{"value":"Soldier","label":"步兵"},{"value":"Civilian","label":"平民"}
+    ],
+    "InfDeath": [
+      {"value":"0","label":"立即死亡"},{"value":"1","label":"转动倒下"},{"value":"2","label":"爆炸"},{"value":"3","label":"弹飞"},{"value":"4","label":"烧死"},{"value":"5","label":"电死"},{"value":"6","label":"尤里造成的大脑爆炸"},{"value":"7","label":"核辐射"},{"value":"8","label":"被病毒侵袭导致死亡"},{"value":"9","label":"基因变异为狂兽人"},{"value":"10","label":"被狂兽人砸死"}
+    ]
+  },
+  "options": {
+    "Owner":{"widget":"multi-select","list":"Country"},
+    "RequiredHouses":{"widget":"multi-select","list":"Country"},
+    "ForbiddenHouses":{"widget":"multi-select","list":"Country"},
+    "SecretHouses":{"widget":"multi-select","list":"Country"},
+    "VeteranAbilities":{"widget":"multi-select","list":"Abilities"},
+    "EliteAbilities":{"widget":"multi-select","list":"Abilities"},
+    "Prerequisite":{"widget":"multi-select","list":"Buildings","dynamic":"buildings"},
+    "PrerequisiteOverride":{"widget":"multi-select","list":"Buildings","dynamic":"buildings"},
+    "Dock":{"widget":"multi-select","list":"Buildings","dynamic":"buildings"},
+    "TechLevel":{"widget":"select","list":"TechLevel"},
+    "Pip":{"widget":"select","list":"Pip"},
+    "SpeedType":{"widget":"select","list":"SpeedType"},
+    "BuildCat":{"widget":"select","list":"BuildCat"},
+    "PipScale":{"widget":"select","list":"PipScale"},
+    "NavalTargeting":{"widget":"select","list":"NavalTargeting"},
+    "MovementRestrictedTo":{"widget":"select","list":"MovementRestrictedTo"},
+    "MovementZone":{"widget":"select","list":"MovementZone"},
+    "Locomotor":{"widget":"select","list":"Locomotor"},
+    "Factory":{"widget":"select","list":"Factory"},
+    "FactoryPlant":{"widget":"select","list":"FactoryPlant"},
+    "Armor":{"widget":"select","list":"Armor"},
+    "Category":{"widget":"select","list":"Category"},
+    "InfDeath":{"widget":"select","list":"InfDeath"},
+    "Enslaves":{"widget":"select","dynamic":"unit:Infantry"},
+    "UndeploysInto":{"widget":"select","dynamic":"unit:Vehicle"},
+    "DeploysInto":{"widget":"select","dynamic":"unit:Building"},
+    "Spawns":{"widget":"select","dynamic":"unit:Aircraft"},
+    "Warhead":{"widget":"select","dynamic":"unit:Warhead"},
+    "Projectile":{"widget":"select","dynamic":"unit:Projectile"},
+    "SuperWeapon":{"widget":"select","dynamic":"unit:SuperWeapon"}
+  }
+}
