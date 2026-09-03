@@ -1,15 +1,143 @@
+use serde_json::{json, Value};
+use std::env;
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::Mutex;
+use tauri::State;
+
+struct BackendProcess {
+    child: Child,
+    stdin: ChildStdin,
+    stdout: BufReader<ChildStdout>,
+    next_id: u64,
+}
+
+impl BackendProcess {
+    fn spawn() -> Result<Self, String> {
+        let python = env::var("RULESMD_PYTHON").unwrap_or_else(|_| "python".to_string());
+        let mut child = Command::new(&python)
+            .args(["-m", "rulesmd_editor.bridge"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|err| format!("无法启动 Python 后端 ({python}): {err}"))?;
+
+        let stdin = child.stdin.take().ok_or("无法连接 Python 后端 stdin")?;
+        let stdout = child.stdout.take().ok_or("无法连接 Python 后端 stdout")?;
+        Ok(Self {
+            child,
+            stdin,
+            stdout: BufReader::new(stdout),
+            next_id: 1,
+        })
+    }
+
+    fn call(&mut self, method: &str, params: Value) -> Result<Value, String> {
+        if self.child.try_wait().map_err(|e| e.to_string())?.is_some() {
+            return Err("Python 后端已经退出，请重新启动编辑器。".to_string());
+        }
+
+        let id = self.next_id;
+        self.next_id += 1;
+        let request = json!({"id": id, "method": method, "params": params});
+        let line = serde_json::to_string(&request).map_err(|e| e.to_string())?;
+        writeln!(self.stdin, "{line}").map_err(|e| format!("写入 Python 后端失败: {e}"))?;
+        self.stdin.flush().map_err(|e| e.to_string())?;
+
+        let mut response_line = String::new();
+        self.stdout
+            .read_line(&mut response_line)
+            .map_err(|e| format!("读取 Python 后端失败: {e}"))?;
+        if response_line.trim().is_empty() {
+            return Err("Python 后端没有返回数据。".to_string());
+        }
+        let response: Value = serde_json::from_str(&response_line)
+            .map_err(|e| format!("Python 后端返回了无效 JSON: {e}"))?;
+        if response.get("ok").and_then(Value::as_bool) == Some(true) {
+            Ok(response.get("result").cloned().unwrap_or(Value::Null))
+        } else {
+            let message = response
+                .pointer("/error/message")
+                .and_then(Value::as_str)
+                .unwrap_or("未知后端错误");
+            Err(message.to_string())
+        }
+    }
+}
+
+type BackendState = Mutex<Option<BackendProcess>>;
+
 #[tauri::command]
-fn backend_status() -> serde_json::Value {
-    serde_json::json!({
-        "desktop": "ok",
-        "python": "not-started"
-    })
+fn backend_status(state: State<'_, BackendState>) -> Value {
+    let mut guard = state.lock().unwrap();
+    if guard.is_none() {
+        *guard = BackendProcess::spawn().ok();
+    }
+    json!({"desktop": "ok", "python": if guard.is_some() { "ok" } else { "unavailable" }})
+}
+
+#[tauri::command]
+fn backend_call(method: String, params: Option<Value>, state: State<'_, BackendState>) -> Result<Value, String> {
+    let mut guard = state.lock().map_err(|_| "后端状态锁定失败".to_string())?;
+    if guard.is_none() {
+        *guard = Some(BackendProcess::spawn()?);
+    }
+    guard
+        .as_mut()
+        .ok_or_else(|| "Python 后端不可用".to_string())?
+        .call(&method, params.unwrap_or_else(|| json!({})))
+}
+
+#[cfg(target_os = "windows")]
+fn powershell_dialog(script: &str) -> Result<Option<String>, String> {
+    let output = Command::new("powershell")
+        .args(["-NoProfile", "-STA", "-Command", script])
+        .output()
+        .map_err(|e| format!("无法打开文件对话框: {e}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(if text.is_empty() { None } else { Some(text) })
+}
+
+#[tauri::command]
+fn pick_rules_file() -> Result<Option<String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        return powershell_dialog(
+            "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='Rules INI|rulesmd.ini;rules.ini|INI 文件|*.ini|所有文件|*.*'; $d.Title='打开 Rules 文件'; if($d.ShowDialog() -eq 'OK'){[Console]::Write($d.FileName)}",
+        );
+    }
+    #[allow(unreachable_code)]
+    Ok(None)
+}
+
+#[tauri::command]
+fn pick_save_file(default_name: Option<String>) -> Result<Option<String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let safe = default_name.unwrap_or_else(|| "rulesmd.ini".to_string()).replace('"', "");
+        let script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='INI 文件|*.ini|所有文件|*.*'; $d.FileName=\"{safe}\"; $d.Title='保存 Rules 文件'; if($d.ShowDialog() -eq 'OK'){{[Console]::Write($d.FileName)}}"
+        );
+        return powershell_dialog(&script);
+    }
+    #[allow(unreachable_code)]
+    Ok(None)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![backend_status])
+        .manage(Mutex::new(None::<BackendProcess>))
+        .invoke_handler(tauri::generate_handler![
+            backend_status,
+            backend_call,
+            pick_rules_file,
+            pick_save_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Rulesmd Editor");
 }
