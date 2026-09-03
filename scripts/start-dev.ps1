@@ -51,15 +51,9 @@ function Enable-ProxyEnv {
     $env:GIT_HTTPS_PROXY = $ProxyUrl
 }
 
-function Invoke-CargoFetch([string]$Mode, [bool]$UseRsProxy = $false) {
+function Invoke-CargoFetch([string]$Mode) {
     Write-Step "Preparing Rust dependencies ($Mode)"
-    if ($UseRsProxy) {
-        & cargo fetch --manifest-path $TauriManifest `
-            --config 'source.crates-io.replace-with="rsproxy-sparse"' `
-            --config "source.rsproxy-sparse.registry=\"$RsProxyIndex\""
-    } else {
-        & cargo fetch --manifest-path $TauriManifest
-    }
+    & cargo fetch --manifest-path $TauriManifest
     return $LASTEXITCODE
 }
 
@@ -72,18 +66,17 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js was n
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { Fail 'npm was not found. Reinstall Node.js LTS and run this launcher again.' }
 if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Fail 'Rust/Cargo was not found. Install Rust with rustup, then run this launcher again.' }
 
-$env:CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse'
 $env:CARGO_HTTP_MULTIPLEXING = 'false'
 $env:CARGO_NET_RETRY = '2'
-$env:CARGO_HTTP_TIMEOUT = '25'
+$env:CARGO_HTTP_TIMEOUT = '30'
 
 $ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
 if ($ProxyAvailable) {
-    Write-Host "Local fallback proxy available: $ProxyUrl" -ForegroundColor Green
+    Write-Host "Local Cargo proxy available: $ProxyUrl" -ForegroundColor Green
 } else {
-    Write-Host "Local fallback proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
+    Write-Host "Local Cargo proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
 }
-Write-Host "Primary Cargo mirror: $RsProxyIndex" -ForegroundColor Green
+Write-Host "Cargo source replacement: crates.io -> $RsProxyIndex" -ForegroundColor Green
 
 # Python backend
 $PythonBootstrap = $null
@@ -116,7 +109,6 @@ if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
 }
 
 # The PNG is the single source of truth for all desktop icons.
-# Let Tauri's own icon generator create a Windows-compatible ICO and platform PNGs.
 if (-not (Test-Path $IconSource)) {
     Fail "App icon source is missing: $IconSource"
 }
@@ -127,49 +119,26 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
 } finally { Pop-Location }
 
-# Cargo network strategy:
-# 1) RsProxy sparse mirror direct
-# 2) RsProxy sparse mirror through local proxy
-# 3) Official crates.io through local proxy
-# 4) Official crates.io direct (only when no local proxy is available)
-$FetchCode = 1
-$NetworkMode = 'none'
-
+# Cargo source is permanently replaced by .cargo/config.toml:
+# crates.io -> RsProxy sparse.
+# Only the network route changes here: direct first, then local proxy.
 Clear-ProxyEnv
 $env:CARGO_NET_RETRY = '2'
-$env:CARGO_HTTP_TIMEOUT = '25'
-$FetchCode = Invoke-CargoFetch 'RsProxy direct' $true
+$env:CARGO_HTTP_TIMEOUT = '30'
+$FetchCode = Invoke-CargoFetch 'RsProxy direct'
 $NetworkMode = 'RsProxy direct'
 
 if (($FetchCode -ne 0) -and $ProxyAvailable) {
-    Write-Host "RsProxy direct failed. Retrying mirror through $ProxyUrl ..." -ForegroundColor Yellow
+    Write-Host "RsProxy direct failed. Retrying RsProxy through $ProxyUrl ..." -ForegroundColor Yellow
     Enable-ProxyEnv
-    $env:CARGO_NET_RETRY = '2'
-    $env:CARGO_HTTP_TIMEOUT = '25'
-    $FetchCode = Invoke-CargoFetch "RsProxy via proxy $ProxyUrl" $true
+    $env:CARGO_NET_RETRY = '3'
+    $env:CARGO_HTTP_TIMEOUT = '45'
+    $FetchCode = Invoke-CargoFetch "RsProxy via proxy $ProxyUrl"
     $NetworkMode = 'RsProxy via proxy'
 }
 
-if (($FetchCode -ne 0) -and $ProxyAvailable) {
-    Write-Host 'RsProxy failed. Falling back to official crates.io through local proxy ...' -ForegroundColor Yellow
-    Enable-ProxyEnv
-    $env:CARGO_NET_RETRY = '2'
-    $env:CARGO_HTTP_TIMEOUT = '25'
-    $FetchCode = Invoke-CargoFetch "crates.io via proxy $ProxyUrl" $false
-    $NetworkMode = 'crates.io via proxy'
-}
-
-if (($FetchCode -ne 0) -and (-not $ProxyAvailable)) {
-    Write-Host 'RsProxy failed and no proxy is available. Trying official crates.io direct ...' -ForegroundColor Yellow
-    Clear-ProxyEnv
-    $env:CARGO_NET_RETRY = '1'
-    $env:CARGO_HTTP_TIMEOUT = '20'
-    $FetchCode = Invoke-CargoFetch 'crates.io direct fallback' $false
-    $NetworkMode = 'crates.io direct fallback'
-}
-
 if ($FetchCode -ne 0) {
-    Fail "Cargo dependency download failed after mirror/proxy fallbacks. Proxy checked: $ProxyUrl."
+    Fail "Cargo dependency download from RsProxy failed. Local proxy checked: $ProxyUrl."
 }
 
 # Dependencies are cached now. Keep the app runtime independent of proxy settings.
@@ -179,7 +148,7 @@ $env:PYTHONUTF8 = '1'
 
 Write-Step 'Starting Rulesmd Editor (Tauri development mode)'
 Write-Host "Rust dependency route used: $NetworkMode" -ForegroundColor DarkGray
-Write-Host 'Cargo compatibility: sparse registry, HTTP/2 multiplexing disabled.' -ForegroundColor DarkGray
+Write-Host 'Cargo source: RsProxy sparse; HTTP/2 multiplexing disabled.' -ForegroundColor DarkGray
 Write-Host 'Close the app window or press Ctrl+C here to stop.' -ForegroundColor DarkGray
 
 Push-Location $Frontend
@@ -189,5 +158,5 @@ try {
 } finally { Pop-Location }
 
 if ($ExitCode -ne 0) {
-    Fail "Tauri exited with code $ExitCode. Rust dependencies were already prefetched, so the messages above should now be a real build/runtime error rather than a crates.io download error."
+    Fail "Tauri exited with code $ExitCode. Rust dependencies were already prefetched, so the messages above should now be a real build/runtime error rather than a dependency download error."
 }
