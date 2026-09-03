@@ -19,6 +19,7 @@ export type WorkspaceSnapshot = {
 }
 
 export type OptionValue = { value: string; label: string }
+export type WidgetType = 'boolean' | 'select' | 'multi-select' | 'slider' | 'text'
 
 export type SectionOption = {
   line_id: number
@@ -30,6 +31,7 @@ export type SectionOption = {
   category: string
   source: string
   value_type: string
+  widget?: WidgetType
   values: OptionValue[]
   docs: string
 }
