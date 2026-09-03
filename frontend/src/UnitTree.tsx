@@ -143,7 +143,7 @@ function UnitIcon({ id }: { id: string }) {
 
 export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: Props) {
   const [ownership, setOwnership] = useState<Map<string, Ownership>>(new Map())
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -171,13 +171,14 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
       const faction = isTechno ? resolveFaction(countries, row.side) : 'neutral'
       const bucket = isTechno ? countryBucket(countries, faction) : { key: 'unassigned', label: '未归属' }
       const typeName = row.category === '战车' ? '载具' : row.category
+      const resolvedSide: Side = faction === 'allied' || faction === 'soviet' || faction === 'yuri' ? faction : row.side
 
       if (!factionMap.has(faction)) factionMap.set(faction, new Map())
       const countriesMap = factionMap.get(faction)!
       if (!countriesMap.has(bucket.key)) countriesMap.set(bucket.key, { label: bucket.label, types: new Map() })
       const typeMap = countriesMap.get(bucket.key)!.types
       if (!typeMap.has(typeName)) typeMap.set(typeName, [])
-      typeMap.get(typeName)!.push({ ...row, countryHint: countries.map(country => COUNTRY_INFO[country]?.label || country).join(' / ') })
+      typeMap.get(typeName)!.push({ ...row, side: resolvedSide, countryHint: countries.map(country => COUNTRY_INFO[country]?.label || country).join(' / ') })
     }
 
     return FACTION_ORDER.flatMap(faction => {
@@ -200,8 +201,8 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   }, [filteredRows, ownership])
 
   const searching = Boolean(query.trim())
-  const isOpen = (key: string) => searching || !collapsed[key]
-  const toggle = (key: string) => setCollapsed(value => ({ ...value, [key]: !value[key] }))
+  const isOpen = (key: string, defaultOpen: boolean) => searching || (key in expanded ? expanded[key] : defaultOpen)
+  const toggle = (key: string, open: boolean) => setExpanded(value => ({ ...value, [key]: !open }))
 
   if (!rows.length) return <div className="unitTreeEmpty">还没有可浏览的对象。</div>
 
@@ -209,26 +210,32 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     {groups.map(faction => {
       const factionKey = `f:${faction.key}`
       const factionCount = faction.countries.reduce((sum, country) => sum + country.types.reduce((inner, type) => inner + type.units.length, 0), 0)
+      const factionHasSelected = faction.countries.some(country => country.types.some(type => type.units.some(unit => unit.id === selectedId)))
+      const factionOpen = isOpen(factionKey, true || factionHasSelected)
       return <section className="unitFaction" key={faction.key}>
-        <button className="unitTreeLevel faction" onClick={() => toggle(factionKey)}>
-          {isOpen(factionKey) ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}<strong>{faction.label}</strong><em>{factionCount}</em>
+        <button className="unitTreeLevel faction" onClick={() => toggle(factionKey, factionOpen)}>
+          {factionOpen ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}<strong>{faction.label}</strong><em>{factionCount}</em>
         </button>
-        {isOpen(factionKey) && <div className="unitTreeBranch factionBranch">
+        {factionOpen && <div className="unitTreeBranch factionBranch">
           {faction.countries.map(country => {
             const countryKey = `${factionKey}|c:${country.key}`
             const countryCount = country.types.reduce((sum, type) => sum + type.units.length, 0)
+            const countryHasSelected = country.types.some(type => type.units.some(unit => unit.id === selectedId))
+            const countryOpen = isOpen(countryKey, countryHasSelected)
             return <div className="unitCountry" key={country.key}>
-              <button className="unitTreeLevel country" onClick={() => toggle(countryKey)}>
-                {isOpen(countryKey) ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<Users size={14}/><span>{country.label}</span><em>{countryCount}</em>
+              <button className="unitTreeLevel country" onClick={() => toggle(countryKey, countryOpen)}>
+                {countryOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<Users size={14}/><span>{country.label}</span><em>{countryCount}</em>
               </button>
-              {isOpen(countryKey) && <div className="unitTreeBranch countryBranch">
+              {countryOpen && <div className="unitTreeBranch countryBranch">
                 {country.types.map(type => {
                   const typeKey = `${countryKey}|t:${type.name}`
+                  const typeHasSelected = type.units.some(unit => unit.id === selectedId)
+                  const typeOpen = isOpen(typeKey, typeHasSelected)
                   return <div className="unitType" key={type.name}>
-                    <button className="unitTreeLevel type" onClick={() => toggle(typeKey)}>
-                      {isOpen(typeKey) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<span>{type.name}</span><em>{type.units.length}</em>
+                    <button className="unitTreeLevel type" onClick={() => toggle(typeKey, typeOpen)}>
+                      {typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<span>{type.name}</span><em>{type.units.length}</em>
                     </button>
-                    {isOpen(typeKey) && <div className="unitLeaves">
+                    {typeOpen && <div className="unitLeaves">
                       {type.units.map(unit => <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={unit.countryHint || unit.id}>
                         <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={14}/>
                       </button>)}
