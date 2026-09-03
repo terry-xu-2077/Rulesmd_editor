@@ -4,6 +4,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
+$LegacyAssets = Join-Path $Frontend 'public\legacy'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
 $ProxyHost = '127.0.0.1'
@@ -57,6 +58,27 @@ function Invoke-CargoFetch([string]$Mode) {
     return $LASTEXITCODE
 }
 
+function Sync-LegacyAsset([string]$Name, [string]$Url) {
+    $Target = Join-Path $LegacyAssets $Name
+    if (Test-Path $Target) { return }
+    Write-Host "  Legacy UI: $Name" -ForegroundColor DarkGray
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Target -TimeoutSec 20
+    } catch {
+        if ($ProxyAvailable) {
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Target -Proxy $ProxyUrl -TimeoutSec 30
+            } catch {
+                Write-Host "  [WARN] Unable to download legacy asset $Name; fallback icon will be used." -ForegroundColor Yellow
+                Remove-Item $Target -ErrorAction SilentlyContinue
+            }
+        } else {
+            Write-Host "  [WARN] Unable to download legacy asset $Name; fallback icon will be used." -ForegroundColor Yellow
+            Remove-Item $Target -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Set-Location $Root
 
 Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
@@ -107,6 +129,16 @@ if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
         if ($LASTEXITCODE -ne 0) { Fail 'npm dependency installation failed.' }
     } finally { Pop-Location }
 }
+
+# Reuse the original RulesmdEditorWeb image assets. They are downloaded once and then
+# served locally by Vite/Tauri; the editor does not depend on the web repo at runtime.
+New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
+Write-Step 'Synchronizing legacy RulesmdEditorWeb UI assets'
+$LegacyBase = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
+Sync-LegacyAsset 'iconTile.jpg' "$LegacyBase/iconTile.jpg"
+Sync-LegacyAsset 'countryTile.png' "$LegacyBase/countryTile.png"
+Sync-LegacyAsset 'bgIcon.png' "$LegacyBase/bgIcon.png"
+Sync-LegacyAsset 'RA2_NONE.png' "$LegacyBase/RA2_NONE.png"
 
 # The PNG is the single source of truth for all desktop icons.
 if (-not (Test-Path $IconSource)) {
