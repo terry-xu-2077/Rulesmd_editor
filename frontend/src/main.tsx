@@ -25,13 +25,14 @@ import {
   Save,
   Search,
   Settings,
-  ShieldCheck,
   Sparkles,
   Trash2,
   WandSparkles,
 } from 'lucide-react'
 import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { hasLegacyIcon, legacyIconStyle } from './legacyIcons'
+import { ParameterPicker } from './ParameterPicker'
+import { UnitTree } from './UnitTree'
 import './styles.css'
 
 type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
@@ -167,27 +168,19 @@ function App() {
   const [unitSearch, setUnitSearch] = useState('')
   const [fieldSearch, setFieldSearch] = useState('')
   const [activeGroup, setActiveGroup] = useState('全部')
-  const [activeObjectCategory, setActiveObjectCategory] = useState('全部')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [showRaw, setShowRaw] = useState(false)
   const [status, setStatus] = useState('新建或打开 rulesmd.ini 开始编辑')
   const [busy, setBusy] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
-  const [catalogSearch, setCatalogSearch] = useState('')
-  const [catalogCategory, setCatalogCategory] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [pinned, setPinned] = useState(false)
+  const [documentEpoch, setDocumentEpoch] = useState(0)
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
-  const objectCategories = useMemo(() => ['全部', ...Array.from(new Set(rows.map(row => row.category)))], [rows])
-  const visibleUnits = useMemo(() => rows.filter(row => {
-    const categoryOk = activeObjectCategory === '全部' || row.category === activeObjectCategory
-    const searchOk = `${row.label} ${row.id} ${row.type}`.toLowerCase().includes(unitSearch.toLowerCase())
-    return categoryOk && searchOk
-  }), [rows, unitSearch, activeObjectCategory])
   const groups = useMemo(() => ['全部', ...Array.from(new Set(sectionData.options.map(option => displayGroup(option.category))))], [sectionData])
   const visibleFields = useMemo(() => sectionData.options.filter(option => {
     const groupOk = activeGroup === '全部' || displayGroup(option.category) === activeGroup
@@ -204,12 +197,6 @@ function App() {
     return [...result.entries()]
   }, [visibleFields])
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
-
-  const searchedCatalog = useMemo(() => catalog.filter(option =>
-    `${option.label} ${option.key} ${option.description}`.toLowerCase().includes(catalogSearch.toLowerCase())
-  ), [catalog, catalogSearch])
-  const catalogCategories = useMemo(() => Array.from(new Set(searchedCatalog.map(option => displayGroup(option.category)))), [searchedCatalog])
-  const visibleCatalog = useMemo(() => searchedCatalog.filter(option => !catalogCategory || displayGroup(option.category) === catalogCategory), [searchedCatalog, catalogCategory])
 
   async function showSection(row: SectionRow) {
     const requestId = ++sectionRequest.current
@@ -238,9 +225,9 @@ function App() {
     sectionCache.current.clear()
     sectionRequest.current += 1
     setSnapshot(next)
-    setActiveObjectCategory('全部')
     setUnitSearch('')
     setFieldSearch('')
+    setDocumentEpoch(value => value + 1)
     const first = firstUsefulRow(next)
     if (first) {
       setSelected(first)
@@ -316,6 +303,7 @@ function App() {
     try {
       const result = await workspaceApi.setValue(option.line_id, value) as { dirty: boolean }
       setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: result.dirty } } : current)
+      if (/^(Owner|RequiredHouses|ForbiddenHouses)$/i.test(option.key)) setDocumentEpoch(epoch => epoch + 1)
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
     } catch (error) {
       setStatus(`写入失败：${String(error)}`)
@@ -340,18 +328,13 @@ function App() {
 
   async function openOptionPicker() {
     if (!snapshot || !selected) return
-    setBusy(true)
+    setCatalog([])
+    setShowPicker(true)
     try {
       const result = await workspaceApi.optionCatalog('', selected.id, sectionKind(selected.category))
       setCatalog(result)
-      setCatalogSearch('')
-      const firstCategory = result[0] ? displayGroup(result[0].category) : ''
-      setCatalogCategory(firstCategory)
-      setShowPicker(true)
     } catch (error) {
       setStatus(`读取参数目录失败：${String(error)}`)
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -367,6 +350,7 @@ function App() {
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
       setCatalog(current => current.filter(item => item.key !== option.key))
+      if (/^(Owner|RequiredHouses|ForbiddenHouses)$/i.test(option.key)) setDocumentEpoch(epoch => epoch + 1)
       setStatus(`已添加 ${option.label || option.key} (${option.key})`)
     } catch (error) {
       setStatus(`添加参数失败：${String(error)}`)
@@ -401,18 +385,8 @@ function App() {
       <aside className="sidebar">
         <div className="panelTitle"><span>对象</span></div>
         <label className="searchBox"><Search size={16}/><input value={unitSearch} onChange={event => setUnitSearch(event.target.value)} placeholder="搜索中文名、Section、类型"/></label>
-        <div className="typeTabs scrollTabs">{objectCategories.map(category => <button key={category} className={activeObjectCategory === category ? 'active' : ''} onClick={() => setActiveObjectCategory(category)}>{category}</button>)}</div>
         <div className="treeList">
-          {!snapshot && <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div>}
-          {Array.from(new Set(visibleUnits.map(unit => unit.category))).map(category => {
-            const list = visibleUnits.filter(unit => unit.category === category)
-            return <section className="treeGroup" key={category}>
-              <div className="treeGroupTitle"><ChevronDown size={15}/>{category}<span>{list.length}</span></div>
-              {list.map(unit => <button key={unit.id} className={`treeItem ${selected?.id === unit.id ? 'selected' : ''}`} onClick={() => void showSection(unit)}>
-                <LegacyUnitIcon id={unit.id} size={38}/><span className="unitText"><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight className="treeChevron" size={15}/>
-              </button>)}
-            </section>
-          })}
+          {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void showSection(row)}/>} 
         </div>
         <div className="sideFooter"><button disabled={!snapshot}><Plus size={16}/> 添加 Section</button><button title="删除" disabled={!selected}><Trash2 size={16}/></button></div>
       </aside>
@@ -456,23 +430,7 @@ function App() {
 
     <footer className="statusbar"><span>{status}</span><div><span>{snapshot?.document.encoding ?? '—'}</span><span>{snapshot?.document.newline ?? '—'}</span><span>{sectionData.options.length} 参数</span><span className="aresStatus"><Sparkles size={13}/> {snapshot?.settings.ares_enabled === false ? 'Ares 辅助关闭' : 'Ares'}</span></div></footer>
 
-    <Dialog open={showPicker} title="添加参数" onClose={() => setShowPicker(false)}>
-      <div className="parameterPickerBody catalogBrowser">
-        <div className="safeCatalogNotice"><ShieldCheck size={18}/><div><strong>仅显示当前对象已确认兼容的参数</strong><span>不确定适用范围或当前 Section 已存在的 Key 会自动过滤，避免误加高风险标签。</span></div></div>
-        <label className="searchBox modalSearch"><Search size={16}/><input autoFocus value={catalogSearch} onChange={event => { setCatalogSearch(event.target.value); setCatalogCategory('') }} placeholder="按用途、中文名称或 Key 搜索"/></label>
-        <div className="catalogBrowserGrid">
-          <aside className="catalogCategoryList">
-            {catalogSearch && <button className={catalogCategory === '' ? 'active' : ''} onClick={() => setCatalogCategory('')}>搜索结果 <span>{searchedCatalog.length}</span></button>}
-            {!catalogSearch && catalogCategories.map(category => <button key={category} className={catalogCategory === category ? 'active' : ''} onClick={() => setCatalogCategory(category)}>{category}<span>{catalog.filter(item => displayGroup(item.category) === category).length}</span></button>)}
-          </aside>
-          <section className="catalogResultPane">
-            <div className="catalogResultTitle"><strong>{catalogSearch ? '搜索结果' : catalogCategory || '可用参数'}</strong><span>{visibleCatalog.length} 项</span></div>
-            <div className="catalogList">{visibleCatalog.map(option => <button key={option.key} className="catalogItem" onClick={() => void addOption(option)}><div><strong>{option.label || option.key}</strong>{option.source === 'Ares' && <span className="aresBadge">ARES</span>}<small>{option.key}</small></div><p>{option.description || '暂无中文说明'}</p></button>)}</div>
-            {visibleCatalog.length === 0 && <div className="emptyCatalog">没有符合当前对象类型和安全规则的参数。</div>}
-          </section>
-        </div>
-      </div>
-    </Dialog>
+    <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
 
     <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}><div className="settingsDialogBody"><div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div></div></Dialog>
   </div>
