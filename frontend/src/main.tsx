@@ -21,7 +21,6 @@ import {
   Gamepad2,
   History,
   MoreHorizontal,
-  Pin,
   Plus,
   Save,
   Search,
@@ -44,6 +43,11 @@ type SectionRow = {
   side: Side
 }
 
+const COUNTRY_VALUES = [
+  ['British', '英国'], ['French', '法国'], ['Germans', '德国'], ['Americans', '美国'], ['Alliance', '盟军'],
+  ['Russians', '苏联'], ['Confederation', '古巴'], ['Africans', '利比亚'], ['Arabs', '伊拉克'], ['YuriCountry', '尤里'],
+].map(([value, label]) => ({ value, label }))
+
 const demoRows: SectionRow[] = [
   { id: 'GHOST', label: '海豹部队', type: '步兵', category: '步兵', side: 'allied' },
   { id: 'SNIPE', label: '狙击手', type: '步兵', category: '步兵', side: 'allied' },
@@ -56,18 +60,22 @@ const demoRows: SectionRow[] = [
 ]
 
 const demoOptions: SectionOption[] = [
-  { line_id: -1, key: 'UIName', label: '显示名称', value: 'Name:GHOST', suffix: '', value_type: 'text', category: '基础', source: 'YR', description: '游戏内显示名称。', values: [], docs: '' },
-  { line_id: -2, key: 'Primary', label: '主武器', value: 'MP5', suffix: '', value_type: 'weapon', category: '武器', source: 'YR', description: '单位的主武器。', values: [], docs: '' },
-  { line_id: -3, key: 'Strength', label: '生命值', value: '125', suffix: '', value_type: 'integer', category: '属性', source: 'YR', description: '单位生命值。', values: [], docs: '' },
-  { line_id: -4, key: 'Armor', label: '装甲类型', value: 'none', suffix: '', value_type: 'enum', category: '属性', source: 'YR', description: '决定弹头 Verses 对该对象的伤害倍率。', values: [{value:'none',label:'none'},{value:'flak',label:'flak'},{value:'plate',label:'plate'}], docs: '' },
-  { line_id: -5, key: 'Sight', label: '视野', value: '8', suffix: '', value_type: 'integer', category: '属性', source: 'YR', description: '对象揭开战争迷雾的格数。', values: [], docs: '' },
-  { line_id: -6, key: 'Speed', label: '移动速度', value: '5', suffix: '', value_type: 'integer', category: '移动', source: 'YR', description: '单位移动速度。', values: [], docs: '' },
-  { line_id: -7, key: 'Owner', label: '所属阵营', value: 'British,French,Germans,Americans,Alliance', suffix: '', value_type: 'text', category: '阵营', source: 'YR', description: '允许建造该对象的国家。', values: [], docs: '' },
-  { line_id: -8, key: 'Cost', label: '价格', value: '1000', suffix: '', value_type: 'integer', category: '经济', source: 'YR', description: '生产所需资金。', values: [], docs: '' },
-  { line_id: -9, key: 'Cloakable', label: '可隐形', value: 'yes', suffix: '', value_type: 'boolean', category: '特殊', source: 'YR', description: '对象是否可以进入隐形状态。', values: [{value:'yes',label:'是'},{value:'no',label:'否'}], docs: '' },
-  { line_id: -10, key: 'AttachEffect.Duration', label: '附加效果持续时间', value: '90', suffix: '', value_type: 'integer', category: 'Ares · AttachEffect', source: 'Ares', description: '效果持续帧数。-1 表示无限持续，0 表示不持续。', values: [], docs: 'new/attacheffect.html' },
-  { line_id: -11, key: 'AttachEffect.Cloakable', label: '效果期间可隐形', value: 'no', suffix: '', value_type: 'boolean', category: 'Ares · AttachEffect', source: 'Ares', description: '启用后，目标在 AttachEffect 持续期间获得隐形能力。', values: [{value:'yes',label:'是'},{value:'no',label:'否'}], docs: 'new/attacheffect.html' },
+  { line_id: -1, key: 'UIName', label: '显示名称', value: 'Name:GHOST', suffix: '', value_type: 'text', widget: 'text', category: '基础', source: 'YR', description: '游戏内显示名称。', values: [], docs: '' },
+  { line_id: -2, key: 'Primary', label: '主武器', value: 'MP5', suffix: '', value_type: 'weapon', widget: 'text', category: '武器', source: 'YR', description: '单位的主武器。', values: [], docs: '' },
+  { line_id: -3, key: 'Strength', label: '生命值', value: '125', suffix: '', value_type: 'number', widget: 'slider', category: '属性', source: 'YR', description: '单位生命值。', values: [], docs: '' },
+  { line_id: -4, key: 'Armor', label: '装甲类型', value: 'none', suffix: '', value_type: 'enum', widget: 'select', category: '属性', source: 'YR', description: '决定弹头 Verses 对该对象的伤害倍率。', values: [{value:'none',label:'none'},{value:'flak',label:'flak'},{value:'plate',label:'plate'}], docs: '' },
+  { line_id: -5, key: 'Sight', label: '视野', value: '8', suffix: '', value_type: 'number', widget: 'slider', category: '属性', source: 'YR', description: '对象揭开战争迷雾的格数。', values: [], docs: '' },
+  { line_id: -6, key: 'Speed', label: '移动速度', value: '5', suffix: '', value_type: 'number', widget: 'slider', category: '移动', source: 'YR', description: '单位移动速度。', values: [], docs: '' },
+  { line_id: -7, key: 'Owner', label: '所属阵营', value: 'British,French,Germans,Americans,Alliance', suffix: '', value_type: 'list-legacy', widget: 'multi-select', category: '阵营', source: 'YR', description: '允许建造该对象的国家。', values: COUNTRY_VALUES, docs: '' },
+  { line_id: -8, key: 'Cost', label: '价格', value: '1000', suffix: '', value_type: 'number', widget: 'slider', category: '经济', source: 'YR', description: '生产所需资金。', values: [], docs: '' },
+  { line_id: -9, key: 'Cloakable', label: '可隐形', value: 'yes', suffix: '', value_type: 'boolean', widget: 'boolean', category: '特殊', source: 'YR', description: '对象是否可以进入隐形状态。', values: [{value:'yes',label:'是'},{value:'no',label:'否'}], docs: '' },
+  { line_id: -10, key: 'AttachEffect.Duration', label: '附加效果持续时间', value: '90', suffix: '', value_type: 'number', widget: 'slider', category: 'Ares · AttachEffect', source: 'Ares', description: '效果持续帧数。-1 表示无限持续，0 表示不持续。', values: [], docs: 'new/attacheffect.html' },
+  { line_id: -11, key: 'AttachEffect.Cloakable', label: '效果期间可隐形', value: 'no', suffix: '', value_type: 'boolean', widget: 'boolean', category: 'Ares · AttachEffect', source: 'Ares', description: '启用后，目标在 AttachEffect 持续期间获得隐形能力。', values: [{value:'yes',label:'是'},{value:'no',label:'否'}], docs: 'new/attacheffect.html' },
 ]
+
+function valuesOf(options: SectionOption[]) {
+  return Object.fromEntries(options.map(option => [option.line_id, option.value])) as Record<number, string>
+}
 
 function sideForId(id: string): Side {
   const key = id.toUpperCase()
@@ -102,7 +110,8 @@ function rangeFor(option: SectionOption): { min: number; max: number; step: numb
   if (key === 'sight') return { min: 0, max: 30, step: 1 }
   if (key === 'strength') return { min: 0, max: 5000, step: 25 }
   if (key === 'cost') return { min: 0, max: 10000, step: 50 }
-  if (option.value_type === 'percent') return { min: 0, max: 500, step: 5, suffix: '%' }
+  if ((option.semantic_type ?? option.value_type) === 'percent') return { min: 0, max: 500, step: 5, suffix: '%' }
+  if (option.widget === 'slider') return { min: -1000, max: 10000, step: 1 }
   return null
 }
 
@@ -115,37 +124,46 @@ function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: 
   return <div className={`legacyUnitIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
 }
 
-function FieldControl({ option, onChange }: { option: SectionOption; onChange: (value: string) => void }) {
-  const isBoolean = option.value_type === 'boolean' || (/^(yes|no)$/i.test(option.value) && option.values.some(v => /^(yes|no)$/i.test(v.value)))
-  if (isBoolean) {
-    return <BoolSwitch value={option.value} onChange={onChange} trueValue="yes" falseValue="no" />
+function FieldControl({ option, rawValue, onChange }: { option: SectionOption; rawValue: string; onChange: (value: string) => void }) {
+  const widget = option.widget ?? (option.value_type === 'boolean' ? 'boolean' : /^list/i.test(option.value_type) ? 'multi-select' : option.values.length ? 'select' : 'text')
+
+  if (widget === 'boolean') {
+    return <BoolSwitch value={option.value} rawValue={rawValue} onChange={onChange} trueValue="yes" falseValue="no" />
   }
 
-  const listType = /^list/i.test(option.value_type)
-  if (listType && option.values.length > 0) {
+  if (widget === 'multi-select') {
     return <MultiSelect
       values={option.value.split(',').map(v => v.trim()).filter(Boolean)}
+      rawValues={rawValue.split(',').map(v => v.trim()).filter(Boolean)}
       options={option.values.map(v => ({ value: v.value, label: v.label || v.value }))}
       onChange={values => onChange(values.join(','))}
       mode="menu"
     />
   }
 
-  if (option.values.length > 0 && option.value_type !== 'enum-or-integer') {
+  if (widget === 'select') {
     const options = option.values.map(v => ({ value: v.value, label: v.label ? `${v.label} · ${v.value}` : v.value }))
     if (!options.some(v => v.value === option.value)) options.unshift({ value: option.value, label: option.value })
-    return <Select value={option.value} options={options} onChange={onChange} />
+    return <Select value={option.value} rawValue={rawValue} options={options} onChange={onChange} />
   }
 
-  const range = rangeFor(option)
-  if (range) {
-    const raw = option.value.replace('%','')
-    const numeric = Number.parseFloat(raw)
-    const value = Number.isFinite(numeric) ? Math.min(range.max, Math.max(range.min, numeric)) : range.min
-    return <Slider value={value} min={range.min} max={range.max} step={range.step} onChange={next => onChange(`${next}${range.suffix ?? ''}`)} />
+  if (widget === 'slider') {
+    const range = rangeFor(option) ?? { min: -1000, max: 10000, step: 1 }
+    const numeric = Number.parseFloat(option.value.replace('%',''))
+    const rawNumeric = Number.parseFloat(rawValue.replace('%',''))
+    if (Number.isFinite(numeric) && Number.isFinite(rawNumeric)) {
+      return <Slider
+        value={Math.min(range.max, Math.max(range.min, numeric))}
+        rawValue={Math.min(range.max, Math.max(range.min, rawNumeric))}
+        min={range.min}
+        max={range.max}
+        step={range.step}
+        onChange={next => onChange(`${next}${range.suffix ?? ''}`)}
+      />
+    }
   }
 
-  return <TextField value={option.value} onChange={onChange} placeholder={option.label || option.key} tooltip={option.description || undefined} />
+  return <TextField value={option.value} rawValue={rawValue} onChange={onChange} placeholder={option.label || option.key} tooltip={option.description || undefined} />
 }
 
 function App() {
@@ -153,6 +171,7 @@ function App() {
   const [selected, setSelected] = useState<SectionRow>(demoRows[0])
   const [sectionData, setSectionData] = useState<SectionData>({ section: 'GHOST', description: '海豹部队', options: demoOptions, raw: '[GHOST]\nStrength=125\nSpeed=5', references: [] })
   const [selectedOptionId, setSelectedOptionId] = useState<number>(demoOptions[0].line_id)
+  const [originalValues, setOriginalValues] = useState<Record<number, string>>(() => valuesOf(demoOptions))
   const [changed, setChanged] = useState<Set<number>>(new Set())
   const [unitSearch, setUnitSearch] = useState('')
   const [fieldSearch, setFieldSearch] = useState('')
@@ -160,7 +179,7 @@ function App() {
   const [activeObjectCategory, setActiveObjectCategory] = useState('全部')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [showRaw, setShowRaw] = useState(false)
-  const [status, setStatus] = useState('示例界面 · 点击“打开”载入 rulesmd.ini')
+  const [status, setStatus] = useState('示例界面 · 点击“新建”或“打开”开始编辑')
   const [busy, setBusy] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
@@ -172,7 +191,7 @@ function App() {
     if (!snapshot) return demoRows
     return snapshot.categories.flatMap(category => category.items.map(item => ({
       id: item.section,
-      label: item.section,
+      label: item.label || item.section,
       type: category.name,
       category: category.name,
       side: sideForId(item.section),
@@ -204,26 +223,46 @@ function App() {
 
   const selectedOption = sectionData.options.find(o => o.line_id === selectedOptionId) ?? sectionData.options[0]
 
+  function acceptSection(data: SectionData) {
+    setSectionData(data)
+    setOriginalValues(valuesOf(data.options))
+    setChanged(new Set())
+    setSelectedOptionId(data.options[0]?.line_id ?? 0)
+  }
+
   async function loadSection(row: SectionRow) {
     setSelected(row)
     setActiveGroup('全部')
     if (!snapshot) {
       const data = row.id === 'GHOST' ? { ...sectionData, section: row.id, description: row.label } : { section: row.id, description: row.label, options: demoOptions, raw: `[${row.id}]`, references: [] }
-      setSectionData(data)
-      setSelectedOptionId(data.options[0]?.line_id ?? 0)
+      acceptSection(data)
       return
     }
     try {
       setBusy(true)
       const data = await workspaceApi.section(row.id)
-      setSectionData(data)
-      setSelectedOptionId(data.options[0]?.line_id ?? 0)
+      acceptSection(data)
       setStatus(`已载入 [${row.id}] · ${data.options.length} 个参数`)
     } catch (error) {
       setStatus(`读取 Section 失败：${String(error)}`)
     } finally {
       setBusy(false)
     }
+  }
+
+  async function selectFirst(next: WorkspaceSnapshot) {
+    const firstCategory = next.categories.find(c => c.items.length)
+    const first = firstCategory?.items[0]
+    if (!first || !firstCategory) {
+      setSectionData({section:'',description:'',options:[],raw:'',references:[]})
+      setOriginalValues({})
+      setChanged(new Set())
+      return
+    }
+    const row: SectionRow = { id: first.section, label: first.label || first.section, type: firstCategory.name, category: firstCategory.name, side: sideForId(first.section) }
+    setSelected(row)
+    const data = await workspaceApi.section(first.section)
+    acceptSection(data)
   }
 
   async function openRules() {
@@ -233,16 +272,7 @@ function App() {
       setBusy(true)
       const next = await workspaceApi.openFile(path)
       setSnapshot(next)
-      setChanged(new Set())
-      const firstCategory = next.categories.find(c => c.items.length)
-      const first = firstCategory?.items[0]
-      if (first && firstCategory) {
-        const row: SectionRow = { id: first.section, label: first.section, type: firstCategory.name, category: firstCategory.name, side: sideForId(first.section) }
-        setSelected(row)
-        const data = await workspaceApi.section(first.section)
-        setSectionData(data)
-        setSelectedOptionId(data.options[0]?.line_id ?? 0)
-      }
+      await selectFirst(next)
       setStatus(`已打开 ${path}`)
     } catch (error) {
       setStatus(`打开失败：${String(error)}`)
@@ -253,16 +283,17 @@ function App() {
 
   async function newRules() {
     try {
+      setBusy(true)
       const next = await workspaceApi.newDocument()
       setSnapshot(next)
-      setSectionData({section:'',description:'',options:[],raw:'',references:[]})
-      setChanged(new Set())
-      setStatus('已新建空白 Rules 文档')
+      await selectFirst(next)
+      setStatus(`已从原版完整模板新建 Rules 文档 · ${next.document.section_count} 个 Section`)
     } catch (error) { setStatus(`新建失败：${String(error)}`) }
+    finally { setBusy(false) }
   }
 
   async function saveRules() {
-    if (!snapshot) { setStatus('当前仍是示例界面，请先打开 rulesmd.ini'); return }
+    if (!snapshot) { setStatus('当前仍是示例界面，请先新建或打开 rulesmd.ini'); return }
     try {
       setBusy(true)
       let path = snapshot.document.path ?? undefined
@@ -271,6 +302,7 @@ function App() {
       await workspaceApi.save(path)
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
+      setOriginalValues(valuesOf(sectionData.options))
       setChanged(new Set())
       setStatus(`已保存 ${path}`)
     } catch (error) { setStatus(`保存失败：${String(error)}`) }
@@ -279,8 +311,14 @@ function App() {
 
   function setValue(option: SectionOption, value: string) {
     setSectionData(current => ({ ...current, options: current.options.map(item => item.line_id === option.line_id ? { ...item, value } : item) }))
-    setChanged(current => new Set(current).add(option.line_id))
-    setStatus(`已修改 ${selected.id}.${option.key}`)
+    const original = originalValues[option.line_id] ?? option.value
+    setChanged(current => {
+      const next = new Set(current)
+      if (value === original) next.delete(option.line_id)
+      else next.add(option.line_id)
+      return next
+    })
+    setStatus(value === original ? `已还原 ${selected.id}.${option.key}` : `已修改 ${selected.id}.${option.key}`)
     if (snapshot && option.line_id > 0) {
       void workspaceApi.setValue(option.line_id, value).then(() => {
         setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: true } } : current)
@@ -341,7 +379,7 @@ function App() {
       <div className="workspace">
         <aside className="sidebar">
           <div className="panelTitle"><span>对象</span><button title="添加 Section"><Plus size={17}/></button></div>
-          <label className="searchBox"><Search size={16}/><input value={unitSearch} onChange={e => setUnitSearch(e.target.value)} placeholder="搜索 Section、ID、类型"/></label>
+          <label className="searchBox"><Search size={16}/><input value={unitSearch} onChange={e => setUnitSearch(e.target.value)} placeholder="搜索名称、Section、ID、类型"/></label>
           <div className="typeTabs scrollTabs">{objectCategories.map(category => <button key={category} className={activeObjectCategory === category ? 'active' : ''} onClick={() => setActiveObjectCategory(category)}>{category}</button>)}</div>
           <div className="treeList">
             {Array.from(new Set(visibleUnits.map(u => u.category))).map(category => {
@@ -386,14 +424,9 @@ function App() {
                 {collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em>
               </button>
               {!collapsed[group] && list.map(option => <div className={`propertyRowHost ${selectedOption?.line_id === option.line_id ? 'focused' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
-                <PropertyRow
-                  label={option.label || option.key}
-                  description={option.key}
-                  changed={changed.has(option.line_id)}
-                  onCopy={() => void navigator.clipboard?.writeText(option.value)}
-                >
+                <PropertyRow label={option.label || option.key} description={option.key} changed={changed.has(option.line_id)}>
                   <div className="rulesControlHost" onClick={e => e.stopPropagation()}>
-                    <FieldControl option={option} onChange={value => setValue(option, value)}/>
+                    <FieldControl option={option} rawValue={originalValues[option.line_id] ?? option.value} onChange={value => setValue(option, value)}/>
                     {option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}
                   </div>
                 </PropertyRow>
@@ -410,7 +443,7 @@ function App() {
               <span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span>
               <h3>{selectedOption.label || selectedOption.key}</h3>
               <p>{selectedOption.description || '此参数暂时没有内置中文说明；编辑器仍会无损保留它。'}</p>
-              <div className="infoCard"><span>类型</span><b>{selectedOption.value_type || 'text'}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>
+              <div className="infoCard"><span>类型</span><b>{selectedOption.semantic_type || selectedOption.value_type || 'text'}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>
               {selectedOption.docs && <button className="docLink">查看内置文档索引 <ChevronRight size={16}/></button>}
             </> : <div className="emptyHelp">选择一个参数查看中文说明。</div>}
             <div className="helpDivider"/>
