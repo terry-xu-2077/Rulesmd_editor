@@ -67,14 +67,14 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Fail 'Rust/Cargo w
 
 $env:CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse'
 $env:CARGO_HTTP_MULTIPLEXING = 'false'
-$env:CARGO_NET_RETRY = '3'
-$env:CARGO_HTTP_TIMEOUT = '60'
+$env:CARGO_NET_RETRY = '2'
+$env:CARGO_HTTP_TIMEOUT = '25'
 
 $ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
 if ($ProxyAvailable) {
-    Write-Host "Fallback proxy available: $ProxyUrl" -ForegroundColor Green
+    Write-Host "Preferred Cargo proxy available: $ProxyUrl" -ForegroundColor Green
 } else {
-    Write-Host "Fallback proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
+    Write-Host "Cargo proxy unavailable; direct connection will be used: $ProxyUrl" -ForegroundColor Yellow
 }
 
 # Python backend
@@ -97,7 +97,7 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
-# Frontend dependencies. Keep inherited proxy settings out of the default path.
+# Frontend dependencies.
 if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
     Write-Step 'Installing frontend dependencies (first run only)'
     Push-Location $Frontend
@@ -119,29 +119,39 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
 } finally { Pop-Location }
 
-# Cargo network strategy: direct first, local proxy only as fallback.
-Clear-ProxyEnv
-$FetchCode = Invoke-CargoFetch 'direct'
+# Cargo network strategy for this workstation:
+# prefer the known local proxy when it is listening; direct connection is fallback only.
+$FetchCode = 1
 $NetworkMode = 'direct'
 
-if ($FetchCode -ne 0) {
-    if (-not $ProxyAvailable) {
-        Fail "Cargo direct download failed and fallback proxy $ProxyUrl is not listening."
-    }
-
-    Write-Host "Direct Cargo download failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+if ($ProxyAvailable) {
     Enable-ProxyEnv
-    $env:CARGO_NET_RETRY = '6'
-    $env:CARGO_HTTP_TIMEOUT = '120'
+    $env:CARGO_NET_RETRY = '3'
+    $env:CARGO_HTTP_TIMEOUT = '25'
     $FetchCode = Invoke-CargoFetch "proxy $ProxyUrl"
     $NetworkMode = 'proxy'
 
     if ($FetchCode -ne 0) {
-        Fail "Cargo dependency download failed both directly and through $ProxyUrl. Check the proxy mode/port or TLS settings."
+        Write-Host "Cargo proxy fetch failed. Falling back to direct connection ..." -ForegroundColor Yellow
+        Clear-ProxyEnv
+        $env:CARGO_NET_RETRY = '1'
+        $env:CARGO_HTTP_TIMEOUT = '20'
+        $FetchCode = Invoke-CargoFetch 'direct fallback'
+        $NetworkMode = 'direct fallback'
     }
+} else {
+    Clear-ProxyEnv
+    $env:CARGO_NET_RETRY = '2'
+    $env:CARGO_HTTP_TIMEOUT = '20'
+    $FetchCode = Invoke-CargoFetch 'direct'
+    $NetworkMode = 'direct'
 }
 
-# Dependencies are now cached. Do not force the whole app process through the proxy.
+if ($FetchCode -ne 0) {
+    Fail "Cargo dependency download failed. Proxy checked: $ProxyUrl."
+}
+
+# Dependencies are cached now. Keep the app runtime independent of proxy settings.
 Clear-ProxyEnv
 $env:RULESMD_PYTHON = $Python
 $env:PYTHONUTF8 = '1'
