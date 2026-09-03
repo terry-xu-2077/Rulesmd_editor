@@ -1,0 +1,11 @@
+.settingsDialogBody.settingsGrid{display:flex;flex-direction:column;gap:0;min-width:min(720px,78vw);padding:8px 10px 12px}
+.settingsSectionTitle{padding:12px 8px 7px;color:#7fe8d8;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(112,238,255,.12)}
+.settingRow{display:grid!important;grid-template-columns:minmax(0,1fr) 260px!important;align-items:center!important;gap:24px!important;min-height:62px;padding:10px 8px;border-bottom:1px solid rgba(112,238,255,.1)}
+.settingRow>div:first-child{min-width:0;display:flex;flex-direction:column;gap:5px}
+.settingRow>div:first-child strong{font-size:13px;color:#e7eef7}
+.settingRow>div:first-child span{font-size:11px;line-height:1.5;color:#8196aa}
+.settingRow>.tc-control-wrap{justify-self:end!important;margin:0!important}
+.settingPathRow{grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important}
+.settingPathRow>.tc-control-wrap,.settingPathRow .tc-text{width:100%!important;max-width:none!important}
+.settingRow .tc-select{width:180px!important}
+@media(max-width:760px){.settingsDialogBody.settingsGrid{min-width:0;width:min(92vw,620px)}.settingRow,.settingPathRow{grid-template-columns:1fr!important;gap:9px!important}.settingRow>.tc-control-wrap{justify-self:start!important}}
