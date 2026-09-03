@@ -53,8 +53,8 @@ class Bridge:
     def rpc_section(self, section: str) -> dict:
         return self.workspace.section(section)
 
-    def rpc_option_catalog(self, query: str = "", applies_to: str | None = None) -> list[dict]:
-        return self.workspace.option_catalog(query=query, applies_to=applies_to)
+    def rpc_option_catalog(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
+        return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
 
     def rpc_set_value(self, line_id: int, value: str) -> dict:
         return self.workspace.set_value(line_id, value)
