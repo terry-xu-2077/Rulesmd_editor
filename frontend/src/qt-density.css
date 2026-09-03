@@ -51,8 +51,11 @@
   background:#0d1a2a;color:#c8d7e4;
 }
 .parameterTableRow:nth-child(even){background:#101f32}
-.parameterTableRow.focused{box-shadow:inset 6px 0 0 var(--tc-effect)}
-.parameterTableRow.focused::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(65,140,210,.07)}
+.parameterTableRow.focused{
+  z-index:2;
+  box-shadow:inset 4px 0 0 var(--tc-effect),0 5px 16px rgba(0,0,0,.34),0 0 0 1px rgba(112,238,255,.16);
+}
+.parameterTableRow.focused::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(65,140,210,.08)}
 .parameterTableRow.changed::before{content:"";position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:var(--tc-effect);z-index:3}
 .parameterKeyCell,.parameterLabelCell,.parameterValueCell{min-width:0;display:flex;align-items:center;border-right:1px solid rgba(105,145,185,.13);box-sizing:border-box}
 .parameterKeyCell{gap:7px;padding:0 9px 0 12px}
