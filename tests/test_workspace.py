@@ -128,3 +128,38 @@ def test_add_option_uses_built_in_default_when_value_is_omitted():
     created = workspace.add_option("E1", "AttachEffect.Duration")
     assert created["value"] == "0"
     assert "AttachEffect.Duration=0\n" in workspace.raw_text()
+
+
+def test_section_catalog_filters_incompatible_and_existing_parameters(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[InfantryTypes]\n1=E1\n[BuildingTypes]\n1=GAPOWR\n"
+        "[E1]\nOwner=British\nStrength=125\n"
+        "[GAPOWR]\nEnemyUIName=TXT_POWER\nTechLevel=1\n",
+        encoding="utf-8",
+    )
+    workspace = RulesWorkspace()
+    workspace.open_file(path)
+
+    rows = workspace.option_catalog(section="E1", applies_to="InfantryType")
+    keys = {row["key"] for row in rows}
+    assert "Owner" not in keys
+    assert "EnemyUIName" not in keys
+    assert "Bounty" in keys
+
+
+def test_reverse_references_are_kept_in_index_after_edit(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[InfantryTypes]\n1=E1\n2=E2\n[E1]\nPrimary=M60\n[E2]\nPrimary=M60\n[M60]\nDamage=10\nWarhead=SA\n",
+        encoding="utf-8",
+    )
+    workspace = RulesWorkspace()
+    workspace.open_file(path)
+    refs = workspace.section("M60")["references"]
+    assert {item["section"] for item in refs} == {"E1", "E2"}
+
+    e1_primary = next(row for row in workspace.section("E1")["options"] if row["key"] == "Primary")
+    workspace.set_value(e1_primary["line_id"], "M61")
+    refs = workspace.section("M60")["references"]
+    assert {item["section"] for item in refs} == {"E2"}
