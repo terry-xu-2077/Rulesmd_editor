@@ -222,9 +222,6 @@ function App() {
       setStatus(`已载入 [${row.id}] · ${cached.options.length} 个参数`)
       return
     }
-    setSectionData({ ...EMPTY_SECTION, section: row.id, description: row.label })
-    setSelectedOptionId(null)
-    setStatus(`正在载入 [${row.id}]…`)
     try {
       const data = await workspaceApi.section(row.id)
       if (requestId !== sectionRequest.current) return
@@ -432,7 +429,7 @@ function App() {
             <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
           </section>
           <section className="fieldsPane">
-            {groupedFields.length === 0 && <div className="emptyPane"><strong>{sectionData.section ? '正在读取参数…' : '当前 Section 没有可显示参数'}</strong><span>{sectionData.section ? '首次进入该对象会从本地规则索引读取，之后会直接使用缓存。' : '可点击“+ 参数”添加已确认兼容的参数。'}</span></div>}
+            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加已确认兼容的参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => setCollapsed(value => ({ ...value, [group]: !value[group] }))}>{collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {!collapsed[group] && list.map(option => {
