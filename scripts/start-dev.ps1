@@ -9,6 +9,7 @@ $Python = Join-Path $Venv 'Scripts\python.exe'
 $ProxyHost = '127.0.0.1'
 $ProxyPort = 7897
 $ProxyUrl = "http://${ProxyHost}:${ProxyPort}"
+$RsProxyIndex = 'sparse+https://rsproxy.cn/index/'
 
 function Write-Step([string]$Text) {
     Write-Host "`n==> $Text" -ForegroundColor Cyan
@@ -50,9 +51,15 @@ function Enable-ProxyEnv {
     $env:GIT_HTTPS_PROXY = $ProxyUrl
 }
 
-function Invoke-CargoFetch([string]$Mode) {
+function Invoke-CargoFetch([string]$Mode, [bool]$UseRsProxy = $false) {
     Write-Step "Preparing Rust dependencies ($Mode)"
-    & cargo fetch --manifest-path $TauriManifest
+    if ($UseRsProxy) {
+        & cargo fetch --manifest-path $TauriManifest `
+            --config 'source.crates-io.replace-with="rsproxy-sparse"' `
+            --config "source.rsproxy-sparse.registry=\"$RsProxyIndex\""
+    } else {
+        & cargo fetch --manifest-path $TauriManifest
+    }
     return $LASTEXITCODE
 }
 
@@ -72,10 +79,11 @@ $env:CARGO_HTTP_TIMEOUT = '25'
 
 $ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
 if ($ProxyAvailable) {
-    Write-Host "Preferred Cargo proxy available: $ProxyUrl" -ForegroundColor Green
+    Write-Host "Local fallback proxy available: $ProxyUrl" -ForegroundColor Green
 } else {
-    Write-Host "Cargo proxy unavailable; direct connection will be used: $ProxyUrl" -ForegroundColor Yellow
+    Write-Host "Local fallback proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
 }
+Write-Host "Primary Cargo mirror: $RsProxyIndex" -ForegroundColor Green
 
 # Python backend
 $PythonBootstrap = $null
@@ -119,36 +127,49 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
 } finally { Pop-Location }
 
-# Cargo network strategy for this workstation:
-# prefer the known local proxy when it is listening; direct connection is fallback only.
+# Cargo network strategy:
+# 1) RsProxy sparse mirror direct
+# 2) RsProxy sparse mirror through local proxy
+# 3) Official crates.io through local proxy
+# 4) Official crates.io direct (only when no local proxy is available)
 $FetchCode = 1
-$NetworkMode = 'direct'
+$NetworkMode = 'none'
 
-if ($ProxyAvailable) {
+Clear-ProxyEnv
+$env:CARGO_NET_RETRY = '2'
+$env:CARGO_HTTP_TIMEOUT = '25'
+$FetchCode = Invoke-CargoFetch 'RsProxy direct' $true
+$NetworkMode = 'RsProxy direct'
+
+if (($FetchCode -ne 0) -and $ProxyAvailable) {
+    Write-Host "RsProxy direct failed. Retrying mirror through $ProxyUrl ..." -ForegroundColor Yellow
     Enable-ProxyEnv
-    $env:CARGO_NET_RETRY = '3'
-    $env:CARGO_HTTP_TIMEOUT = '25'
-    $FetchCode = Invoke-CargoFetch "proxy $ProxyUrl"
-    $NetworkMode = 'proxy'
-
-    if ($FetchCode -ne 0) {
-        Write-Host "Cargo proxy fetch failed. Falling back to direct connection ..." -ForegroundColor Yellow
-        Clear-ProxyEnv
-        $env:CARGO_NET_RETRY = '1'
-        $env:CARGO_HTTP_TIMEOUT = '20'
-        $FetchCode = Invoke-CargoFetch 'direct fallback'
-        $NetworkMode = 'direct fallback'
-    }
-} else {
-    Clear-ProxyEnv
     $env:CARGO_NET_RETRY = '2'
+    $env:CARGO_HTTP_TIMEOUT = '25'
+    $FetchCode = Invoke-CargoFetch "RsProxy via proxy $ProxyUrl" $true
+    $NetworkMode = 'RsProxy via proxy'
+}
+
+if (($FetchCode -ne 0) -and $ProxyAvailable) {
+    Write-Host 'RsProxy failed. Falling back to official crates.io through local proxy ...' -ForegroundColor Yellow
+    Enable-ProxyEnv
+    $env:CARGO_NET_RETRY = '2'
+    $env:CARGO_HTTP_TIMEOUT = '25'
+    $FetchCode = Invoke-CargoFetch "crates.io via proxy $ProxyUrl" $false
+    $NetworkMode = 'crates.io via proxy'
+}
+
+if (($FetchCode -ne 0) -and (-not $ProxyAvailable)) {
+    Write-Host 'RsProxy failed and no proxy is available. Trying official crates.io direct ...' -ForegroundColor Yellow
+    Clear-ProxyEnv
+    $env:CARGO_NET_RETRY = '1'
     $env:CARGO_HTTP_TIMEOUT = '20'
-    $FetchCode = Invoke-CargoFetch 'direct'
-    $NetworkMode = 'direct'
+    $FetchCode = Invoke-CargoFetch 'crates.io direct fallback' $false
+    $NetworkMode = 'crates.io direct fallback'
 }
 
 if ($FetchCode -ne 0) {
-    Fail "Cargo dependency download failed. Proxy checked: $ProxyUrl."
+    Fail "Cargo dependency download failed after mirror/proxy fallbacks. Proxy checked: $ProxyUrl."
 }
 
 # Dependencies are cached now. Keep the app runtime independent of proxy settings.
