@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .ares_schema import AresSchemaCatalog
+from .category_rules import categorize_yr_option
 from .schema import OptionMeta, SchemaCatalog
 
 
@@ -33,8 +34,6 @@ class RuntimeSchemaCatalog(SchemaCatalog):
             except Exception:
                 payload = {}
             for key, row in payload.get("options", {}).items():
-                # Generated rules_schema.json is YR-only. Ignore historical mixed rows
-                # from an older cache so Ares cannot leak back into the base catalog.
                 if str(row.get("source", "YR")).casefold() == "ares":
                     continue
                 old = self.options.get(key)
@@ -42,11 +41,12 @@ class RuntimeSchemaCatalog(SchemaCatalog):
                     (str(item.get("value", "")), str(item.get("label") or item.get("value", "")))
                     for item in row.get("values", [])
                 )
+                legacy_category = str(row.get("category", old.category if old else ""))
                 self.options[key] = OptionMeta(
                     name=key,
                     description=str(row.get("description", old.description if old else "")),
                     help_text=str(row.get("help", old.help_text if old else "")),
-                    category=str(row.get("category", old.category if old else "特殊")),
+                    category=categorize_yr_option(key, legacy_category),
                     source="YR",
                     values=values or (old.values if old else ()),
                     value_type=str(row.get("value_type", old.value_type if old else "text")),
@@ -89,8 +89,6 @@ class RuntimeSchemaCatalog(SchemaCatalog):
             query=query,
             applies_to=applies_to,
         )
-        # Shared keys such as Armor/VeteranAbilities are original YR keys enhanced by
-        # Ares; keep the base row in the unified UI rather than duplicating it.
         seen = {row.name.casefold() for row in base_rows}
         merged = base_rows + [row for row in ares_rows if row.name.casefold() not in seen]
         return sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name))
