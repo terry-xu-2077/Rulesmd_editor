@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rulesmd-editor"
+version = "0.1.0"
+description = "Modern lossless rulesmd.ini editor for Yuri's Revenge and Ares"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PySide6>=6.8,<7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "pyinstaller>=6"]
+
+[project.scripts]
+rulesmd-editor = "rulesmd_editor.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rulesmd_editor"]
+
+[tool.ruff]
+line-length = 110
