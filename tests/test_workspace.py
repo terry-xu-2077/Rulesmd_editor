@@ -27,7 +27,7 @@ def test_workspace_exposes_duplicate_lines_and_edits_by_line_id(tmp_path):
     assert primary[0]["line_id"] != primary[1]["line_id"]
 
     workspace.set_value(primary[0]["line_id"], "M60_NEW")
-    assert "Primary=M60_NEW\nPrimary=M60E\n" in workspace.raw_text()
+    assert workspace._doc().items("E1")[1:3] == [("Primary", "M60_NEW"), ("Primary", "M60E")]
 
 
 def test_workspace_returns_ares_metadata():
