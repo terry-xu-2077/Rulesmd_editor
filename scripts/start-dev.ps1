@@ -32,6 +32,13 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
     Fail 'Rust/Cargo was not found. Install Rust with rustup, then run this launcher again.'
 }
 
+# Cargo can be unreliable behind some proxies/VPNs when HTTP/2 multiplexing is enabled.
+# Keep these compatibility settings local to this launcher process.
+$env:CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse'
+$env:CARGO_HTTP_MULTIPLEXING = 'false'
+$env:CARGO_NET_RETRY = '10'
+$env:CARGO_HTTP_TIMEOUT = '120'
+
 # Python is required by the Rules backend. Prefer py launcher on Windows.
 $PythonBootstrap = $null
 if (Get-Command py -ErrorAction SilentlyContinue) {
@@ -85,6 +92,7 @@ $env:RULESMD_PYTHON = $Python
 $env:PYTHONUTF8 = '1'
 
 Write-Step 'Starting Rulesmd Editor (Tauri development mode)'
+Write-Host 'Cargo compatibility: sparse registry, HTTP/2 multiplexing disabled, retry=10.' -ForegroundColor DarkGray
 Write-Host 'Close the app window or press Ctrl+C here to stop.' -ForegroundColor DarkGray
 Push-Location $Frontend
 try {
@@ -95,5 +103,5 @@ try {
 }
 
 if ($ExitCode -ne 0) {
-    Fail "Tauri exited with code $ExitCode. Check the messages above."
+    Fail "Tauri exited with code $ExitCode. If the error mentions index.crates.io, run this launcher again; Cargo will reuse already-downloaded crates."
 }
