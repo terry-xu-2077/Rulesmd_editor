@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 export const LEGACY_ICON_TILE = '/legacy/iconTile.jpg'
 
 const ICON_POS: Record<string, [number, number]> = {
@@ -17,7 +19,7 @@ const ICON_POS: Record<string, [number, number]> = {
   YURI:[0,624],YURIPR:[60,624],ZEP:[120,624]
 }
 
-export function legacyIconStyle(id: string, size = 36): React.CSSProperties | undefined {
+export function legacyIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
   if (!pos) return undefined
   const scale = size / 60
