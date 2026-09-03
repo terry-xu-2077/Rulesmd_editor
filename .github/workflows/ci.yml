@@ -23,11 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        shell: pwsh
+        run: |
+          if (Test-Path package-lock.json) { npm ci } else { npm install }
       - name: React TypeScript build
         working-directory: frontend
         run: npm run build
