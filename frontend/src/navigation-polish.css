@@ -1,13 +1,13 @@
 /* Navigation/history and table hierarchy polish. Business-only styling. */
 
 /* Compact history control living in the first parameter-toolbar row. */
-.editor{position:relative!important;grid-template-rows:66px 82px minmax(0,1fr)!important}
+.editor{position:relative!important;grid-template-rows:66px auto minmax(0,1fr)!important}
 .entityHeaderHost{overflow:visible!important;z-index:12!important}
 .entityNavigation{
   position:absolute!important;
   left:50%!important;
   right:auto!important;
-  top:82px!important;
+  top:71px!important;
   transform:translateX(-50%)!important;
   z-index:28!important;
   width:280px!important;
@@ -39,20 +39,22 @@
 .entityNavigation button:disabled{opacity:.34!important;cursor:default!important}
 .entityNavigation button span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:10.6px!important}
 
-/* Two-row parameter toolbar: first row = search / navigation / add;
-   second row = complete category tags. */
+/* Two genuinely independent toolbar rows.
+   Row 1 is fixed-height search/navigation/add; row 2 grows naturally with wrapped tags. */
 .editorControls{
-  height:82px!important;
+  height:auto!important;
+  min-height:78px!important;
   padding:5px 10px 7px!important;
   display:grid!important;
   grid-template-columns:minmax(190px,235px) minmax(280px,1fr) auto!important;
-  grid-template-rows:32px 34px!important;
+  grid-template-rows:32px auto!important;
   column-gap:10px!important;
-  row-gap:4px!important;
-  align-items:center!important;
+  row-gap:7px!important;
+  align-items:start!important;
+  align-content:start!important;
   overflow:visible!important;
 }
-.editorControls .editorSearch{grid-column:1;grid-row:1;width:100%!important;flex-basis:auto!important;margin:0!important;height:32px!important}
+.editorControls .editorSearch{grid-column:1;grid-row:1;width:100%!important;flex-basis:auto!important;margin:0!important;height:32px!important;align-self:center!important}
 .editorControls>.tc-button{grid-column:3;grid-row:1;justify-self:end;align-self:center;height:32px!important;flex:0 0 auto!important}
 .editorControls .segmented{
   grid-column:1 / -1!important;
@@ -61,10 +63,12 @@
   width:100%!important;
   display:flex!important;
   align-items:center!important;
+  align-content:flex-start!important;
   flex-wrap:wrap!important;
   gap:5px!important;
   overflow:visible!important;
-  padding:1px 0!important;
+  padding:0!important;
+  margin:0!important;
   scrollbar-width:none!important;
 }
 .editorControls .segmented::-webkit-scrollbar{display:none!important}
