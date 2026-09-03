@@ -18,22 +18,56 @@
 .entityHeaderHost .tc-entity-title strong{font-size:17px!important}
 .entityHeaderHost .tc-entity-title span{font-size:10.5px!important}
 
-/* Old desktop editor kept search and value actions close to the table. */
+/* Search/filter actions sit directly above the parameter table. */
 .editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}
 .editorControls .searchBox{height:30px!important;width:210px!important;flex-basis:210px!important}
 .segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
 .editorControls .tc-button{height:28px!important;min-width:84px!important}
 
-/* Property table density. Application layout only; control internals stay in UI Library. */
-.propertyRowHost .tc-property-row{min-height:42px!important;grid-template-columns:34% 66%!important}
-.propertyRowHost .tc-property-label{padding-right:7px!important}
-.propertyRowHost .tc-property-label strong{font-size:12.5px!important}
-.propertyRowHost .tc-property-label span{font-size:10px!important}
-.propertyRowHost .tc-property-value{padding-left:7px!important}
-.propertyRowHost.focused{box-shadow:inset 6px 0 0 rgba(70,157,234,.92)!important}
-.fieldGroupHeader{height:31px!important;padding:0 12px!important}
-.fieldGroupHeader span{font-size:11.5px!important}
-.fieldsPane{padding-bottom:18px!important}
+/* Dense three-column business table. Controls remain UI Library components. */
+.parameterTablePane{padding:0!important;overflow:auto!important;background:#091525!important}
+.parameterTableHeader{
+  position:sticky;top:0;z-index:20;
+  display:grid;grid-template-columns:minmax(145px,22%) minmax(170px,28%) minmax(320px,1fr);
+  min-width:650px;height:30px;align-items:center;
+  background:#172943;border-bottom:1px solid rgba(112,238,255,.24);
+  color:#8da7be;font-size:10.5px;font-weight:700;
+}
+.parameterTableHeader>span{height:100%;display:flex;align-items:center;padding:0 10px;border-right:1px solid rgba(112,238,255,.11)}
+.parameterTableHeader>span:last-child{border-right:0}
+.parameterTableGroup{min-width:650px}
+.parameterTableGroup .fieldGroupHeader{
+  position:sticky;top:30px;z-index:18;
+  height:28px!important;padding:0 9px!important;
+  background:#0d1e31!important;border-bottom:1px solid rgba(112,238,255,.13)!important;
+}
+.parameterTableGroup .fieldGroupHeader span{font-size:11px!important}
+.parameterTableRow{
+  position:relative;display:grid;
+  grid-template-columns:minmax(145px,22%) minmax(170px,28%) minmax(320px,1fr);
+  min-height:34px;align-items:stretch;
+  border-bottom:1px solid rgba(105,145,185,.13);
+  background:#0d1a2a;color:#c8d7e4;
+}
+.parameterTableRow:nth-child(even){background:#101f32}
+.parameterTableRow.focused{box-shadow:inset 6px 0 0 var(--tc-effect)}
+.parameterTableRow.focused::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(65,140,210,.07)}
+.parameterTableRow.changed::before{content:"";position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:var(--tc-effect);z-index:3}
+.parameterKeyCell,.parameterLabelCell,.parameterValueCell{min-width:0;display:flex;align-items:center;border-right:1px solid rgba(105,145,185,.13);box-sizing:border-box}
+.parameterKeyCell{gap:7px;padding:0 9px 0 12px}
+.parameterKeyCell code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9db7cd;font:11px/1.2 "Cascadia Code",Consolas,monospace}
+.parameterLabelCell{padding:3px 9px;flex-direction:column;align-items:flex-start;justify-content:center}
+.parameterLabelCell strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e3edf5;font-size:11.5px;font-weight:600}
+.parameterLabelCell small{max-width:100%;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#70869b;font-size:9.5px}
+.parameterValueCell{border-right:0;padding:3px 54px 3px 8px;position:relative;overflow:visible}
+.parameterValueCell .rulesControlHost{width:100%;min-width:0}
+.parameterValueCell .tc-control-wrap{max-width:100%}
+.parameterValueCell .tc-text,.parameterValueCell .tc-select,.parameterValueCell .tc-multi{width:min(100%,520px)!important;max-width:520px}
+.parameterValueCell .tc-slider{width:min(100%,520px)!important;max-width:520px}
+.parameterValueCell .tc-control{height:26px}
+.parameterValueCell .tc-text input,.parameterValueCell .tc-select-button,.parameterValueCell .tc-number,.parameterValueCell .tc-bool-knob{font-size:11.5px!important}
+.parameterValueCell .tc-reset{left:calc(100% + 6px)}
+.parameterTableRow .aresBadge{flex:0 0 auto;font-size:8px;padding:1px 4px}
 
 /* Inspector is reference/help, not the primary working surface. */
 .inspectorTabs{height:38px!important}
@@ -50,4 +84,5 @@
 @media(max-width:1200px){
   .workspace{grid-template-columns:205px minmax(520px,1fr) 245px!important}
   .editorControls .searchBox{width:180px!important;flex-basis:180px!important}
+  .parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,22%) minmax(150px,27%) minmax(280px,1fr)}
 }
