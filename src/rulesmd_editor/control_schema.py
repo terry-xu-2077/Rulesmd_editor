@@ -21,7 +21,7 @@ class ControlSchema:
     """Runtime interpretation of the old RulesmdEditorWeb control DSL.
 
     The generated JSON comes from desc/OptionsDesc.ini and preserves the old web
-    editor's key-driven control behavior.  Value-shape fallbacks are intentionally
+    editor's key-driven control behavior. Value-shape fallbacks are intentionally
     last so explicit legacy metadata always wins.
     """
 
@@ -76,6 +76,10 @@ class ControlSchema:
         lowered = value.strip().casefold()
         if lowered in {"yes", "no"}:
             return ControlSpec("boolean", (("yes", "是"), ("no", "否")))
+        if lowered in {"true", "false"}:
+            # Some rules/mods use literal true/false rather than the classic yes/no.
+            # Keep that dialect intact instead of silently rewriting it on first toggle.
+            return ControlSpec("boolean", (("true", "真"), ("false", "假")))
 
         fallback_values = tuple(fallback_values)
         if fallback_values:
