@@ -2,7 +2,7 @@ import React, { CSSProperties, ReactNode, useEffect, useId, useMemo, useRef, use
 import { Check, ChevronDown, RotateCcw, X } from "lucide-react";
 import "./legacy-tokens.css";
 import "./legacy-motion.css";
-import "./components.css";
+import "./generic-components.css";
 
 export type LegacyOption = { value: string; label?: string; group?: string };
 export type AccentTone = "blue" | "red" | "purple" | "neutral";
