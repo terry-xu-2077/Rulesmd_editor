@@ -19,6 +19,7 @@ $ProxyHost = '127.0.0.1'
 $ProxyPort = 7897
 $ProxyUrl = "http://${ProxyHost}:${ProxyPort}"
 $RsProxyIndex = 'sparse+https://rsproxy.cn/index/'
+$RustupUrl = 'https://win.rustup.rs/x86_64'
 
 function Write-Step([string]$Text) {
     Write-Host "`n==> $Text" -ForegroundColor Cyan
@@ -58,6 +59,55 @@ function Enable-ProxyEnv {
     $env:CARGO_HTTP_PROXY = $ProxyUrl
     $env:GIT_HTTP_PROXY = $ProxyUrl
     $env:GIT_HTTPS_PROXY = $ProxyUrl
+}
+
+function Refresh-RustPath {
+    $CargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+    if ((Test-Path $CargoBin) -and (($env:Path -split ';') -notcontains $CargoBin)) {
+        $env:Path = "$CargoBin;$env:Path"
+    }
+}
+
+function Install-RustToolchain {
+    Write-Step 'Rust/Cargo not found - installing Rust automatically'
+    $RustupInstaller = Join-Path $env:TEMP 'rulesmd-rustup-init.exe'
+    Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
+
+    Clear-ProxyEnv
+    try {
+        Write-Host 'Downloading official rustup installer...' -ForegroundColor DarkGray
+        Invoke-WebRequest -UseBasicParsing -Uri $RustupUrl -OutFile $RustupInstaller -TimeoutSec 60
+    } catch {
+        if (-not $ProxyAvailable) {
+            Fail 'Rust could not be downloaded from rustup.rs and the local proxy is unavailable.'
+        }
+        Write-Host "Rust direct download failed. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $RustupUrl -OutFile $RustupInstaller -Proxy $ProxyUrl -TimeoutSec 90
+        } catch {
+            Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
+            Fail 'Rust automatic download failed both directly and through the local proxy.'
+        }
+    }
+
+    if (-not (Test-Path $RustupInstaller)) {
+        Fail 'Rust installer download did not produce a usable file.'
+    }
+
+    Write-Host 'Installing Rust stable toolchain (minimal profile)...' -ForegroundColor DarkGray
+    & $RustupInstaller -y --profile minimal --default-toolchain stable
+    $RustupExit = $LASTEXITCODE
+    Remove-Item $RustupInstaller -ErrorAction SilentlyContinue
+    if ($RustupExit -ne 0) {
+        Fail "rustup installation failed with exit code $RustupExit."
+    }
+
+    Refresh-RustPath
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        Fail 'Rust was installed, but Cargo is still unavailable in the current process.'
+    }
+
+    Write-Host 'Rust/Cargo installed successfully.' -ForegroundColor Green
 }
 
 function Invoke-CargoFetch([string]$Mode) {
@@ -130,20 +180,24 @@ Set-Location $Root
 Write-Host 'Rulesmd Editor - Development Launcher' -ForegroundColor Green
 Write-Host "Project: $Root"
 
+$ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
+if ($ProxyAvailable) {
+    Write-Host "Local development proxy available: $ProxyUrl" -ForegroundColor Green
+} else {
+    Write-Host "Local development proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
+}
+
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js was not found. Install Node.js LTS and run this launcher again.' }
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { Fail 'npm was not found. Reinstall Node.js LTS and run this launcher again.' }
-if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Fail 'Rust/Cargo was not found. Install Rust with rustup, then run this launcher again.' }
+
+Refresh-RustPath
+if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+    Install-RustToolchain
+}
 
 $env:CARGO_HTTP_MULTIPLEXING = 'false'
 $env:CARGO_NET_RETRY = '2'
 $env:CARGO_HTTP_TIMEOUT = '30'
-
-$ProxyAvailable = Test-LocalPort $ProxyHost $ProxyPort
-if ($ProxyAvailable) {
-    Write-Host "Local Cargo proxy available: $ProxyUrl" -ForegroundColor Green
-} else {
-    Write-Host "Local Cargo proxy unavailable: $ProxyUrl" -ForegroundColor Yellow
-}
 Write-Host "Cargo source replacement: crates.io -> $RsProxyIndex" -ForegroundColor Green
 
 $PythonBootstrap = $null
