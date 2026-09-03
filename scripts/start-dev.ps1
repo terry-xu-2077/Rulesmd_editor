@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
+$IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
 $ProxyHost = '127.0.0.1'
@@ -105,6 +106,18 @@ if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
         if ($LASTEXITCODE -ne 0) { Fail 'npm dependency installation failed.' }
     } finally { Pop-Location }
 }
+
+# The PNG is the single source of truth for all desktop icons.
+# Let Tauri's own icon generator create a Windows-compatible ICO and platform PNGs.
+if (-not (Test-Path $IconSource)) {
+    Fail "App icon source is missing: $IconSource"
+}
+Write-Step 'Generating application icons from PNG source'
+Push-Location $Frontend
+try {
+    & npm run tauri -- icon "src-tauri/app-icon.png" --output "src-tauri/icons"
+    if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
+} finally { Pop-Location }
 
 # Cargo network strategy: direct first, local proxy only as fallback.
 Clear-ProxyEnv
