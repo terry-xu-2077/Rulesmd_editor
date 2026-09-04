@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 
 export const LEGACY_ICON_TILE = '/legacy/iconTile.jpg'
+export const LEGACY_COUNTRY_TILE = '/legacy/countryTile.png'
 
 const ICON_POS: Record<string, [number, number]> = {
   ADOG:[0,0],AEGIS:[60,0],AMCV:[120,0],AmericanParaDropSpecial:[180,0],APOC:[240,0],ATESLA:[300,0],BEAG:[360,0],BFRT:[420,0],BORIS:[480,0],BRUTE:[540,0],
@@ -19,11 +20,15 @@ const ICON_POS: Record<string, [number, number]> = {
   YURI:[0,624],YURIPR:[60,624],ZEP:[120,624]
 }
 
+const COUNTRY_ORDER = ['Americans','Alliance','French','Germans','British','Africans','Arabs','Confederation','Russians','YuriCountry'] as const
+
 export function legacyIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
   if (!pos) return undefined
   const scale = size / 60
   return {
+    width: size,
+    height: Math.round(size * .8),
     backgroundImage: `url(${LEGACY_ICON_TILE})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: `${600 * scale}px ${672 * scale}px`,
@@ -31,6 +36,33 @@ export function legacyIconStyle(id: string, size = 36): CSSProperties | undefine
   }
 }
 
+export function countryIconStyle(id: string, width = 32): CSSProperties | undefined {
+  const index = COUNTRY_ORDER.indexOf(id as typeof COUNTRY_ORDER[number])
+  if (index < 0) return undefined
+  const sourceCell = 60
+  const scale = width / sourceCell
+  const col = index % 5
+  const row = Math.floor(index / 5)
+  return {
+    width,
+    height: Math.round(width * .68),
+    backgroundImage: `url(${LEGACY_COUNTRY_TILE})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundSize: `${300 * scale}px auto`,
+    backgroundPosition: `${-col * sourceCell * scale}px ${-row * sourceCell * scale}px`,
+  }
+}
+
 export function hasLegacyIcon(id: string): boolean {
   return Boolean(ICON_POS[id])
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.__tcOptionIconResolver = (value: string) => {
+    const country = countryIconStyle(value)
+    if (country) return { className: 'rulesCountryOptionIcon', style: country }
+    const unit = legacyIconStyle(value, 32)
+    if (unit) return { className: 'rulesUnitOptionIcon', style: unit }
+    return undefined
+  }
 }
