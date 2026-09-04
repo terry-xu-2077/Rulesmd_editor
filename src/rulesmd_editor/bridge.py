@@ -117,8 +117,19 @@ class Bridge:
     def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)
 
-    def rpc_create_unit(self, template: str, section: str, comment: str, values: list[dict[str, str]] | None = None) -> dict:
-        return self.workspace.create_unit(template=template, section=section, comment=comment, values=values or [])
+    def rpc_create_unit(
+        self,
+        template: str,
+        section: str,
+        comment: str,
+        included_line_ids: list[int] | None = None,
+    ) -> dict:
+        return self.workspace.create_unit(
+            template=template,
+            section=section,
+            comment=comment,
+            included_line_ids=included_line_ids,
+        )
 
     def rpc_remove_line(self, line_id: int) -> dict:
         return self.workspace.remove_line(line_id)
