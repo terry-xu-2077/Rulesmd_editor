@@ -52,6 +52,7 @@ class RulesWorkspace:
         self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
         self._original_values: dict[int, str] = {}
+        self._changed_value_ids: set[int] = set()
         self._structural_dirty = False
         self._categories_cache: dict[str, list[tuple[str, str]]] = {}
         self._section_types: dict[str, str] = {}
@@ -162,19 +163,16 @@ class RulesWorkspace:
             for line in doc.lines
             if line.kind == "key"
         }
+        self._changed_value_ids.clear()
         self._structural_dirty = False
         doc.dirty = False
         self._rebuild_indexes()
 
     def _refresh_dirty(self) -> None:
-        doc = self._doc()
-        changed_value = any(
-            line.kind == "key"
-            and line.line_id in self._original_values
-            and (line.value or "") != self._original_values[line.line_id]
-            for line in doc.lines
-        )
-        doc.dirty = self._structural_dirty or changed_value
+        # Value edits are tracked incrementally by line id. The previous implementation
+        # rescanned every line in a full rulesmd.ini after every slider/text change, which
+        # made otherwise tiny edits increasingly expensive as the document grew.
+        self._doc().dirty = self._structural_dirty or bool(self._changed_value_ids)
 
     def get_settings(self) -> dict:
         return asdict(self.settings)
@@ -398,6 +396,14 @@ class RulesWorkspace:
         self._add_reference_tokens(line.section, line.key, value)
         self._last_values[(line.section.casefold(), line.key.casefold())] = value
         self._dynamic_cache.clear()
+
+        original = self._original_values.get(line_id)
+        if original is not None:
+            if (line.value or "") == original:
+                self._changed_value_ids.discard(line_id)
+            else:
+                self._changed_value_ids.add(line_id)
+
         if line.section in ROOT_SECTIONS or line.key.casefold() in {"owner", "requiredhouses", "side"}:
             self._rebuild_indexes()
         self._refresh_dirty()
@@ -436,6 +442,7 @@ class RulesWorkspace:
         if line is None:
             raise KeyError(f"Unknown line id: {line_id}")
         section = line.section
+        self._changed_value_ids.discard(line_id)
         doc.remove_line(line_id)
         self._structural_dirty = True
         self._rebuild_indexes()
