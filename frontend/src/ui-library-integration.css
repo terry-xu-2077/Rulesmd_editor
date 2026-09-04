@@ -49,24 +49,7 @@
 .dialogHint{margin:0 0 10px;color:var(--tc-text-muted);font-size:12px;line-height:1.6}
 .parameterPickerBody .catalogList{max-height:58vh}
 
-.settingsDialogBody{width:min(620px,70vw)}
-.settingsDialogBody .settingRow{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  align-items:center;
-  column-gap:28px;
-  padding:16px 8px;
-}
-.settingsDialogBody .settingRow>div{min-width:0}
-.settingsDialogBody .settingRow>div>strong,
-.settingsDialogBody .settingRow>div>span{display:block}
-.settingsDialogBody .settingRow>div>strong{margin-bottom:7px}
-.settingsDialogBody .settingRow>div>span{line-height:1.65}
-.settingsDialogBody .tc-control-wrap{
-  flex:none;
-  align-self:center;
-  justify-self:end;
-}
+/* Settings layout intentionally lives in settings-panel.css only. */
 
 @media(max-width:1180px){
   .rulesControlHost .tc-text,
