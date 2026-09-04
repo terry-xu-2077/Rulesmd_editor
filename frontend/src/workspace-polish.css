@@ -1,0 +1,123 @@
+/* Final workspace chrome pass: compact navigation, strong help emphasis, raw/table switch,
+   global theme overrides, centered commands, and legacy-inspired scrollbars. */
+
+/* App chrome */
+.app{grid-template-rows:60px minmax(0,1fr)!important}
+.titlebar{position:relative!important;padding:0 14px!important}
+.brand{min-width:220px!important;z-index:2}
+.brandMark{width:34px!important;height:34px!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;overflow:hidden!important;display:grid!important;place-items:center!important}
+.brandMark img{display:block;width:30px;height:30px;object-fit:contain}
+.toolbar{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;flex:none!important;width:auto!important;z-index:3}
+.titleMeta{margin-left:auto!important;z-index:2}
+
+/* History capsule: small and aligned with the first editor-control row. */
+.entityNavigation{
+  top:73px!important;
+  width:190px!important;
+  max-width:190px!important;
+  height:28px!important;
+  padding:2px!important;
+}
+.entityNavigation button{height:22px!important;padding:0 6px!important;gap:4px!important}
+.entityNavigation button span{font-size:10px!important}
+
+/* The editor toolbar can grow naturally with category tag wrapping. */
+.editor{grid-template-rows:66px auto minmax(0,1fr)!important}
+.editorControls{min-height:78px!important;height:auto!important}
+
+/* Raw view replaces the table instead of living in the right inspector. */
+.rawEditorPane{min-height:0;overflow:auto;background:#08131f;padding:14px}
+.rawEditorPane pre{margin:0;min-width:max-content;color:#a9c4dc;font:11.5px/1.58 "Cascadia Code",Consolas,monospace;white-space:pre;tab-size:2}
+
+/* Right inspector: help is primary, metadata is secondary. */
+.inspectorCombined{grid-template-rows:38px minmax(0,1fr)!important}
+.inspectorHeading{padding:0 10px 0 12px!important}
+.viewSwitch{margin-left:auto;display:inline-flex;align-items:center;padding:2px;border:1px solid rgba(112,238,255,.16);border-radius:999px;background:rgba(5,18,30,.52)}
+.viewSwitch button{height:24px;min-width:44px;padding:0 9px;border:0;border-radius:999px;background:transparent;color:#71889e;font-size:10.5px;cursor:pointer}
+.viewSwitch button.active{color:#e9fbff;background:linear-gradient(180deg,rgba(38,122,159,.68),rgba(17,74,104,.78));box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.inspectorScroll{overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:none!important;scrollbar-gutter:auto!important}
+.inspectorScroll::-webkit-scrollbar{display:none!important}
+.inspectorCombined .helpContent{padding:13px!important}
+.helpDescriptionCard{margin:10px 0 13px;padding:12px 13px 13px;border:1px solid rgba(112,238,255,.34);border-radius:10px;background:linear-gradient(180deg,rgba(20,47,70,.62),rgba(10,28,44,.7));box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 5px 16px rgba(0,0,0,.11)}
+.helpDescriptionCard h3{margin:0 0 8px!important;color:#eefaff!important;font-size:15.5px!important}
+.helpDescriptionCard p{margin:0!important;color:#c8dbe8!important;font-size:12.3px!important;line-height:1.72!important}
+.helpMeta{display:grid;grid-template-columns:68px minmax(0,1fr);gap:6px 10px;padding:2px 2px 5px;color:#6f8498;font-size:10.5px;line-height:1.45}
+.helpMeta span,.helpMeta b{color:#74899c!important;font-weight:500!important}
+.helpMeta b{overflow-wrap:anywhere}
+.helpDivider{opacity:.42!important}
+.inspectorCombined h4,.inspectorCombined .docSource{color:#71869a!important}
+.inspectorCombined .valueChoices{opacity:.72}
+
+/* Legacy web inspired scrollbar: blue transparent track + rounded gray gradient thumb. */
+.treeList,.fieldsPane,.rawEditorPane,.tc-picker-body,.tc-dialog-body{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(94,94,94,.56) rgba(30,63,133,.24);
+}
+.treeList::-webkit-scrollbar,.fieldsPane::-webkit-scrollbar,.rawEditorPane::-webkit-scrollbar,.tc-picker-body::-webkit-scrollbar,.tc-dialog-body::-webkit-scrollbar{width:10px;height:10px}
+.treeList::-webkit-scrollbar-track,.fieldsPane::-webkit-scrollbar-track,.rawEditorPane::-webkit-scrollbar-track,.tc-picker-body::-webkit-scrollbar-track,.tc-dialog-body::-webkit-scrollbar-track{background:rgba(30,63,133,.24);border-radius:7px}
+.treeList::-webkit-scrollbar-thumb,.fieldsPane::-webkit-scrollbar-thumb,.rawEditorPane::-webkit-scrollbar-thumb,.tc-picker-body::-webkit-scrollbar-thumb,.tc-dialog-body::-webkit-scrollbar-thumb{border-radius:7px;border:2px solid transparent;background:linear-gradient(90deg,rgba(94,94,94,.62),rgba(52,52,52,.38)) padding-box}
+.treeList::-webkit-scrollbar-thumb:hover,.fieldsPane::-webkit-scrollbar-thumb:hover,.rawEditorPane::-webkit-scrollbar-thumb:hover,.tc-picker-body::-webkit-scrollbar-thumb:hover,.tc-dialog-body::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,rgba(95,150,190,.72),rgba(52,82,104,.56)) padding-box}
+
+/* Full application light mode. Business chrome previously stayed dark while only UI-library
+   dialogs reacted to data-mode. These overrides keep a restrained blue-gray hierarchy. */
+.app[data-mode="light"]{
+  --bg:#e6edf5;
+  --panel:#f4f7fb;
+  --panel2:#dfe8f1;
+  --line:rgba(42,68,98,.16);
+  --line2:rgba(42,68,98,.28);
+  --text:#2d4053;
+  --muted:#667b90;
+  --muted2:#8293a4;
+  --control:#f8fafc;
+  --control2:#dce6ef;
+  color:#2d4053;
+  background:radial-gradient(circle at 45% -20%,rgba(71,132,192,.12),transparent 36%),var(--bg)!important;
+}
+.app[data-mode="light"] .titlebar{background:#eef3f8!important;border-bottom-color:var(--line)!important}
+.app[data-mode="light"] .brand strong{color:#24384b!important}
+.app[data-mode="light"] .brand span,.app[data-mode="light"] .titleMeta{color:#6c8195!important}
+.app[data-mode="light"] .iconButton{color:#587087!important}
+.app[data-mode="light"] .iconButton:hover{color:#173a57!important;background:#dce8f3!important}
+.app[data-mode="light"] .iconButton.primary{color:#174b72!important;background:#d6e8f7!important;border-color:#aac8df!important}
+.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector{background:#f1f5f9!important}
+.app[data-mode="light"] .editor{background:#edf3f8!important}
+.app[data-mode="light"] .panelTitle,.app[data-mode="light"] .inspectorHeading{color:#3a5268!important;background:#e4ecf4!important;border-color:var(--line)!important}
+.app[data-mode="light"] .editorControls{background:#e8eff6!important;border-color:var(--line)!important}
+.app[data-mode="light"] .searchBox{background:#f7f9fc!important;border-color:#c6d3df!important;color:#6b8297!important}
+.app[data-mode="light"] .searchBox input{color:#2d4053!important}
+.app[data-mode="light"] .searchBox input::placeholder{color:#8798a8!important}
+.app[data-mode="light"] .treeItem:hover{background:#e2ebf4!important}
+.app[data-mode="light"] .treeItem.selected{background:linear-gradient(90deg,#d5e7f6,#e8f2f9)!important;border-color:#9fc5df!important}
+.app[data-mode="light"] .treeGroupTitle,.app[data-mode="light"] .unitText small{color:#72879a!important}
+.app[data-mode="light"] .unitText b{color:#334c61!important}
+.app[data-mode="light"] .parameterTablePane{background:#eef3f8!important}
+.app[data-mode="light"] .parameterTableHeader{background:#d9e4ee!important;color:#526c82!important;border-color:#b8cad8!important}
+.app[data-mode="light"] .parameterTableRow{background:#f7f9fb!important;color:#395167!important;border-color:#d3dee7!important}
+.app[data-mode="light"] .parameterTableRow:nth-child(even){background:#f0f5f9!important}
+.app[data-mode="light"] .parameterTableRow.focused{box-shadow:inset 4px 0 0 #168f9f,0 5px 14px rgba(49,76,104,.14),0 0 0 1px rgba(22,143,159,.16)!important}
+.app[data-mode="light"] .parameterKeyCell code{color:#49677e!important}
+.app[data-mode="light"] .parameterLabelCell strong{color:#243f55!important}
+.app[data-mode="light"] .parameterTableGroup .fieldGroupHeader{background:linear-gradient(180deg,#d5e0ea,#c9d7e3)!important;color:#415c72!important;border-top-color:#eaf2f8!important;border-bottom-color:#afc1cf!important}
+.app[data-mode="light"] .parameterTableGroup .fieldGroupHeader span{color:#38566e!important;text-shadow:none!important}
+.app[data-mode="light"] .segmented button{background:#edf3f7!important;border-color:#c7d4df!important;color:#5e7487!important}
+.app[data-mode="light"] .segmented button:hover{background:#dce9f1!important;color:#29485f!important}
+.app[data-mode="light"] .segmented button.active{background:linear-gradient(180deg,#bfe7e1,#addbd5)!important;color:#174e55!important;border-color:#65b9ae!important;box-shadow:none!important}
+.app[data-mode="light"] .helpDescriptionCard{background:linear-gradient(180deg,#f8fbfd,#edf5f8)!important;border-color:#8cc7cf!important;box-shadow:0 5px 14px rgba(47,76,98,.08)!important}
+.app[data-mode="light"] .helpDescriptionCard h3{color:#213d50!important}
+.app[data-mode="light"] .helpDescriptionCard p{color:#435f73!important}
+.app[data-mode="light"] .helpMeta span,.app[data-mode="light"] .helpMeta b,.app[data-mode="light"] .inspectorCombined h4,.app[data-mode="light"] .inspectorCombined .docSource{color:#75889a!important}
+.app[data-mode="light"] .rawEditorPane{background:#f5f8fb!important}
+.app[data-mode="light"] .rawEditorPane pre{color:#405d73!important}
+.app[data-mode="light"] .viewSwitch{background:#dce7ef!important;border-color:#b6c8d6!important}
+.app[data-mode="light"] .viewSwitch button{color:#6b8091!important}
+.app[data-mode="light"] .viewSwitch button.active{color:#1d5055!important;background:linear-gradient(180deg,#bee4df,#a9d7d1)!important}
+.app[data-mode="light"] .settingRow>div:first-child strong{color:#2b4154!important}
+.app[data-mode="light"] .settingRow>div:first-child span{color:#758a9e!important}
+.app[data-mode="light"] .settingsSectionTitle{color:#168f9f!important;border-color:rgba(22,143,159,.16)!important}
+.app[data-mode="light"] .settingRow{border-color:rgba(68,96,122,.12)!important}
+
+@media(max-width:1200px){
+  .toolbar{position:static!important;transform:none!important;margin-left:auto!important;margin-right:auto!important}
+  .entityNavigation{width:160px!important;max-width:160px!important}
+}
