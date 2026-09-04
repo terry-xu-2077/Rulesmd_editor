@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import sys
 from typing import Any, TextIO
@@ -9,10 +10,19 @@ from .yr_applicability import infer_yr_applies_to
 
 
 class Bridge:
-    """Small JSON-RPC-like dispatcher used by the desktop sidecar."""
+    """Small JSON-RPC-like dispatcher used by the desktop sidecar.
+
+    Open/new only performs work required to display the document. Expensive catalog
+    preparation is warmed on a background worker so the user can start browsing while
+    the parameter picker data is being prepared.
+    """
 
     def __init__(self, workspace: RulesWorkspace | None = None):
         self.workspace = workspace or RulesWorkspace()
+        self._warm_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rulesmd-warm")
+
+    def _schedule_catalog_warmup(self) -> None:
+        self._warm_executor.submit(self.workspace.schema.warm_available_options)
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         request_id = request.get("id")
@@ -43,10 +53,14 @@ class Bridge:
         return self.workspace.set_settings(ares_enabled=ares_enabled)
 
     def rpc_new_document(self) -> dict:
-        return self.workspace.new_document()
+        result = self.workspace.new_document()
+        self._schedule_catalog_warmup()
+        return result
 
     def rpc_open_file(self, path: str) -> dict:
-        return self.workspace.open_file(path)
+        result = self.workspace.open_file(path)
+        self._schedule_catalog_warmup()
+        return result
 
     def rpc_snapshot(self) -> dict:
         return self.workspace.snapshot()
@@ -58,12 +72,7 @@ class Bridge:
         return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
 
     def rpc_option_catalog_all(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
-        """Return every insertable catalog row plus a conservative compatibility flag.
-
-        The normal workspace catalog remains filtered for existing callers/tests. The
-        desktop parameter browser uses this richer endpoint so advanced users can turn
-        filtering off without changing parser/save behavior.
-        """
+        """Return every insertable catalog row plus a conservative compatibility flag."""
         target_type = applies_to
         if section:
             target_type = self.workspace._section_types.get(section.casefold()) or applies_to
@@ -89,9 +98,6 @@ class Bridge:
             if target_type and declared:
                 compatible = target_type in declared or (family == "TechnoType" and "TechnoType" in declared)
             elif target_type:
-                # Unknown metadata is only admitted when this exact object class uses
-                # the key somewhere in the opened rules file. Do not aggregate all
-                # TechnoTypes here; that was the source of many false positives.
                 compatible = meta.name.casefold() in observed_exact
             elif declared:
                 compatible = True
