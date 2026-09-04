@@ -9,6 +9,19 @@ from typing import Iterable
 RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 DEFAULT_SCHEMA = RESOURCE_ROOT / "generated" / "control_schema.json"
 
+COUNTRY_LABELS = {
+    "British": "英国",
+    "French": "法国",
+    "Germans": "德国",
+    "Americans": "美国",
+    "Alliance": "韩国",
+    "Russians": "苏联",
+    "Confederation": "古巴",
+    "Africans": "利比亚",
+    "Arabs": "伊拉克",
+    "YuriCountry": "尤里",
+}
+
 
 @dataclass(frozen=True)
 class ControlSpec:
@@ -52,7 +65,13 @@ class ControlSchema:
         list_name = row.get("list")
         values: tuple[tuple[str, str], ...] = ()
         if list_name and list_name in self.lists:
-            values = tuple((item["value"], item.get("label") or item["value"]) for item in self.lists[list_name])
+            if list_name == "Country":
+                values = tuple(
+                    (item["value"], COUNTRY_LABELS.get(item["value"], item.get("label") or item["value"]))
+                    for item in self.lists[list_name]
+                )
+            else:
+                values = tuple((item["value"], item.get("label") or item["value"]) for item in self.lists[list_name])
         return ControlSpec(widget=widget, values=values, dynamic=row.get("dynamic"))
 
     def resolve(
