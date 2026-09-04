@@ -182,3 +182,52 @@ def test_reverse_references_are_kept_in_index_after_edit(tmp_path):
     workspace.set_value(e1_primary["line_id"], "M61")
     refs = workspace.section("M60")["references"]
     assert {item["section"] for item in refs} == {"E2"}
+
+
+def test_create_unit_only_inherits_checked_template_parameters(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[InfantryTypes]\n0=E2\n2=E1\n"
+        "[E1]\nUIName=Name:E1\nName=GI\nPrimary=M60\nSecondary=Para\nOwner=Americans\nStrength=125\n",
+        encoding="utf-8",
+    )
+    workspace = RulesWorkspace()
+    workspace.open_file(path)
+    template = workspace.section("E1")
+    primary = next(row for row in template["options"] if row["key"] == "Primary")
+    owner = next(row for row in template["options"] if row["key"] == "Owner")
+
+    result = workspace.create_unit(
+        template="E1",
+        section="MYGI",
+        comment="我的测试大兵",
+        included_line_ids=[primary["line_id"], owner["line_id"]],
+    )
+
+    assert result["root"] == "InfantryTypes"
+    assert result["registration_id"] == "3"
+    assert workspace._doc().get("InfantryTypes", "3") == "MYGI"
+    assert workspace._doc().get("MYGI", "UIName") == "Name:MYGI"
+    assert workspace._doc().get("MYGI", "Name") == "我的测试大兵"
+    assert workspace._doc().get("MYGI", "Primary") == "M60"
+    assert workspace._doc().get("MYGI", "Owner") == "Americans"
+    assert not workspace._doc().has_option("MYGI", "Secondary")
+    assert not workspace._doc().has_option("MYGI", "Strength")
+    assert workspace.info().dirty is True
+
+
+def test_create_unit_can_start_with_no_optional_template_parameters(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[VehicleTypes]\n0=MTNK\n"
+        "[MTNK]\nUIName=Name:MTNK\nName=Grizzly Tank\nPrimary=105mm\nStrength=300\n",
+        encoding="utf-8",
+    )
+    workspace = RulesWorkspace()
+    workspace.open_file(path)
+    workspace.create_unit(template="MTNK", section="EMPTYTANK", comment="空白坦克", included_line_ids=[])
+
+    assert workspace._doc().items("EMPTYTANK") == [
+        ("UIName", "Name:EMPTYTANK"),
+        ("Name", "空白坦克"),
+    ]
