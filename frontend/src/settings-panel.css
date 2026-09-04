@@ -5,8 +5,8 @@
 .settingRow>div:first-child strong{font-size:13px;color:#e7eef7}
 .settingRow>div:first-child span{font-size:11px;line-height:1.5;color:#8196aa}
 .settingRow>.tc-control-wrap{justify-self:end!important;margin:0!important}
-.settingRow>.tc-bool-wrap{--tc-bool-width:180px}
+.settingsDialogBody .settingRow>.tc-control-wrap.tc-bool-wrap{--tc-bool-width:180px!important;width:180px!important;min-width:180px!important;max-width:180px!important;flex:0 0 180px!important;justify-self:end!important}
 .settingPathRow{grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important}
 .settingPathRow>.tc-control-wrap,.settingPathRow .tc-text{width:100%!important;max-width:none!important}
 .settingRow .tc-select{width:180px!important}
-@media(max-width:760px){.settingsDialogBody.settingsGrid{min-width:0;width:min(92vw,620px)}.settingRow,.settingPathRow{grid-template-columns:1fr!important;gap:9px!important}.settingRow>.tc-control-wrap{justify-self:start!important}}
+@media(max-width:760px){.settingsDialogBody.settingsGrid{min-width:0;width:min(92vw,620px)}.settingRow,.settingPathRow{grid-template-columns:1fr!important;gap:9px!important}.settingRow>.tc-control-wrap{justify-self:start!important}.settingsDialogBody .settingRow>.tc-control-wrap.tc-bool-wrap{justify-self:start!important}}
