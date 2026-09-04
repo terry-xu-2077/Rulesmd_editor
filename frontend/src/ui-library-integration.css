@@ -54,7 +54,10 @@
   gap:5px;
 }
 
-/* Shared Button occupies the business toolbar's third grid cell. */
+/* Shared Button occupies the business toolbar's third grid cell. The add-parameter
+ * command is a frequent primary action, so it receives the same compact geometry as
+ * top commands plus a restrained accent fill. The old Plus glyph is hidden and replaced
+ * by a centered CSS list-plus role icon until main.tsx can use the public accent variant. */
 .editorControls>.tc-button{
   grid-column:3;
   grid-row:1;
@@ -65,6 +68,33 @@
   margin-left:0;
   border-radius:7px;
   flex:0 0 auto;
+  gap:7px;
+  color:#fff;
+  border-color:color-mix(in srgb,var(--tc-accent) 76%,white 24%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--tc-accent) 88%,white 12%),color-mix(in srgb,var(--tc-accent) 76%,black 24%));
+  box-shadow:0 2px 7px color-mix(in srgb,var(--tc-accent) 22%,transparent);
+  font-weight:650;
+  letter-spacing:.1px;
+}
+.editorControls>.tc-button:hover:not(:disabled){
+  border-color:color-mix(in srgb,var(--tc-effect) 64%,white 36%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--tc-accent) 80%,white 20%),color-mix(in srgb,var(--tc-accent) 82%,black 18%));
+  filter:none;
+  box-shadow:0 3px 10px color-mix(in srgb,var(--tc-accent) 30%,transparent),0 0 7px color-mix(in srgb,var(--tc-effect) 16%,transparent);
+}
+.editorControls>.tc-button>svg{display:none}
+.editorControls>.tc-button::before{
+  content:"";
+  width:16px;
+  height:16px;
+  flex:0 0 16px;
+  background:
+    linear-gradient(currentColor,currentColor) 0 3px/8px 1.5px no-repeat,
+    linear-gradient(currentColor,currentColor) 0 7.25px/8px 1.5px no-repeat,
+    linear-gradient(currentColor,currentColor) 0 11.5px/8px 1.5px no-repeat,
+    linear-gradient(currentColor,currentColor) 12px 5px/1.5px 9px no-repeat,
+    linear-gradient(currentColor,currentColor) 8.25px 8.75px/9px 1.5px no-repeat;
+  opacity:.94;
 }
 .editorControls>.tc-button.variant-accent{font-weight:650;letter-spacing:.1px}
 .parameterDetailFooter>.tc-button{
