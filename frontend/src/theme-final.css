@@ -1,0 +1,102 @@
+/* Final theme completion layer. Loaded last so light mode never inherits hard-coded dark surfaces. */
+.app[data-mode="light"]{
+  --bg:#e7eef5;
+  --panel:#f3f7fa;
+  --panel2:#dbe5ee;
+  --line:rgba(43,69,94,.18);
+  --line2:rgba(43,69,94,.34);
+  --text:#173047;
+  --muted:#5c7287;
+  --muted2:#71869a;
+  --accent:#2c78b8;
+  --teal:#159f8b;
+}
+
+/* Object tree: names must remain clearly readable in light mode. */
+.app[data-mode="light"] .treeItem{color:#173047!important}
+.app[data-mode="light"] .treeItem .unitText b{color:#18364d!important;opacity:1!important}
+.app[data-mode="light"] .treeItem .unitText small{color:#647c91!important;opacity:1!important}
+.app[data-mode="light"] .treeItem:hover{background:#dde8f1!important}
+.app[data-mode="light"] .treeItem.selected{background:linear-gradient(90deg,#cfe6f2,#e5f0f6)!important;border-color:#6aa6c8!important}
+.app[data-mode="light"] .treeItem.selected .unitText b{color:#12364b!important}
+.app[data-mode="light"] .treeGroupTitle,.app[data-mode="light"] .treeGroupTitle span{color:#516a80!important}
+
+/* History navigation must have a real light treatment rather than keeping the dark capsule. */
+.app[data-mode="light"] .entityNavigation{
+  background:linear-gradient(180deg,#f7fbfd,#d9e7f0)!important;
+  border-color:#8eacc0!important;
+  box-shadow:0 4px 10px rgba(48,77,100,.14),inset 0 1px 0 rgba(255,255,255,.78)!important;
+}
+.app[data-mode="light"] .entityNavigation button{color:#36566f!important;background:transparent!important}
+.app[data-mode="light"] .entityNavigation button+button{border-left-color:#a8bfce!important}
+.app[data-mode="light"] .entityNavigation button:not(:disabled):hover{background:linear-gradient(180deg,#e7f3f8,#cfe2ed)!important;color:#163d56!important}
+.app[data-mode="light"] .entityNavigation button:disabled{color:#9aabb8!important}
+
+/* Shared dialogs and settings inherit light surfaces. */
+.app[data-mode="light"] .tc-dialog-layer{background:rgba(45,66,86,.34)!important}
+.app[data-mode="light"] .tc-dialog{background:#eef3f7!important;color:#173047!important;border-color:#7998ad!important}
+.app[data-mode="light"] .tc-dialog>header{background:linear-gradient(180deg,#eef3f7,#cfd9e2)!important;color:#173047!important;border-bottom:1px solid #b6c5d1!important}
+.app[data-mode="light"] .tc-dialog-body{background:#dfe7ee!important;color:#173047!important}
+.app[data-mode="light"] .settingsDialogBody{color:#173047!important}
+.app[data-mode="light"] .settingsSectionTitle{color:#168f9f!important;border-bottom-color:#aabfcd!important}
+.app[data-mode="light"] .settingRow{border-bottom-color:#bccbd6!important}
+.app[data-mode="light"] .settingRow>div:first-child strong{color:#223f55!important}
+.app[data-mode="light"] .settingRow>div:first-child span{color:#667f94!important}
+
+/* Settings switch: explicitly use the compact library geometry and do not let the 260px grid column stretch it. */
+.settingRow>.tc-bool-wrap{
+  --tc-bool-width:78px!important;
+  width:78px!important;
+  min-width:78px!important;
+  max-width:78px!important;
+  flex:0 0 78px!important;
+  justify-self:end!important;
+}
+.settingRow>.tc-bool-wrap>.tc-bool{width:78px!important;min-width:78px!important;max-width:78px!important}
+.app[data-mode="light"] .settingRow>.tc-bool-wrap>.tc-bool{
+  background:linear-gradient(180deg,#d7e1e9,#c2cfda)!important;
+  border-color:#7594aa!important;
+}
+.app[data-mode="light"] .settingRow>.tc-bool-wrap>.tc-bool::before{
+  background:linear-gradient(180deg,#93a8b8,#b9c8d3)!important;
+  box-shadow:inset 0 2px 3px rgba(41,64,82,.32),inset 0 -1px 0 rgba(255,255,255,.5)!important;
+}
+
+/* Parameter explorer follows the application theme completely. */
+.app[data-mode="light"] .parameterExplorer{color:#173047!important}
+.app[data-mode="light"] .parameterExplorerSearch{background:#f7fafc!important;border-color:#9eb5c6!important;color:#597286!important}
+.app[data-mode="light"] .parameterExplorerSearch input{color:#173047!important}
+.app[data-mode="light"] .parameterExplorerSearch input::placeholder{color:#8093a3!important}
+.app[data-mode="light"] .parameterFilterToggle{background:#e6edf3!important;border-color:#a8bdcc!important;color:#34536a!important}
+.app[data-mode="light"] .parameterExplorerGrid{background:#edf3f7!important;border-color:#a7bdcc!important}
+.app[data-mode="light"] .parameterTree{background:#e6eef4!important;border-right-color:#b7c8d4!important}
+.app[data-mode="light"] .parameterSourceRow,.app[data-mode="light"] .parameterTreeChildren button{color:#49657b!important}
+.app[data-mode="light"] .parameterSourceRow:hover,.app[data-mode="light"] .parameterSourceRow.active{background:#d5e3ec!important;color:#17384f!important}
+.app[data-mode="light"] .parameterTreeChildren button:hover,.app[data-mode="light"] .parameterTreeChildren button.active{background:#d8efeb!important;color:#15574f!important}
+.app[data-mode="light"] .parameterListPane{background:#f1f5f8!important;border-right-color:#b7c8d4!important}
+.app[data-mode="light"] .parameterListPane>header{border-bottom-color:#bccbd6!important;color:#29475e!important}
+.app[data-mode="light"] .parameterListPane>header span{color:#6a8194!important}
+.app[data-mode="light"] .parameterList>button{color:#26465e!important}
+.app[data-mode="light"] .parameterList>button:hover{background:#e2ebf1!important}
+.app[data-mode="light"] .parameterList>button.active{background:#d9eeeb!important;border-color:#65b6aa!important}
+.app[data-mode="light"] .parameterList code{color:#6c8395!important}
+.app[data-mode="light"] .parameterDetail{background:#edf3f7!important}
+.app[data-mode="light"] .parameterDetailSource{color:#58768d!important}
+.app[data-mode="light"] .parameterDetail h2{color:#18384f!important}
+.app[data-mode="light"] .parameterDetailKey{color:#167e72!important}
+.app[data-mode="light"] .parameterDetailDescription{color:#405d73!important}
+.app[data-mode="light"] .parameterMeta{border-color:#b7c8d4!important}
+.app[data-mode="light"] .parameterMeta div{border-bottom-color:#c8d5de!important}
+.app[data-mode="light"] .parameterMeta dt{color:#667e91!important}
+.app[data-mode="light"] .parameterMeta dd{color:#29475d!important}
+.app[data-mode="light"] .parameterChoiceList>span,.app[data-mode="light"] .parameterDocs{background:#e1eaf0!important;border-color:#bccbd6!important;color:#365268!important}
+.app[data-mode="light"] .parameterChoiceList b{color:#29475d!important}
+.app[data-mode="light"] .parameterChoiceList code{color:#70869a!important}
+.app[data-mode="light"] .parameterDetailFooter{background:#e2eaf0!important;border-top-color:#b7c8d4!important}
+.app[data-mode="light"] .parameterExplorer ::-webkit-scrollbar-track{background:#dce5ec!important}
+.app[data-mode="light"] .parameterExplorer ::-webkit-scrollbar-thumb{border-color:#dce5ec!important;background:#93a8b8!important}
+
+/* Light slider and boolean details retain depth. */
+.app[data-mode="light"] .tc-slider{background:linear-gradient(180deg,#d8e2e9,#c5d1db)!important}
+.app[data-mode="light"] .tc-range::-webkit-slider-runnable-track{background:#aabcc9!important;border-color:#7f9caf!important;box-shadow:inset 0 2px 3px rgba(43,68,88,.25)!important}
+.app[data-mode="light"] .tc-number{color:#173047!important}
