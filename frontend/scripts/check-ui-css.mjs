@@ -19,18 +19,14 @@ function containsAny(file, text, tokens, rule) {
   }
 }
 
-const businessCss = [
-  'styles.css',
-  'polish.css',
-  'theme-final.css',
-  'qt-density.css',
-  'workspace-polish.css',
-  'workspace-final-fixes.css',
-]
+const allCss = fs.readdirSync(src).filter(file => file.endsWith('.css')).sort()
+const settingsOwner = 'settings-panel.css'
+const integrationOwner = 'ui-library-integration.css'
+const businessCss = allCss.filter(file => file !== settingsOwner && file !== integrationOwner)
 
 // RED LINE 1: settings layout has one owner only.
-// styles.css is included because the historical .settingRow span leak lived there.
-for (const file of [...businessCss, 'ui-library-integration.css']) {
+// The historical .settingRow span leak lived in styles.css; new CSS files are scanned automatically too.
+for (const file of [...businessCss, integrationOwner]) {
   const text = cssCode(file)
   containsAny(file, text, [
     '.settingsDialogBody',
@@ -41,7 +37,7 @@ for (const file of [...businessCss, 'ui-library-integration.css']) {
   ], 'settings styles must live only in settings-panel.css')
 }
 
-const settings = cssCode('settings-panel.css')
+const settings = cssCode(settingsOwner)
 
 // RED LINE 2: never use broad descendant tag selectors inside settings rows.
 // This exact class of selector caused the BoolSwitch / Select vertical drift incident.
@@ -49,13 +45,13 @@ const broadDescendant = /(?:\.settingRow|\.settingsDialogBody)[^,{]*\s+(span|but
 for (const match of settings.matchAll(broadDescendant)) {
   const selector = match[0].replace(/\s+/g, ' ').trim()
   if (!selector.includes('>')) {
-    fail('settings-panel.css', 'no broad descendant tag selectors in settings', selector)
+    fail(settingsOwner, 'no broad descendant tag selectors in settings', selector)
   }
 }
 
-// RED LINE 3: business settings CSS may place shared-control roots, but must never
-// reach into their internal DOM / geometry.
-containsAny('settings-panel.css', settings, [
+// RED LINE 3: settings CSS may place shared-control roots, but must never reach into
+// their internal DOM / geometry.
+containsAny(settingsOwner, settings, [
   '.tc-legacy-switch',
   '.tc-legacy-switch-knob',
   '.tc-select-button',
@@ -69,8 +65,8 @@ containsAny('settings-panel.css', settings, [
   '.tc-picker',
 ], 'settings CSS must not style UI Library internals')
 
-// RED LINE 4: business CSS never targets shared UI classes. All contextual .tc-* rules
-// belong in ui-library-integration.css; component internals belong in the UI Library repo.
+// RED LINE 4: every ordinary business CSS file is forbidden from targeting .tc-*.
+// All contextual shared-control integration belongs in ui-library-integration.css.
 for (const file of businessCss) {
   const text = cssCode(file)
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
@@ -79,9 +75,9 @@ for (const file of businessCss) {
 }
 
 // RED LINE 5: the integration layer may target shared-control roots/context, but must not
-// style implementation details that have no business-slot responsibility.
-const integration = cssCode('ui-library-integration.css')
-containsAny('ui-library-integration.css', integration, [
+// take ownership of known implementation details that caused the previous cascade incident.
+const integration = cssCode(integrationOwner)
+containsAny(integrationOwner, integration, [
   '.tc-legacy-switch',
   '.tc-legacy-switch-knob',
   '.tc-select-current',
@@ -99,4 +95,4 @@ if (violations.length) {
   process.exit(1)
 }
 
-console.log('[UI CSS] red-line checks passed.')
+console.log(`[UI CSS] red-line checks passed (${allCss.length} CSS files scanned).`)
