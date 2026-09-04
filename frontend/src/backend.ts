@@ -74,7 +74,7 @@ export type CreateUnitRequest = {
   template: string
   section: string
   comment: string
-  values: Array<{ key: string; value: string }>
+  included_line_ids: number[]
 }
 
 export type CreateUnitResult = {
