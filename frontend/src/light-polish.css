@@ -1,0 +1,55 @@
+/* Light-mode application surfaces only. Shared component colors are exposed through public variables in ui-library-integration.css. */
+.app[data-mode="light"] .unitTreeLevel.faction{
+  color:#31546b!important;
+  background:#d4e0e8!important;
+  border:1px solid rgba(73,113,142,.22)!important;
+  box-shadow:none!important;
+}
+.app[data-mode="light"] .unitTreeLevel.faction:hover{
+  color:#173e59!important;
+  background:#c8dbe6!important;
+  border-color:rgba(30,137,153,.3)!important;
+}
+.app[data-mode="light"] .unitTreeLevel.faction em{color:#69879a!important}
+.app[data-mode="light"] .factionBranch{border-left-color:rgba(55,101,130,.18)!important}
+.app[data-mode="light"] .unitTreeLevel.type{color:#43647b!important}
+
+/* Keep the selected table row cool and clear instead of muddy grey. */
+.app[data-mode="light"] .parameterTableRow{background:#edf3f7!important;color:#244157!important;border-bottom-color:rgba(55,93,122,.15)!important}
+.app[data-mode="light"] .parameterTableRow:nth-child(even){background:#e8f0f5!important}
+.app[data-mode="light"] .parameterTableRow.focused{
+  background:#dcecf3!important;
+  box-shadow:inset 4px 0 0 #18a88f,0 0 0 1px rgba(57,128,159,.22)!important;
+}
+.app[data-mode="light"] .parameterTableRow.focused::after{background:rgba(35,139,163,.035)!important}
+.app[data-mode="light"] .parameterKeyCell,
+.app[data-mode="light"] .parameterLabelCell,
+.app[data-mode="light"] .parameterValueCell{border-right-color:rgba(55,93,122,.14)!important}
+.app[data-mode="light"] .parameterKeyCell code{color:#254f6c!important}
+.app[data-mode="light"] .parameterLabelCell strong{color:#17384f!important}
+
+/* Flat history navigation in light mode; deliberately no bevel or text shadow. */
+.app[data-mode="light"] .entityNavigation{
+  background:rgba(247,251,253,.92)!important;
+  border-color:#9ab7c8!important;
+  box-shadow:none!important;
+}
+.app[data-mode="light"] .entityNavigation::after{background:rgba(69,105,129,.18)!important}
+.app[data-mode="light"] .entityNavigation button{
+  color:#42647a!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+.app[data-mode="light"] .entityNavigation button:hover:not(:disabled){background:#e2eef4!important;color:#1d506d!important;box-shadow:none!important}
+.app[data-mode="light"] .entityNavigation button:active:not(:disabled){background:#d5e9eb!important;box-shadow:none!important}
+
+/* Filter chips stay outlined and airy on the pale toolbar. */
+.app[data-mode="light"] .editorControls .segmented button{
+  color:#36566c!important;
+  border-color:#a9c0cf!important;
+  background:#f5f9fb!important;
+  box-shadow:none!important;
+}
+.app[data-mode="light"] .editorControls .segmented button:hover{color:#164d67!important;border-color:#6ea5b7!important;background:#e8f2f6!important}
+.app[data-mode="light"] .editorControls .segmented button.active{color:#0d665b!important;border-color:#3db39f!important;background:#dff4ef!important;box-shadow:none!important}
