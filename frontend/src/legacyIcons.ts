@@ -1,5 +1,9 @@
 import type { CSSProperties } from 'react'
 
+declare global {
+  var __tcOptionIconResolver: undefined | ((value: string) => { className?: string; style?: CSSProperties } | undefined)
+}
+
 export const LEGACY_ICON_TILE = '/legacy/iconTile.jpg'
 export const LEGACY_COUNTRY_TILE = '/legacy/countryTile.png'
 
