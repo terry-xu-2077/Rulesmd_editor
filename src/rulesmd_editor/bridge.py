@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 import json
 import sys
 from typing import Any, TextIO
@@ -12,17 +12,21 @@ from .yr_applicability import infer_yr_applies_to
 class Bridge:
     """Small JSON-RPC-like dispatcher used by the desktop sidecar.
 
-    Open/new only performs work required to display the document. Expensive catalog
-    preparation is warmed on a background worker so the user can start browsing while
-    the parameter picker data is being prepared.
+    Expensive parameter-catalog preparation is warmed on a worker as soon as the
+    sidecar is alive. Document open/new stays focused on parsing and the minimal indexes
+    required to render the editor.
     """
 
     def __init__(self, workspace: RulesWorkspace | None = None):
         self.workspace = workspace or RulesWorkspace()
         self._warm_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rulesmd-warm")
+        self._catalog_warm_future: Future[int] | None = None
+        self._schedule_catalog_warmup()
 
     def _schedule_catalog_warmup(self) -> None:
-        self._warm_executor.submit(self.workspace.schema.warm_available_options)
+        if self._catalog_warm_future is not None:
+            return
+        self._catalog_warm_future = self._warm_executor.submit(self.workspace.schema.warm_available_options)
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         request_id = request.get("id")
@@ -53,14 +57,10 @@ class Bridge:
         return self.workspace.set_settings(ares_enabled=ares_enabled)
 
     def rpc_new_document(self) -> dict:
-        result = self.workspace.new_document()
-        self._schedule_catalog_warmup()
-        return result
+        return self.workspace.new_document()
 
     def rpc_open_file(self, path: str) -> dict:
-        result = self.workspace.open_file(path)
-        self._schedule_catalog_warmup()
-        return result
+        return self.workspace.open_file(path)
 
     def rpc_snapshot(self) -> dict:
         return self.workspace.snapshot()
