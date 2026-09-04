@@ -29,7 +29,7 @@ import {
   WandSparkles,
 } from 'lucide-react'
 import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
-import { hasLegacyIcon, legacyIconStyle } from './legacyIcons'
+import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterPicker } from './ParameterPicker'
 import { UnitTree } from './UnitTree'
 import './styles.css'
@@ -103,7 +103,7 @@ function rowsFromSnapshot(snapshot: WorkspaceSnapshot | null): SectionRow[] {
     label: item.label || item.section,
     type: category.name,
     category: category.name,
-    side: sideForId(item.section),
+    side: item.side ?? sideForId(item.section),
   })))
 }
 
@@ -117,7 +117,7 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
       label: first.label || first.section,
       type: category.name,
       category: category.name,
-      side: sideForId(first.section),
+      side: first.side ?? sideForId(first.section),
     }
   }
   const category = snapshot.categories.find(item => item.items.length)
@@ -127,7 +127,7 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
     label: first.label || first.section,
     type: category.name,
     category: category.name,
-    side: sideForId(first.section),
+    side: first.side ?? sideForId(first.section),
   } : null
 }
 
@@ -158,13 +158,20 @@ function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: 
   return <div className={`legacyUnitIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
 }
 
+function optionVisualIcon(value: string) {
+  const country = countryIconStyle(value, 32)
+  if (country) return <span className="rulesCountryOptionIcon" style={country}/>
+  if (hasLegacyIcon(value)) return <span className="rulesUnitOptionIcon" style={legacyIconStyle(value, 32)}/>
+  return undefined
+}
+
 function FieldControl({ option, onChange }: { option: SectionOption; onChange: (value: string) => void }) {
   const raw = option.raw_value ?? undefined
   if (option.widget === 'boolean') return <BoolSwitch value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" />
   if (option.widget === 'multi-select') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
-    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
+    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
   }
   if (option.widget === 'select') {
     const options = option.values.map(value => ({ value: value.value, label: value.label ? `${value.label} · ${value.value}` : value.value }))
