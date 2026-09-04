@@ -33,6 +33,12 @@ class SchemaCatalog:
     def __init__(self, resource_dir: Path | None = None):
         self.options: dict[str, OptionMeta] = {}
         self.name_desc: dict[str, str] = {}
+        # HelpInfor.ini contains many legitimate engine keys that were never copied into
+        # OptionsDesc.ini. Keep a case-insensitive lookup so an actually present INI key
+        # can still receive YR help/translation without polluting the add-parameter
+        # catalog with wildcard/help-only entries.
+        self.help_info: dict[str, str] = {}
+        self._help_lookup: dict[str, tuple[str, str]] = {}
         self.resource_dir = resource_dir
         if resource_dir:
             self._load_legacy(resource_dir)
@@ -71,13 +77,22 @@ class SchemaCatalog:
                 for option in categories.get("UnitOptions", key, fallback="").split(","):
                     if option.strip():
                         category_map[option.strip()] = label
+
+        if help_ini and help_ini.has_section("HelpInfo"):
+            self.help_info = {
+                key: text.replace("\\n", "\n")
+                for key, text in help_ini.items("HelpInfo")
+            }
+            self._help_lookup = {
+                key.casefold(): (key, text)
+                for key, text in self.help_info.items()
+            }
+
         if desc and desc.has_section("OptionDesc"):
             for key, text in desc.items("OptionDesc"):
                 old = self.options.get(key)
-                help_text = ""
+                help_text = self._help_lookup.get(key.casefold(), (key, ""))[1]
                 values: list[tuple[str, str]] = []
-                if help_ini and help_ini.has_section("HelpInfo"):
-                    help_text = help_ini.get("HelpInfo", key, fallback="").replace("\\n", "\n")
                 list_section = f"{key}_List"
                 if desc.has_section(list_section):
                     values = list(desc.items(list_section))
@@ -135,6 +150,21 @@ class SchemaCatalog:
         for name, meta in self.options.items():
             if name.casefold() == folded:
                 return meta
+
+        # HelpInfor.ini is substantially more complete than OptionsDesc.ini. If the key
+        # really exists in the opened file, treat a matching help entry as original YR
+        # metadata rather than as a user-defined key. RuntimeSchemaCatalog will apply the
+        # Chinese presentation/semantic correction layer to this transient row.
+        help_match = self._help_lookup.get(folded)
+        if help_match:
+            canonical, help_text = help_match
+            return OptionMeta(
+                canonical,
+                description="",
+                help_text=help_text,
+                category=categorize_yr_option(canonical, ""),
+                source="YR",
+            )
         return OptionMeta(key, source="自定义")
 
     def available_options(
