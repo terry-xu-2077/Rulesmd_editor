@@ -25,10 +25,6 @@ def test_create_unit_clones_template_registers_next_id_and_uses_required_name_co
         template="E1",
         section="MYGI",
         comment="我的测试步兵",
-        values=[
-            {"key": "Strength", "value": "300"},
-            {"key": "Owner", "value": "British"},
-        ],
     )
 
     doc = workspace._doc()
@@ -37,8 +33,8 @@ def test_create_unit_clones_template_registers_next_id_and_uses_required_name_co
     assert doc.get("MYGI", "UIName") == "Name:MYGI"
     assert doc.get("MYGI", "Name") == "我的测试步兵"
     assert doc.get("MYGI", "Image") == "E1"
-    assert doc.get("MYGI", "Strength") == "300"
-    assert doc.get("MYGI", "Owner") == "British"
+    assert doc.get("MYGI", "Strength") == "125"
+    assert doc.get("MYGI", "Owner") == "Americans"
     assert result["section"]["description"] == "我的测试步兵"
     infantry = next(category for category in result["snapshot"]["categories"] if category["name"] == "步兵")
     created = next(item for item in infantry["items"] if item["section"] == "MYGI")
@@ -52,10 +48,10 @@ def test_create_unit_requires_unique_valid_section_and_comment():
     workspace._capture_baseline()
 
     with pytest.raises(ValueError, match="必须填写注释"):
-        workspace.create_unit(template="MTNK", section="MYTNK", comment="", values=[])
+        workspace.create_unit(template="MTNK", section="MYTNK", comment="")
 
     with pytest.raises(ValueError, match="注册名"):
-        workspace.create_unit(template="MTNK", section="123BAD", comment="测试", values=[])
+        workspace.create_unit(template="MTNK", section="123BAD", comment="测试")
 
     with pytest.raises(ValueError, match="已存在"):
-        workspace.create_unit(template="MTNK", section="MTNK", comment="测试", values=[])
+        workspace.create_unit(template="MTNK", section="MTNK", comment="测试")
