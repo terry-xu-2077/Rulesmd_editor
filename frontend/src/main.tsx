@@ -234,9 +234,14 @@ function App() {
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
   const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
-  const groups = useMemo(() => ['全部', ...Array.from(new Set(sectionData.options.map(option => displayGroup(option.category))))], [sectionData])
+  const groups = useMemo(() => {
+    const categories = Array.from(new Set(sectionData.options.map(option => displayGroup(option.category))))
+    const hasAres = sectionData.options.some(option => option.source.toLowerCase() === 'ares')
+    return ['全部', ...(hasAres ? ['Ares'] : []), ...categories.filter(group => group !== 'Ares')]
+  }, [sectionData])
   const visibleFields = useMemo(() => sectionData.options.filter(option => {
-    const groupOk = activeGroup === '全部' || displayGroup(option.category) === activeGroup
+    const groupOk = activeGroup === '全部'
+      || (activeGroup === 'Ares' ? option.source.toLowerCase() === 'ares' : displayGroup(option.category) === activeGroup)
     const searchOk = `${option.key} ${option.label} ${option.value} ${option.description}`.toLowerCase().includes(fieldSearch.toLowerCase())
     return groupOk && searchOk
   }), [sectionData, activeGroup, fieldSearch])
