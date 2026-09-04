@@ -77,6 +77,22 @@
 }
 .settingRow>.tc-control-wrap.tc-bool-wrap>.tc-bool{width:78px!important;min-width:78px!important;max-width:78px!important;margin:0!important}
 
+/* Light BoolSwitch keeps the exact legacy-web shape; only palette changes. */
+.app[data-mode="light"] .tc-bool-wrap>.tc-bool{
+  border-color:#7c9aae!important;
+  background:linear-gradient(0deg,#dce5ec 30%,#aab9c5 26%,#aab9c5 74%,#dce5ec 70%)!important;
+}
+.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{
+  color:#355166!important;
+  border-color:rgba(255,255,255,.62)!important;
+  background:linear-gradient(90deg,#8393a0 10%,#eef3f6 20%,#8393a0 60%)!important;
+}
+.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
+  color:#fff!important;
+  border-color:rgba(255,255,255,.68)!important;
+  background:linear-gradient(90deg,#0d7d6c 10%,#43e2c8 80%,#0d7d6c 90%)!important;
+}
+
 /* Parameter explorer follows the application theme completely. */
 .app[data-mode="light"] .parameterExplorer{color:#173047!important}
 .app[data-mode="light"] .parameterExplorerSearch{background:#f7fafc!important;border-color:#9eb5c6!important;color:#597286!important}
