@@ -83,11 +83,12 @@ type PendingValueEdit = {
 }
 
 const pendingValueEdits = new Map<number, PendingValueEdit>()
+const inFlightValueWrites = new Map<number, Promise<SetValueResult>>()
+const latestValuePromises = new Map<number, Promise<SetValueResult>>()
 
-// A short coalescing window keeps slider drags from flooding the Python bridge while
-// avoiding the old 120 ms debounce that made discrete controls feel delayed. This is a
-// throttle window, not a debounce: repeated input never keeps pushing the write farther
-// into the future.
+// A short fixed window coalesces noisy controls without the old 120 ms debounce. The
+// window is never extended by subsequent events, so one click cannot acquire an
+// artificial wait and a continuous drag cannot postpone persistence indefinitely.
 const VALUE_EDIT_WINDOW_MS = 32
 
 async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
@@ -95,27 +96,51 @@ async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
   if (!pending) return null
   pendingValueEdits.delete(lineId)
   if (pending.timer) clearTimeout(pending.timer)
+
+  // Writes for the same INI line must be ordered. Without this chain, an older bridge
+  // request may finish after a newer one and briefly restore a stale slider/text value.
+  const previous = inFlightValueWrites.get(lineId)
+  const write = (previous ? previous.catch(() => undefined) : Promise.resolve(undefined))
+    .then(() => call<SetValueResult>('set_value', { line_id: lineId, value: pending.value }))
+  inFlightValueWrites.set(lineId, write)
+
   try {
-    const result = await call<SetValueResult>('set_value', { line_id: lineId, value: pending.value })
-    pending.resolve(result)
+    const result = await write
+    if (inFlightValueWrites.get(lineId) === write) inFlightValueWrites.delete(lineId)
+
+    const latestPromise = latestValuePromises.get(lineId)
+    if (latestPromise && latestPromise !== pending.promise) {
+      // A newer edit arrived while this request was in flight. Older callers should see
+      // the final result, not an intermediate echo that would make controlled widgets
+      // jump backwards.
+      latestPromise.then(pending.resolve, pending.reject)
+    } else {
+      if (latestPromise === pending.promise) latestValuePromises.delete(lineId)
+      pending.resolve(result)
+    }
     return result
   } catch (error) {
+    if (inFlightValueWrites.get(lineId) === write) inFlightValueWrites.delete(lineId)
+    if (latestValuePromises.get(lineId) === pending.promise) latestValuePromises.delete(lineId)
     pending.reject(error)
     throw error
   }
 }
 
 export async function flushPendingValues(): Promise<void> {
-  const lineIds = [...pendingValueEdits.keys()]
-  if (!lineIds.length) return
-  await Promise.all(lineIds.map(lineId => flushValueEdit(lineId)))
+  // Drain until both scheduled and serialized writes are empty. This keeps Save,
+  // section switches and raw-text reads as hard synchronization boundaries.
+  while (pendingValueEdits.size || inFlightValueWrites.size) {
+    const lineIds = [...pendingValueEdits.keys()]
+    if (lineIds.length) await Promise.all(lineIds.map(lineId => flushValueEdit(lineId)))
+    const flights = [...inFlightValueWrites.values()]
+    if (flights.length) await Promise.all(flights)
+  }
 }
 
 function queueValueEdit(lineId: number, value: string): Promise<SetValueResult> {
   const current = pendingValueEdits.get(lineId)
   if (current) {
-    // Latest value wins inside the current fixed window. Do not reset the timer: that
-    // was the source of the visible interaction latency in the previous debounce design.
     current.value = value
     return current.promise
   }
@@ -135,6 +160,7 @@ function queueValueEdit(lineId: number, value: string): Promise<SetValueResult> 
   }
   pending.timer = setTimeout(() => { void flushValueEdit(lineId) }, VALUE_EDIT_WINDOW_MS)
   pendingValueEdits.set(lineId, pending)
+  latestValuePromises.set(lineId, promise)
   return promise
 }
 
