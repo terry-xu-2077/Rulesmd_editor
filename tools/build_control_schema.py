@@ -19,6 +19,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src" / "rulesmd_editor" / "resources" / "legacy" / "web" / "OptionsDesc.ini"
 OUTPUT = ROOT / "src" / "rulesmd_editor" / "resources" / "generated" / "control_schema.json"
 
+COUNTRY_LABELS = {
+    "British": "英国",
+    "French": "法国",
+    "Germans": "德国",
+    "Americans": "美国",
+    "Alliance": "韩国",
+    "Russians": "苏联",
+    "Confederation": "古巴",
+    "Africans": "利比亚",
+    "Arabs": "伊拉克",
+    "YuriCountry": "尤里",
+}
+
 
 def read_ini(path: Path) -> configparser.ConfigParser:
     cp = configparser.ConfigParser(interpolation=None, strict=False, delimiters=("=",))
@@ -49,10 +62,13 @@ def main() -> None:
         if not section.endswith("_List"):
             continue
         name = section[:-5]
-        lists[name] = [
-            {"value": key, "label": value.replace("$-", "").strip() or key}
-            for key, value in cp.items(section)
-        ]
+        rows = []
+        for key, value in cp.items(section):
+            label = value.replace("$-", "").strip() or key
+            if name == "Country":
+                label = COUNTRY_LABELS.get(key, label)
+            rows.append({"value": key, "label": label})
+        lists[name] = rows
 
     multi_groups: dict[str, str] = {}
     if cp.has_section("MultipleMenu"):
