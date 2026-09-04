@@ -127,7 +127,6 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
             {list.map(option => <button key={option.key} className={selected?.key === option.key ? 'active' : ''} onClick={() => setSelectedKey(option.key)}>
               <div><strong>{option.label || option.key}</strong>{sourceName(option) === 'Ares' && <span className="parameterAresBadge">ARES</span>}</div>
               <code>{option.key}</code>
-              <p>{option.description || '暂无简要说明'}</p>
             </button>)}
             {list.length === 0 && <div className="parameterEmpty">没有符合当前条件的参数。</div>}
           </div>
