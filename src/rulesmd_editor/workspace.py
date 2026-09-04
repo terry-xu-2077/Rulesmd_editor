@@ -59,6 +59,7 @@ class RulesWorkspace:
         self._dynamic_cache: dict[str, tuple[tuple[str, str], ...]] = {}
         self._last_values: dict[tuple[str, str], str] = {}
         self._observed_keys: dict[str, set[str]] = {}
+        self._country_sides: dict[str, str] = {}
 
     def _doc(self) -> IniDocument:
         if self.document is None:
@@ -68,6 +69,59 @@ class RulesWorkspace:
     @staticmethod
     def _family_type(section_type: str | None) -> str | None:
         return "TechnoType" if section_type in TECHNO_TYPES else section_type
+
+    @staticmethod
+    def _normalize_side(value: str) -> str | None:
+        key = value.strip().casefold().replace(" ", "")
+        if key in {"gdi", "allied", "allies", "盟军"}:
+            return "allied"
+        if key in {"nod", "soviet", "soviets", "苏军"}:
+            return "soviet"
+        if key in {"thirdside", "yuri", "尤里"}:
+            return "yuri"
+        return None
+
+    def _build_country_side_index(self) -> None:
+        self._country_sides = {}
+        for (section_fold, key_fold), value in self._last_values.items():
+            if key_fold != "side":
+                continue
+            side = self._normalize_side(value)
+            if side:
+                self._country_sides[section_fold] = side
+
+        # Vanilla/YR canonical country names are only a fallback. Normally the Side=
+        # value in each country section above is authoritative, which also supports mods.
+        canonical = {
+            "americans": "allied", "alliance": "allied", "french": "allied", "germans": "allied", "british": "allied",
+            "africans": "soviet", "arabs": "soviet", "confederation": "soviet", "russians": "soviet",
+            "yuricountry": "yuri",
+        }
+        for country, side in canonical.items():
+            self._country_sides.setdefault(country, side)
+
+    def _section_side(self, section: str) -> str:
+        section_fold = section.casefold()
+        direct = self._country_sides.get(section_fold)
+        if direct:
+            return direct
+
+        # Owner is the same source of truth the game uses for country availability.
+        # RequiredHouses is a useful fallback for sections that omit Owner.
+        for key in ("owner", "requiredhouses"):
+            raw = self._last_values.get((section_fold, key), "")
+            if not raw:
+                continue
+            sides = {
+                self._country_sides[token.strip().casefold()]
+                for token in raw.split(",")
+                if token.strip().casefold() in self._country_sides
+            }
+            if len(sides) == 1:
+                return next(iter(sides))
+            if len(sides) > 1:
+                return "neutral"
+        return "neutral"
 
     def _rebuild_indexes(self) -> None:
         doc = self._doc()
@@ -98,6 +152,7 @@ class RulesWorkspace:
             for token in (part.strip() for part in (line.value or "").split(",")):
                 if token:
                     self._reference_index.setdefault(token.casefold(), []).append((line.section, line.key))
+        self._build_country_side_index()
         self._dynamic_cache.clear()
 
     def _capture_baseline(self) -> None:
@@ -166,6 +221,7 @@ class RulesWorkspace:
                             "section": section,
                             "registration_id": registration_id,
                             "label": self.schema.section_description(section) or section,
+                            "side": self._section_side(section),
                         }
                         for section, registration_id in entries
                     ],
@@ -342,7 +398,7 @@ class RulesWorkspace:
         self._add_reference_tokens(line.section, line.key, value)
         self._last_values[(line.section.casefold(), line.key.casefold())] = value
         self._dynamic_cache.clear()
-        if line.section in ROOT_SECTIONS:
+        if line.section in ROOT_SECTIONS or line.key.casefold() in {"owner", "requiredhouses", "side"}:
             self._rebuild_indexes()
         self._refresh_dirty()
         return {
