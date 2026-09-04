@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Box, ChevronDown, ChevronRight } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Box, ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import './unit-tree.css'
 
@@ -49,13 +49,23 @@ function UnitIcon({ id }: { id: string }) {
   return <div className="unitTreeIcon fallback"><Box size={14}/></div>
 }
 
-export function UnitTree({ rows, selectedId, query, onSelect }: Props) {
+export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    setExpanded({})
+  }, [documentEpoch])
+
+  const generalRow = useMemo(
+    () => rows.find(row => row.id.trim().toLowerCase() === 'general') ?? null,
+    [rows],
+  )
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter(row => `${row.label} ${row.id} ${row.type} ${row.category}`.toLowerCase().includes(q))
+    const browsable = rows.filter(row => row.id.trim().toLowerCase() !== 'general')
+    if (!q) return browsable
+    return browsable.filter(row => `${row.label} ${row.id} ${row.type} ${row.category}`.toLowerCase().includes(q))
   }, [query, rows])
 
   const groups = useMemo<FactionGroup[]>(() => {
@@ -90,6 +100,18 @@ export function UnitTree({ rows, selectedId, query, onSelect }: Props) {
   if (!rows.length) return <div className="unitTreeEmpty">还没有可浏览的对象。</div>
 
   return <div className="unitHierarchy">
+    {generalRow && <div className="unitGlobalBlock">
+      <button
+        className={`unitGlobalRule ${selectedId?.toLowerCase() === 'general' ? 'selected' : ''}`}
+        onClick={() => onSelect(generalRow)}
+        title="游戏全局规则 · General"
+      >
+        <span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span>
+        <span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span>
+        <ChevronRight className="unitGlobalArrow" size={13}/>
+      </button>
+    </div>}
+
     {groups.map(faction => {
       const factionKey = `f:${faction.key}`
       const factionCount = faction.types.reduce((sum, type) => sum + type.units.length, 0)
