@@ -38,9 +38,20 @@ frontend/src/settings-panel.css
 frontend/src/ui-library-integration.css
 ```
 
-是 Rulesmd Editor 与 UI Library 的集中接入层。只有确实属于“业务槽位尺寸 / 公共主题通道”的规则才能放在这里。
+是 Rulesmd Editor 与 UI Library 的**唯一共享控件接入层**。Rulesmd Editor 中确实需要 `.tc-*` 的业务槽位尺寸、层级或宿主集成规则，只能放在这里。
 
-`polish.css`、`theme-final.css`、`qt-density.css` 等业务样式文件不得再次维护 settings layout。
+以下业务 CSS **禁止出现 `.tc-*` 选择器**：
+
+```text
+styles.css
+polish.css
+theme-final.css
+qt-density.css
+workspace-polish.css
+workspace-final-fixes.css
+```
+
+如果规则是在调整组件内部实现，则连 `ui-library-integration.css` 也不允许处理，必须回 `Terry_React_UI_Library`。
 
 ## 2. 红线：禁止宽泛 descendant 标签选择器
 
@@ -114,7 +125,7 @@ settingsControl
 
 如果需要改变这些节点的几何、主题或行为，必须回到 `Terry_React_UI_Library` 修复。
 
-Rulesmd Editor 可以放置 UI Library 的**外层组件根节点**，但不能通过业务 CSS重新定义内部实现。
+Rulesmd Editor 可以在 `ui-library-integration.css` 放置 UI Library 的**业务宿主/槽位规则**，但不能重新定义组件内部实现。
 
 ## 4. 红线：禁止“像素补偿式修复”掩盖根因
 
@@ -143,6 +154,7 @@ transform:translateY(-1px);
 禁止在以下文件重新添加设置页规则：
 
 ```text
+styles.css
 polish.css
 theme-final.css
 ui-library-integration.css
@@ -151,7 +163,7 @@ workspace-polish.css
 workspace-final-fixes.css
 ```
 
-历史文件里若存在旧规则，应逐步删除，而不是靠后加载文件反复覆盖。
+历史文件里若存在旧规则，应直接删除，而不是靠后加载文件反复覆盖。
 
 同一个控件也只能有一个尺寸所有者。例如 BoolSwitch 不允许同时出现：
 
@@ -175,7 +187,7 @@ UI Library 默认宽度
 
 通用控件的 dark / light 细节由 UI Library 自己处理。
 
-`theme-final.css` 只允许维护 Rulesmd Editor 的业务 UI，不允许再出现 `.tc-*` 选择器。
+`theme-final.css` 只允许维护 Rulesmd Editor 的业务 UI，**任何 `.tc-*` 选择器都属于红线**。
 
 ## 7. 设置页特别规则
 
@@ -238,10 +250,11 @@ npm run build
 
 检查器当前强制阻止：
 
-- `polish.css` / `theme-final.css` / `ui-library-integration.css` 重新接管设置窗口。
+- 除 `settings-panel.css` 外的历史/业务 CSS 重新接管设置窗口。
 - 设置页重新出现危险的宽泛 descendant 标签 selector。
 - 设置页直接修改 UI Library 内部节点。
-- `theme-final.css` 重新出现 `.tc-*` 控件覆盖。
+- `styles.css`、`polish.css`、`theme-final.css`、`qt-density.css`、`workspace-polish.css`、`workspace-final-fixes.css` 出现任何 `.tc-*` 选择器。
+- `ui-library-integration.css` 越界修改 BoolSwitch Knob、Select current label 等组件实现细节。
 
 遇到：
 
@@ -249,7 +262,7 @@ npm run build
 [UI CSS RED LINE] Boundary violations found
 ```
 
-不得绕过检查或删掉检查器；应修改违反边界的 CSS / 组件归属。
+不得绕过检查、删除检查器或把规则改弱来“先跑起来”；应修改违反边界的 CSS / 组件归属。
 
 ## 10. 提交前 UI 检查清单
 
@@ -258,6 +271,7 @@ UI 相关提交至少确认：
 - [ ] 我修改的是正确责任层。
 - [ ] 没有用裸 `span/button/input/div` descendant selector 包围共享组件。
 - [ ] 没有在业务 CSS 修改 UI Library 内部几何。
+- [ ] 业务 CSS 没有新增 `.tc-*`；共享控件宿主集成集中在 `ui-library-integration.css`。
 - [ ] 没有用负 margin / top / translate 作为未知根因的补偿。
 - [ ] 同一块 UI 没有多个 CSS 文件同时维护。
 - [ ] UI Library 修改先在 Showcase 验证。
@@ -280,4 +294,6 @@ CSS 作用域污染
 
 **禁止再用业务 CSS 修共享组件内部位置。**
 
-这条规则属于项目 UI 开发红线，不因“只差 1～2px”而例外。
+**禁止通过增加 CSS 优先级、`!important` 或像素偏移掩盖未知的组件错位根因。**
+
+这两条规则属于项目 UI 开发红线，不因“只差 1～2px”而例外。
