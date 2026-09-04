@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 from threading import Lock
@@ -66,11 +67,21 @@ class RuntimeSchemaCatalog(SchemaCatalog):
 
     def option(self, key: str) -> OptionMeta:
         base = super().option(key)
+        translated = translate_option_meta(base)
         if base.source != "自定义":
-            # ``super().option`` can now synthesize a YR row directly from HelpInfor.ini
+            # ``super().option`` can synthesize a YR row directly from HelpInfor.ini
             # when OptionsDesc omitted a legitimate engine key. Translate/correct that
             # row on demand just like the eagerly loaded catalog rows.
-            return translate_option_meta(base)
+            return translated
+
+        # A few original YR keys are absent from the old OptionsDesc/Help catalog on some
+        # installs, yet have explicit curated semantics (for example OpenTransportWeapon).
+        # If the translation/semantic layer changed the otherwise-custom row, that change
+        # is authoritative evidence that it is a known original key. Do this before Ares
+        # lookup so an unrelated extension entry cannot steal the meaning.
+        if translated != base:
+            return replace(translated, source="YR")
+
         ares = self.ares.option(key)
         if ares is not None:
             return ares
