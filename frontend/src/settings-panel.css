@@ -5,6 +5,7 @@
 .settingRow>div:first-child strong{font-size:13px;color:#e7eef7}
 .settingRow>div:first-child span{font-size:11px;line-height:1.5;color:#8196aa}
 .settingRow>.tc-control-wrap{justify-self:end!important;margin:0!important}
+.settingRow>.tc-bool-wrap{--tc-bool-width:180px}
 .settingPathRow{grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important}
 .settingPathRow>.tc-control-wrap,.settingPathRow .tc-text{width:100%!important;max-width:none!important}
 .settingRow .tc-select{width:180px!important}
