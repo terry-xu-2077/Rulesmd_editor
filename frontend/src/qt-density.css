@@ -29,11 +29,8 @@
 /* The current object header is useful, but should not consume editor height. */
 .editor{grid-template-rows:66px 44px minmax(0,1fr)!important}
 .entityHeaderHost{min-height:0!important;position:relative!important;overflow:hidden}
-.entityHeaderHost .tc-entity-header{min-height:66px!important;height:66px!important}
-.entityHeaderHost .tc-entity-icon{width:68px!important;height:66px!important}
-.entityHeaderHost .tc-entity-watermark{font-size:54px!important;line-height:58px!important}
-.entityHeaderHost .tc-entity-title strong{font-size:17px!important}
-.entityHeaderHost .tc-entity-title span{font-size:10.5px!important}
+.entityHeaderActions{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6}
+.entityHeaderActions .chip{width:32px;padding:0;justify-content:center}
 .entityNavigation{
   position:absolute;right:58px;top:50%;transform:translateY(-50%);z-index:5;
   display:flex;align-items:center;gap:5px;max-width:54%;
@@ -46,17 +43,13 @@
 .entityNavigation button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px}
 .entityNavigation button:hover:not(:disabled){background:rgba(5,20,36,.56);border-color:rgba(255,255,255,.42);box-shadow:0 5px 14px rgba(0,0,0,.22)}
 .entityNavigation button:disabled{opacity:.32;cursor:default}
-.entityHeaderActions{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6}
-.entityHeaderActions .chip{width:32px;padding:0;justify-content:center}
 
 /* Search/filter actions sit directly above the parameter table. */
 .editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}
 .editorControls .searchBox{height:30px!important;width:210px!important;flex-basis:210px!important}
 .segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
-.editorControls .tc-button{height:28px!important;min-width:84px!important}
 
-/* Dense three-column business table. Controls remain UI Library components.
-   Help text never belongs in this table; it lives in the inspector. */
+/* Dense three-column business table. Shared controls are integrated in ui-library-integration.css. */
 .parameterTablePane{padding:0!important;overflow:auto!important;background:#091525!important}
 .parameterTableHeader{
   position:sticky;top:0;z-index:20;
@@ -95,12 +88,6 @@
 .parameterLabelCell strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e3edf5;font-size:11.5px;font-weight:600}
 .parameterValueCell{border-right:0;padding:3px 8px;position:relative;overflow:visible}
 .parameterValueCell .rulesControlHost{width:100%;min-width:0;display:flex;align-items:center;gap:6px}
-.parameterValueCell .tc-control-wrap{max-width:100%}
-.parameterValueCell .tc-text,.parameterValueCell .tc-select,.parameterValueCell .tc-multi{width:min(100%,500px)!important;max-width:500px}
-.parameterValueCell .tc-slider{width:min(100%,500px)!important;max-width:500px}
-.parameterValueCell .tc-control{height:26px}
-.parameterValueCell .tc-text input,.parameterValueCell .tc-select-button,.parameterValueCell .tc-number,.parameterValueCell .tc-bool-knob{font-size:11.5px!important}
-.parameterValueCell .tc-reset{left:calc(100% + 6px)}
 .parameterTableRow .aresBadge{flex:0 0 auto;font-size:8px;padding:1px 4px}
 .referenceJump{
   flex:0 0 27px;width:27px;height:26px;padding:0;border-radius:4px;
