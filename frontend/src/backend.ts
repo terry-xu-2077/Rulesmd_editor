@@ -131,6 +131,8 @@ export const workspaceApi = {
   status: () => invoke<{ desktop: string; python: string }>('backend_status'),
   pickFile: () => invoke<string | null>('pick_rules_file'),
   pickSaveFile: (defaultName = 'rulesmd.ini') => invoke<string | null>('pick_save_file', { defaultName }),
+  pickGameExecutable: () => invoke<string | null>('pick_game_executable'),
+  launchGame: (path: string) => invoke<void>('launch_game', { path }),
   openFile: async (path: string) => {
     await flushPendingValues()
     return call<WorkspaceSnapshot>('open_file', { path })
