@@ -32,7 +32,8 @@
 
 - 旧 Web 的通用控件参考尺寸是 `220×26px`，当前 Rulesmd Editor 为提高主表空间利用率，业务值列统一采用 **180px** 编辑槽。
 - `TextField / Select / MultiSelect / Slider / BoolSwitch` 在参数表中占用同一 180px 槽；引用跳转按钮位于槽外固定位置。
-- 设置窗口等普通场景的 `BoolSwitch` 仍使用 UI Library 默认短尺寸；表格场景只通过 UI Library 暴露的 `--tc-bool-width` 覆盖总宽度，业务 CSS 不再自行计算 Track/Knob 的运动逻辑。
+- UI Library 控件必须视作独立模块：业务层只能通过正式 props（例如 `width`、`disabled`、`value`、`variant`）传入外部约束，组件内部结构、比例、动画、渐变、hover/focus 和主题切换全部由组件自己负责。
+- `BoolSwitch` 的表格实例和设置窗口实例都通过 `width={180}` 显式传入尺寸；禁止再通过业务 CSS 覆盖 `--tc-bool-width` 或任何内部 Track/Knob 几何。
 - `BoolSwitch` 的 Track/Knob 几何在暗色和亮色下必须完全一致；主题只能改变颜色，不能改变比例、位置、行程或 relief 方向。
 - `BoolSwitch` Knob 以控件自身布局居中，禁止再通过业务层 `top/left/transform` 计算位置。
 - `BoolSwitch` ON 端位必须完整落在轨道右半区，OFF 完整落在左半区，不得越界或保留额外末端空隙。
@@ -131,5 +132,5 @@ BoolSwitch 是 UI Library 通用组件，但已经从通用 `.tc-control / .tc-b
 - Knob 不再使用 absolute / left / transform 计算位置，因此不允许再出现“ON 越出轨道”“表格和设置页上下偏移不同”等几何问题。
 - 组件不再复用 `.tc-control`、`.tc-bool`、`.tc-bool-knob`，旧主题中的遗留 BoolSwitch CSS 不再参与新组件。
 - 暗色和亮色共享完全相同的 Grid、尺寸和 relief 方向，只替换材质颜色。
-- Rulesmd Editor 只允许通过 `--tc-bool-width` 指定总宽度：参数表 180px，设置页使用 UI Library 默认 78px。
-- 业务 CSS 禁止再控制开关内部 Track/Knob 的 width、left、right、top、transform 或 grid-column。
+- `BoolSwitch` 对外暴露 `width?: number | string`；组件内部把它转换为自身尺寸变量。Rulesmd Editor 的表格和设置页都直接传 `width={180}`，不再依赖 CSS 加载顺序。
+- 业务 CSS 禁止再控制开关内部 Track/Knob 的 width、left、right、top、transform、grid-column，也禁止再通过选择器覆盖组件尺寸变量；需要新能力时必须先在 UI Library 增加正式 props。
