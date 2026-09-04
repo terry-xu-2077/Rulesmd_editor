@@ -8,12 +8,22 @@ from threading import Lock
 from .ares_schema import AresSchemaCatalog
 from .category_rules import categorize_yr_option
 from .schema import OptionMeta, SchemaCatalog
-from .translations_zh import apply_yr_translations, guess_section_name, translate_option_meta
+from .translations_zh import (
+    PARAMETER_META_FIXES,
+    apply_yr_translations,
+    guess_section_name,
+    translate_option_meta,
+)
 
 
 RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 LEGACY_ROOT = RESOURCE_ROOT / "legacy"
 GENERATED_ROOT = RESOURCE_ROOT / "generated"
+
+
+def _has_curated_yr_semantics(key: str) -> bool:
+    folded = key.casefold()
+    return any(name.casefold() == folded for name in PARAMETER_META_FIXES)
 
 
 class RuntimeSchemaCatalog(SchemaCatalog):
@@ -67,20 +77,17 @@ class RuntimeSchemaCatalog(SchemaCatalog):
 
     def option(self, key: str) -> OptionMeta:
         base = super().option(key)
-        translated = translate_option_meta(base)
         if base.source != "自定义":
             # ``super().option`` can synthesize a YR row directly from HelpInfor.ini
             # when OptionsDesc omitted a legitimate engine key. Translate/correct that
             # row on demand just like the eagerly loaded catalog rows.
-            return translated
+            return translate_option_meta(base)
 
-        # A few original YR keys are absent from the old OptionsDesc/Help catalog on some
-        # installs, yet have explicit curated semantics (for example OpenTransportWeapon).
-        # If the translation/semantic layer changed the otherwise-custom row, that change
-        # is authoritative evidence that it is a known original key. Do this before Ares
-        # lookup so an unrelated extension entry cannot steal the meaning.
-        if translated != base:
-            return replace(translated, source="YR")
+        # Some original YR keys are absent from one or more historical metadata files.
+        # Only explicit semantic corrections count as evidence that such a key is YR.
+        # A generic Chinese label guess must never shadow a real Ares key.
+        if _has_curated_yr_semantics(key):
+            return replace(translate_option_meta(base), source="YR")
 
         ares = self.ares.option(key)
         if ares is not None:
