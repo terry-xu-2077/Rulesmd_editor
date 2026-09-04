@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { PackagePlus, Search } from 'lucide-react'
+import { Check, PackagePlus, Search } from 'lucide-react'
 import { Button, Dialog, Select, TextField } from 'terry-react-ui-library'
-import { workspaceApi, type CreateUnitResult, type SectionData } from './backend'
+import { workspaceApi, type CreateUnitResult, type SectionData, type SectionOption } from './backend'
+import { localizedReferenceLabel } from './referenceLabels'
 
 export type UnitTemplateRow = {
   id: string
@@ -34,11 +35,56 @@ function validSectionName(value: string) {
   return /^[A-Za-z][A-Za-z0-9_]*$/.test(value.trim())
 }
 
+function valueKind(option: SectionOption) {
+  const key = option.key.toLowerCase()
+  const type = option.value_type.toLowerCase()
+  if (/(?:sound|voice|audio)/i.test(key) || option.category.includes('声音')) return 'audio'
+  if (type === 'weapon' || ['primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon', 'eliteoccupyweapon', 'deathweapon'].includes(key)) return 'weapon'
+  if (type === 'warhead' || key.includes('warhead')) return 'warhead'
+  if (type === 'projectile' || key.includes('projectile')) return 'projectile'
+  if (key === 'debristypes') return 'debris'
+  return 'generic'
+}
+
+function displayTemplateValue(option: SectionOption, rowsById: Map<string, UnitTemplateRow>) {
+  const raw = option.value.trim()
+  if (!raw) return { label: '空值', localized: false }
+
+  const explicit = new Map(option.values.map(item => [item.value.toLowerCase(), item.label.trim() || item.value]))
+  let localized = false
+  const labels = raw.split(',').map(part => {
+    const token = part.trim()
+    if (!token) return token
+
+    const enumLabel = explicit.get(token.toLowerCase())
+    if (enumLabel && enumLabel.toLowerCase() !== token.toLowerCase()) {
+      localized = true
+      return enumLabel
+    }
+
+    const row = rowsById.get(token.toLowerCase())
+    if (row?.label && row.label.toLowerCase() !== token.toLowerCase()) {
+      localized = true
+      return row.label
+    }
+
+    const guessed = localizedReferenceLabel(token, valueKind(option))
+    if (guessed && guessed.toLowerCase() !== token.toLowerCase()) {
+      localized = true
+      return guessed
+    }
+    return token
+  })
+
+  return { label: localized ? labels.join('、') : raw, localized }
+}
+
 export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated }: Props) {
   const eligibleRows = useMemo(() => rows
     .map(row => ({ ...row, category: normalizedCategory(row.category) }))
     .filter(row => UNIT_CATEGORIES.includes(row.category as typeof UNIT_CATEGORIES[number])), [rows])
 
+  const rowsById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
   const categories = useMemo(() => UNIT_CATEGORIES.filter(category => eligibleRows.some(row => row.category === category)), [eligibleRows])
   const [category, setCategory] = useState('')
   const [templateId, setTemplateId] = useState('')
@@ -53,11 +99,15 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
 
   const categoryRows = useMemo(() => eligibleRows.filter(row => row.category === category), [category, eligibleRows])
   const selectableOptions = useMemo(() => (templateData?.options ?? []).filter(option => !['name', 'uiname'].includes(option.key.toLowerCase())), [templateData])
+  const displayedValues = useMemo(() => new Map(selectableOptions.map(option => [option.line_id, displayTemplateValue(option, rowsById)])), [rowsById, selectableOptions])
   const visibleOptions = useMemo(() => {
     const q = parameterQuery.trim().toLowerCase()
     if (!q) return selectableOptions
-    return selectableOptions.filter(option => `${option.key} ${option.label} ${option.value}`.toLowerCase().includes(q))
-  }, [parameterQuery, selectableOptions])
+    return selectableOptions.filter(option => {
+      const display = displayedValues.get(option.line_id)?.label ?? option.value
+      return `${option.key} ${option.label} ${option.value} ${display}`.toLowerCase().includes(q)
+    })
+  }, [displayedValues, parameterQuery, selectableOptions])
   const selectedCount = useMemo(() => selectableOptions.reduce((count, option) => count + (selectedLines[option.line_id] ? 1 : 0), 0), [selectableOptions, selectedLines])
 
   useEffect(() => {
@@ -175,18 +225,25 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
       </div>
 
       <div className="addUnitParameterTable">
-        <div className="addUnitParameterHeader"><span>参数名</span><span>Key</span><span>模板值</span><span>使用</span></div>
+        <div className="addUnitParameterHeader"><span>Key</span><span>参数名</span><span>模板值</span><span>使用</span></div>
         <div className="addUnitParameterRows">
           {loading && <div className="addUnitEmpty">正在读取模板参数…</div>}
-          {!loading && visibleOptions.map(option => <div className={`addUnitParameterRow ${selectedLines[option.line_id] ? 'selected' : 'excluded'}`} key={option.line_id}>
-            <strong title={option.label || option.key}>{option.label || option.key}</strong>
-            <code title={option.key}>{option.key}</code>
-            <span className="addUnitParameterValue" title={option.value || '空值'}>{option.value || <i>空值</i>}</span>
-            <label className="addUnitParameterUse" title={selectedLines[option.line_id] ? '创建时继承此参数' : '创建时不写入此参数'}>
-              <input type="checkbox" checked={Boolean(selectedLines[option.line_id])} onChange={() => toggleLine(option.line_id)}/>
-              <span aria-hidden="true"/>
-            </label>
-          </div>)}
+          {!loading && visibleOptions.map(option => {
+            const display = displayedValues.get(option.line_id) ?? { label: option.value || '空值', localized: false }
+            const checked = Boolean(selectedLines[option.line_id])
+            return <div className={`addUnitParameterRow ${checked ? 'selected' : 'excluded'}`} key={option.line_id}>
+              <code title={option.key}>{option.key}</code>
+              <strong title={option.label || option.key}>{option.label || option.key}</strong>
+              <span className="addUnitParameterValue" title={option.value || '空值'}>
+                <b>{display.label}</b>
+                {display.localized && option.value && <small>{option.value}</small>}
+              </span>
+              <label className="addUnitParameterUse" title={checked ? '创建时继承此参数' : '创建时不写入此参数'}>
+                <input type="checkbox" checked={checked} onChange={() => toggleLine(option.line_id)}/>
+                <span className="addUnitCheckBox" aria-hidden="true">{checked && <Check size={13}/>}</span>
+              </label>
+            </div>
+          })}
           {!loading && !visibleOptions.length && <div className="addUnitEmpty">没有匹配的模板参数。</div>}
         </div>
       </div>
