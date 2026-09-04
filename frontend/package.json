@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "sync:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/sync-ui.ps1",
+    "dev": "npm run sync:ui && vite",
+    "build": "npm run sync:ui && tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
@@ -16,7 +17,7 @@
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "terry-react-ui-library": "https://github.com/terry-xu-2077/Terry_React_UI_Library/archive/4b169de208e930b526f04935c9cf447d5eff2113.tar.gz"
+    "terry-react-ui-library": "github:terry-xu-2077/Terry_React_UI_Library#main"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.0",
