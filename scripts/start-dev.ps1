@@ -5,8 +5,10 @@ $Frontend = Join-Path $Root 'frontend'
 $FrontendPackage = Join-Path $Frontend 'package.json'
 $FrontendModules = Join-Path $Frontend 'node_modules'
 $FrontendStamp = Join-Path $FrontendModules '.rulesmd-package.sha256'
+$IconStamp = Join-Path $FrontendModules '.rulesmd-icon-source.sha256'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
+$IconProduct = Join-Path $Frontend 'src-tauri\icons\icon.ico'
 $LegacyAssets = Join-Path $Frontend 'public\legacy'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
@@ -271,16 +273,24 @@ Sync-LegacyAsset 'iconTile.jpg' "$LegacyBase/iconTile.jpg"
 Sync-LegacyAsset 'countryTile.png' "$LegacyBase/countryTile.png"
 Sync-LegacyAsset 'bgIcon.png' "$LegacyBase/bgIcon.png"
 Sync-LegacyAsset 'RA2_NONE.png' "$LegacyBase/RA2_NONE.png"
+Sync-LegacyAsset 'app-logo.png' "$LegacyBase/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
 
 if (-not (Test-Path $IconSource)) {
     Fail "App icon source is missing: $IconSource"
 }
-Write-Step 'Generating application icons from PNG source'
-Push-Location $Frontend
-try {
-    & npm run tauri -- icon "src-tauri/app-icon.png" --output "src-tauri/icons"
-    if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
-} finally { Pop-Location }
+$IconHash = (Get-FileHash -Algorithm SHA256 $IconSource).Hash
+$InstalledIconHash = if (Test-Path $IconStamp) { (Get-Content $IconStamp -Raw).Trim() } else { '' }
+if (($IconHash -ne $InstalledIconHash) -or (-not (Test-Path $IconProduct))) {
+    Write-Step 'Generating application icons from changed PNG source'
+    Push-Location $Frontend
+    try {
+        & npm run tauri -- icon "src-tauri/app-icon.png" --output "src-tauri/icons"
+        if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
+        Set-Content -Path $IconStamp -Value $IconHash -NoNewline
+    } finally { Pop-Location }
+} else {
+    Write-Host 'Application icons are up to date.' -ForegroundColor DarkGray
+}
 
 Clear-ProxyEnv
 $env:CARGO_NET_RETRY = '2'
