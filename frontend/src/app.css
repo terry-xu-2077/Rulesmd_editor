@@ -1,0 +1,20 @@
+/*
+ * Rulesmd Editor global CSS cascade manifest.
+ *
+ * RED LINE: global application styles are loaded only through this file. Do not add
+ * <link rel="stylesheet"> entries for /src/*.css in index.html and do not import these
+ * files individually from main.tsx. Keeping one cascade owner prevents late Vite module
+ * CSS from silently overriding the intended "final" layers.
+ */
+@import './styles.css';
+@import './polish.css';
+@import './catalog-browser.css';
+@import './qt-density.css';
+@import './settings-panel.css';
+@import './inspector-combined.css';
+@import './navigation-polish.css';
+@import './workspace-polish.css';
+@import './editor-control-grid.css';
+@import './workspace-final-fixes.css';
+@import './theme-final.css';
+@import './ui-library-integration.css';
