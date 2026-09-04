@@ -37,6 +37,7 @@ import {
 import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterPicker } from './ParameterPicker'
+import { localizedReferenceLabel } from './referenceLabels'
 import { sliderRangeFor } from './sliderRanges'
 import { UnitTree } from './UnitTree'
 import './styles.css'
@@ -102,11 +103,17 @@ function sectionKind(category: string): string | undefined {
   return undefined
 }
 
+function resolvedRowLabel(section: string, label: string | undefined, category: string) {
+  const current = label?.trim()
+  if (current && current.toLowerCase() !== section.toLowerCase()) return current
+  return localizedReferenceLabel(section, category) || section
+}
+
 function rowsFromSnapshot(snapshot: WorkspaceSnapshot | null): SectionRow[] {
   if (!snapshot) return []
   return snapshot.categories.flatMap(category => category.items.map(item => ({
     id: item.section,
-    label: item.label || item.section,
+    label: resolvedRowLabel(item.section, item.label, category.name),
     type: category.name,
     category: category.name,
     side: item.side ?? sideForId(item.section),
@@ -120,7 +127,7 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
     const first = category?.items[0]
     if (category && first) return {
       id: first.section,
-      label: first.label || first.section,
+      label: resolvedRowLabel(first.section, first.label, category.name),
       type: category.name,
       category: category.name,
       side: first.side ?? sideForId(first.section),
@@ -130,7 +137,7 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
   const first = category?.items[0]
   return category && first ? {
     id: first.section,
-    label: first.label || first.section,
+    label: resolvedRowLabel(first.section, first.label, category.name),
     type: category.name,
     category: category.name,
     side: first.side ?? sideForId(first.section),
@@ -267,14 +274,14 @@ function FieldControl({
 
   if (referenceKind === 'audio') {
     const values = withCurrentValues(audioValues, option.value)
-    const options = values.map(value => ({ value, label: value, icon: referenceOptionIcon(value, 'audio') }))
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索音频名称"/>
+    const options = values.map(value => ({ value, label: localizedReferenceLabel(value, 'audio'), icon: referenceOptionIcon(value, 'audio') }))
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索音频名称或中文名"/>
   }
 
   if (referenceKind === 'debris') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
-    const options = withCurrentValues(observedKeyValues, option.value).map(value => ({ value, label: value, icon: referenceOptionIcon(value, 'debris') }))
+    const options = withCurrentValues(observedKeyValues, option.value).map(value => ({ value, label: localizedReferenceLabel(value, 'debris'), icon: referenceOptionIcon(value, 'debris') }))
     return <MultiSelect values={values} rawValues={rawValues} options={options} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
   }
 
@@ -288,16 +295,16 @@ function FieldControl({
     const semanticIcon = referenceKind !== 'generic'
     const options = option.values.map(value => ({
       value: value.value,
-      label: value.label ? `${value.label} · ${value.value}` : value.value,
+      label: value.label ? `${value.label} · ${value.value}` : localizedReferenceLabel(value.value, referenceKind),
       icon: semanticIcon ? referenceOptionIcon(value.value, referenceKind) : optionVisualIcon(value.value),
     }))
-    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: option.value, icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind) : optionVisualIcon(option.value) })
+    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind) : optionVisualIcon(option.value) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10}/>
   }
 
   if (referenceRows.length) {
-    const options = referenceRows.map(row => ({ value: row.id, label: row.label || row.id, group: row.id, icon: referenceOptionIcon(row.id, referenceKind) }))
-    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: option.value, group: '', icon: referenceOptionIcon(option.value, referenceKind) })
+    const options = referenceRows.map(row => ({ value: row.id, label: row.label || localizedReferenceLabel(row.id, referenceKind), group: row.id, icon: referenceOptionIcon(row.id, referenceKind) }))
+    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), group: '', icon: referenceOptionIcon(option.value, referenceKind) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section"/>
   }
 
