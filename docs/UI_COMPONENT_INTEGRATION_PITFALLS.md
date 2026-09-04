@@ -26,16 +26,18 @@ Rulesmd Editor 旧业务 CSS 存在过宽选择器：
 
 UI Library 的 `BoolSwitch` Knob 本身也是一个 `<span>`。因此业务页本来只想给“设置说明文字”增加间距，却把同一条规则穿透到了 UI Library 组件内部，给 Knob 额外增加了 `margin-top`。
 
+后续又验证到同一个污染源会影响 `Select`：当前值区域 `.tc-select-current` 以及内部可见文本同样由 `<span>` 构成，因此下拉菜单按钮本身已经 `align-items:center` 时，文字仍可能被业务页的 `margin-top` 推向下方。处理方式仍然不是在设置页给文字加负 margin，而是让 Select 自己明确拥有 current label / option label 的 margin、padding、line-height 和对齐几何。
+
 这类问题的危险点是：
 
 1. 组件内部几何看起来像错了，但真正错误来自父业务页面；
 2. 继续修改组件 `top/left/transform/grid/flex` 会产生“似乎有改善”的假象；
 3. 每一轮局部补偿都会掩盖污染源，让后续调试越来越困难；
-4. Web / WebView2 并不存在“无法把开关居中”的技术限制，问题是 CSS 作用域和组件边界失守。
+4. Web / WebView2 并不存在“无法把开关或菜单文字居中”的技术限制，问题是 CSS 作用域和组件边界失守。
 
 最终修复分两层：
 
-- UI Library 的原子组件对自身关键几何属性做边界加固，避免普通业务 descendant selector 轻易改变 Knob 的 margin / padding / line-height 等；
+- UI Library 的原子组件对自身关键几何属性做边界加固，避免普通业务 descendant selector 轻易改变 Knob / current label / option label 的 margin、padding、line-height 等；
 - Rulesmd Editor 侧禁止再使用 `.settingRow span`、`.xxx button` 这类会穿透通用组件内部的宽泛标签选择器，只允许命中明确的业务语义节点或 direct child。
 
 ## 2. 调试顺序：先判断是谁的责任
