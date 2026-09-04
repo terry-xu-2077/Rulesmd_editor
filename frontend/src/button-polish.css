@@ -1,0 +1,28 @@
+/* Product-level command buttons. Shared Terry UI controls are styled only in ui-library-integration.css. */
+.app .toolbar .iconButton{
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:#91a9bc!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  transform:none!important;
+  transition:background .12s ease,border-color .12s ease,color .12s ease!important;
+}
+.app .toolbar .iconButton:hover:not(:disabled){
+  color:#eef8ff!important;
+  background:rgba(54,104,148,.16)!important;
+  border-color:rgba(106,157,197,.24)!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.app .toolbar .iconButton:active:not(:disabled){
+  background:rgba(42,213,184,.11)!important;
+  border-color:rgba(42,213,184,.26)!important;
+  transform:none!important;
+}
+.app .toolbar .iconButton:disabled{opacity:.36!important}
+
+.app[data-mode="light"] .toolbar .iconButton{color:#57758b!important}
+.app[data-mode="light"] .toolbar .iconButton:hover:not(:disabled){color:#173f5a!important;background:#e2edf3!important;border-color:#aac3d1!important}
+.app[data-mode="light"] .toolbar .iconButton:active:not(:disabled){background:#d8ece8!important;border-color:#78b8aa!important}
