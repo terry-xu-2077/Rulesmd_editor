@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Search, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronRight, ListPlus, Search, Sparkles } from 'lucide-react'
 import { BoolSwitch, Button, Dialog } from 'terry-react-ui-library'
 import type { CatalogOption } from './backend'
 import './parameter-picker.css'
@@ -101,7 +101,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
     <div className="parameterExplorer">
       <div className="parameterExplorerToolbar">
         <label className="parameterExplorerSearch"><Search size={17}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索用途、中文名称或 Key"/></label>
-        <div className="parameterFilterToggle"><span>参数过滤</span><BoolSwitch value={filterEnabled ? 'yes' : 'no'} onChange={value => setFilterEnabled(value === 'yes')}/></div>
+        <div className="parameterFilterToggle"><span>只看能用</span><BoolSwitch value={filterEnabled ? 'yes' : 'no'} onChange={value => setFilterEnabled(value === 'yes')}/></div>
       </div>
 
       <div className="parameterExplorerGrid">
@@ -151,7 +151,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
 
               {selected.docs && <section className="parameterDetailSection"><h3>{sourceName(selected) === 'Ares' ? 'Ares 官方文档' : '资料来源'}</h3><code className="parameterDocs">{selected.docs}</code></section>}
             </div>
-            <footer className="parameterDetailFooter"><Button onClick={() => void onAdd(selected)}>添加此参数</Button></footer>
+            <footer className="parameterDetailFooter"><Button variant="accent" onClick={() => void onAdd(selected)}><ListPlus size={16}/>添加此参数</Button></footer>
           </> : <div className="parameterEmpty detail">从中间列表选择一个参数查看详细说明。</div>}
         </aside>
       </div>
