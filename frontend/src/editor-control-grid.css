@@ -1,0 +1,49 @@
+/* Old Web kept the value column visually regular: common controls share one fixed editing slot. */
+.parameterValueCell .rulesControlHost{
+  --rules-editor-control-width:220px;
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+}
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap){
+  width:var(--rules-editor-control-width)!important;
+  min-width:var(--rules-editor-control-width)!important;
+  max-width:var(--rules-editor-control-width)!important;
+  flex:0 0 var(--rules-editor-control-width)!important;
+}
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-control,
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host,
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host>.tc-control{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+.parameterValueCell .rulesControlHost .tc-text,
+.parameterValueCell .rulesControlHost .tc-select,
+.parameterValueCell .rulesControlHost .tc-multi,
+.parameterValueCell .rulesControlHost .tc-slider{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+.parameterValueCell .rulesControlHost .tc-bool-wrap{
+  margin-right:116px!important;
+}
+.parameterValueCell .referenceJump{margin-left:0!important}
+
+/* Visual multi-selects can be wider than the compact closed control. */
+.parameterValueCell .tc-visual-picker{
+  width:360px!important;
+  max-width:min(460px,60vw)!important;
+}
+.rulesCountryOptionIcon,.rulesUnitOptionIcon{
+  display:block;
+  flex:none;
+  border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 1px 3px rgba(0,0,0,.28);
+}
+
+@media(max-width:1150px){
+  .parameterValueCell .rulesControlHost{--rules-editor-control-width:190px}
+  .parameterValueCell .rulesControlHost .tc-bool-wrap{margin-right:86px!important}
+}
