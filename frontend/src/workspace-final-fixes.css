@@ -1,0 +1,75 @@
+/* Final application-level layout fixes. Shared control internals remain owned by Terry_React_UI_Library. */
+
+/* Top toolbar: icon+label buttons size to their content; the group remains centered without colliding with the right view switch. */
+.titlebar{position:relative!important;display:flex!important;align-items:center!important;gap:16px!important}
+.brand{flex:0 0 auto!important;min-width:220px!important}
+.toolbar{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  width:auto!important;
+  flex:none!important;
+}
+.toolbar .iconButton{
+  width:auto!important;
+  min-width:58px!important;
+  height:36px!important;
+  padding:0 9px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+}
+.toolbar .divider{flex:0 0 1px!important}
+.titleViewSwitch{margin-left:auto!important;flex:0 0 auto!important;justify-self:auto!important}
+
+/* Select popup must sit above row actions and every row fills the menu width. */
+.parameterTableRow:has(.tc-select.is-open){position:relative!important;z-index:60!important}
+.parameterValueCell .tc-select-list{z-index:2400!important}
+.parameterValueCell .tc-select-list .tc-select-item{width:100%!important;min-width:100%!important;max-width:100%!important}
+.referenceJump{z-index:1!important}
+
+/* Parameter-table BoolSwitch consumes the normal 180px slot through the library's public geometry variable. */
+.parameterValueCell .tc-bool-wrap{
+  --tc-bool-width:180px!important;
+  width:180px!important;
+  min-width:180px!important;
+  max-width:180px!important;
+  flex:0 0 180px!important;
+  margin-right:0!important;
+}
+.parameterValueCell .tc-bool-wrap>.tc-bool{
+  width:var(--tc-bool-width)!important;
+  min-width:var(--tc-bool-width)!important;
+  max-width:var(--tc-bool-width)!important;
+}
+.parameterValueCell .tc-bool-wrap .tc-bool-knob{
+  width:calc((var(--tc-bool-width) - 6px)/2)!important;
+  transform:none!important;
+}
+.parameterValueCell .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
+  left:auto!important;
+  right:2px!important;
+  transform:none!important;
+}
+
+/* Restore the opposite relief directions in light mode too. */
+.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{
+  background:linear-gradient(0deg,#ffffff,#cbd7e1)!important;
+  box-shadow:0 1px 2px rgba(42,66,86,.18),inset 0 -1px 0 rgba(255,255,255,.55)!important;
+}
+.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
+  background:linear-gradient(180deg,#39c9b3,#117b6d)!important;
+  box-shadow:0 1px 2px rgba(42,66,86,.16),inset 0 1px 0 rgba(255,255,255,.36)!important;
+}
+
+@media(max-width:1040px){
+  .toolbar{position:static!important;transform:none!important;margin-left:auto!important}
+  .titleViewSwitch{margin-left:4px!important}
+  .toolbar .iconButton{min-width:36px!important;width:36px!important;padding:0!important}
+  .toolbar .iconButtonLabel{display:none!important}
+}
