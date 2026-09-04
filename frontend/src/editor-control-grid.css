@@ -26,10 +26,13 @@
   min-width:0!important;
   max-width:none!important;
 }
+/* BoolSwitch keeps its own geometry but consumes the same business slot through the library CSS variable. */
 .parameterValueCell .rulesControlHost .tc-bool-wrap{
-  margin-right:76px!important;
+  --tc-bool-width:var(--rules-editor-control-width);
+  margin-right:0!important;
 }
 .parameterValueCell .referenceJump{margin-left:0!important}
+.parameterTableRow:has(.tc-select.is-open){position:relative;z-index:30!important}
 
 /* Pickers may expand independently from the compact 180px closed control. */
 .parameterValueCell .tc-picker,
