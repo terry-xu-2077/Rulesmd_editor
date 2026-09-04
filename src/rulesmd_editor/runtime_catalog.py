@@ -7,7 +7,7 @@ from threading import Lock
 from .ares_schema import AresSchemaCatalog
 from .category_rules import categorize_yr_option
 from .schema import OptionMeta, SchemaCatalog
-from .translations_zh import apply_yr_translations, guess_section_name
+from .translations_zh import apply_yr_translations, guess_section_name, translate_option_meta
 
 
 RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
@@ -67,7 +67,10 @@ class RuntimeSchemaCatalog(SchemaCatalog):
     def option(self, key: str) -> OptionMeta:
         base = super().option(key)
         if base.source != "自定义":
-            return base
+            # ``super().option`` can now synthesize a YR row directly from HelpInfor.ini
+            # when OptionsDesc omitted a legitimate engine key. Translate/correct that
+            # row on demand just like the eagerly loaded catalog rows.
+            return translate_option_meta(base)
         ares = self.ares.option(key)
         if ares is not None:
             return ares
