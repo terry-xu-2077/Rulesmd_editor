@@ -83,38 +83,39 @@
   border-radius:7px;
 }
 
-/* App-specific Dialog geometry. The body size must follow the compact explorer rather
- * than inheriting the generic 80vh dialog envelope. */
+/* App-specific Dialog geometry. Explicit height is important: size-wide may otherwise
+ * keep a large generic envelope even when the embedded explorer is compact. */
 .tc-dialog:has(.parameterExplorer){
   width:min(880px,calc(100vw - 64px));
   max-width:min(880px,calc(100vw - 64px));
-  max-height:570px;
+  height:min(570px,calc(100vh - 64px));
+  max-height:min(570px,calc(100vh - 64px));
 }
 .tc-dialog:has(.parameterExplorer)>.tc-dialog-body{
+  height:calc(100% - 38px);
   padding:0;
   overflow:hidden;
-  max-height:532px;
+  max-height:none;
 }
 .tc-dialog:has(.addUnitDialog){
   width:min(940px,calc(100vw - 56px));
   max-width:min(940px,calc(100vw - 56px));
-  max-height:calc(100vh - 54px);
+  height:min(720px,calc(100vh - 54px));
+  max-height:min(720px,calc(100vh - 54px));
 }
 .tc-dialog:has(.addUnitDialog)>.tc-dialog-body{
+  height:calc(100% - 38px);
   padding:0;
   overflow:hidden;
-  max-height:calc(100vh - 92px);
+  max-height:none;
 }
-.addUnitSetup .tc-control-wrap,
-.addUnitParameterRow .tc-control-wrap{
+.addUnitSetup .tc-control-wrap{
   width:100%;
   min-width:0;
   max-width:100%;
 }
 .addUnitSetup .tc-control,
-.addUnitParameterRow .tc-control,
-.addUnitSetup .tc-tooltip-host,
-.addUnitParameterRow .tc-tooltip-host{
+.addUnitSetup .tc-tooltip-host{
   width:100%!important;
   min-width:0!important;
   max-width:none!important;
