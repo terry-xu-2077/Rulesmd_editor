@@ -24,6 +24,37 @@ const settingsOwner = 'settings-panel.css'
 const integrationOwner = 'ui-library-integration.css'
 const businessCss = allCss.filter(file => file !== settingsOwner && file !== integrationOwner)
 
+// RED LINE 0: one CSS loading path only.
+// The regression seen in the editor header/select popup came from mixing index.html <link>
+// styles with Vite module CSS: main.tsx styles were injected later and defeated the intended
+// "final" layers. Global late layers now enter through polish.css -> app.css only.
+const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+if (/<link\b[^>]*rel=["']stylesheet["'][^>]*\/src\//i.test(indexHtml) || /<link\b[^>]*\/src\/[^>]*\.css/i.test(indexHtml)) {
+  fail('index.html', 'do not load /src/*.css with HTML link tags', 'global CSS must use the module cascade')
+}
+
+const polishRaw = read('polish.css')
+if (!/^\s*@import\s+["']\.\/app\.css["']\s*;/i.test(polishRaw)) {
+  fail('polish.css', 'polish.css must import app.css first', 'missing leading @import ./app.css')
+}
+
+const expectedLateLayers = [
+  'catalog-browser.css',
+  'qt-density.css',
+  'settings-panel.css',
+  'inspector-combined.css',
+  'navigation-polish.css',
+  'workspace-polish.css',
+  'editor-control-grid.css',
+  'workspace-final-fixes.css',
+  'theme-final.css',
+  'ui-library-integration.css',
+]
+const appImports = [...read('app.css').matchAll(/@import\s+["']\.\/([^"']+\.css)["']\s*;/g)].map(match => match[1])
+if (appImports.join('\n') !== expectedLateLayers.join('\n')) {
+  fail('app.css', 'late-layer CSS order is a maintained contract', `expected: ${expectedLateLayers.join(' -> ')}\n  actual: ${appImports.join(' -> ')}`)
+}
+
 // RED LINE 1: settings layout has one owner only.
 // The historical .settingRow span leak lived in styles.css; new CSS files are scanned automatically too.
 for (const file of [...businessCss, integrationOwner]) {
