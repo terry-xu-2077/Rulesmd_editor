@@ -13,21 +13,29 @@
   --tc-text-bright:#7fe8d8;
 }
 
-/* EntityHeader is embedded into a compact editor header slot. */
+/*
+ * EntityHeader is embedded into the editor's fixed 66px first row.
+ * Keep the host and the shared component on the same geometry so the header cannot
+ * spill into the search/history toolbar below it.
+ */
 .entityHeaderHost{
   position:relative;
   min-width:0;
-  height:82px;
+  height:66px;
+  min-height:66px;
   overflow:hidden;
 }
-.entityHeaderHost .tc-entity-header{height:82px}
-.entityHeaderHost .tc-entity-icon{width:92px;height:82px}
-.entityHeaderHost .tc-entity-watermark{font-size:78px;line-height:82px;top:-4px}
+.entityHeaderHost .tc-entity-header{height:66px;min-height:66px}
+.entityHeaderHost .tc-entity-icon{width:68px;height:66px}
+.entityHeaderHost .tc-entity-watermark{font-size:54px;line-height:58px;top:-2px}
+.entityHeaderHost .tc-entity-title strong{font-size:17px}
+.entityHeaderHost .tc-entity-title span{font-size:10.5px}
 .entityHeaderActions{
   position:absolute;
-  right:54px;
-  top:27px;
-  z-index:3;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:6;
   display:flex;
   gap:5px;
 }
@@ -91,9 +99,37 @@
 .parameterValueCell .tc-bool-knob{font-size:11.5px!important}
 .parameterValueCell .tc-reset{left:calc(100% + 6px)}
 
-/* Select popup must sit above row actions. */
-.parameterTableRow:has(.tc-select.is-open){position:relative!important;z-index:60!important}
-.parameterValueCell .tc-select-list{z-index:2400!important}
+/*
+ * Open menus form a temporary foreground layer over the scrolling parameter table.
+ * Sticky group headers and controls in later rows must never paint over a Select/MultiSelect
+ * popup. We only coordinate business stacking here; popup internals remain library-owned.
+ */
+.parameterTablePane:has(.tc-select.is-open) .parameterTableHeader,
+.parameterTablePane:has(.tc-multi.is-open) .parameterTableHeader,
+.parameterTablePane:has(.tc-select.is-open) .fieldGroupHeader,
+.parameterTablePane:has(.tc-multi.is-open) .fieldGroupHeader{
+  z-index:0!important;
+}
+.parameterTablePane:has(.tc-select.is-open) .parameterTableRow,
+.parameterTablePane:has(.tc-multi.is-open) .parameterTableRow{
+  z-index:0!important;
+}
+.parameterTablePane .parameterTableRow:has(.tc-select.is-open),
+.parameterTablePane .parameterTableRow:has(.tc-multi.is-open){
+  position:relative!important;
+  z-index:200!important;
+  overflow:visible!important;
+}
+.parameterTablePane .parameterTableRow:has(.tc-select.is-open) .parameterValueCell,
+.parameterTablePane .parameterTableRow:has(.tc-multi.is-open) .parameterValueCell{
+  position:relative;
+  z-index:201;
+  overflow:visible;
+}
+.parameterValueCell .tc-select.is-open .tc-pop,
+.parameterValueCell .tc-multi.is-open .tc-pop{
+  z-index:5000!important;
+}
 
 /* Parameter-table BoolSwitch gets its 180px width from the public width prop in FieldControl. */
 .parameterValueCell .rulesControlHost>.tc-bool-wrap{margin-right:0!important}
