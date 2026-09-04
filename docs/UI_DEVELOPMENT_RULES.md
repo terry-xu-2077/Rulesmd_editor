@@ -194,7 +194,7 @@ UI Library 默认宽度
 2. 如果缺少合理公开 API，则回 UI Library 增加 API；
 3. 禁止在业务页直接钻入组件内部改 CSS。
 
-## 8. UI Library 版本验证
+## 8. UI Library 包与版本验证
 
 Rulesmd Editor 跟随：
 
@@ -202,17 +202,39 @@ Rulesmd Editor 跟随：
 Terry_React_UI_Library#main
 ```
 
-启动 / build 前由同步脚本检查实际 SHA。
+UI Library 已按标准 React package 方式构建。Rulesmd Editor **只消费生成后的 `dist` 包**，不得从 `node_modules/terry-react-ui-library/src/...` 导入源码。
 
-排查 UI 组件问题前，必须确认日志出现：
+安装后的最低包契约是：
+
+```text
+node_modules/terry-react-ui-library/
+  dist/
+    index.js
+    index.d.ts
+    style.css
+```
+
+UI Library 的 Git dependency 会在 npm 安装阶段运行自己的 `prepare -> build:lib`，生成 JS、类型声明和 CSS。React / ReactDOM 由宿主项目通过 peer dependency 提供，禁止 UI Library 再携带第二套 React runtime。
+
+启动 / build 前由 `scripts/sync-ui.ps1` 同时检查：
+
+1. GitHub `main` 当前 SHA；
+2. 本地 SHA stamp；
+3. `dist/index.js`；
+4. `dist/index.d.ts`；
+5. `dist/style.css`。
+
+任意 dist 产物缺失都视为 UI Library 未正确安装，必须重装，不能因为 SHA 相同就继续使用残缺包。
+
+排查 UI 组件问题前，必须确认日志出现类似：
 
 ```text
 Synchronizing UI library main -> <sha>
 Vite optimized dependency cache invalidated after UI library update.
-UI library synchronized successfully: <sha>
+UI library synchronized successfully: <sha> (dist verified)
 ```
 
-如果运行 SHA 不正确，不允许继续根据截图修改组件 CSS。
+如果运行 SHA 不正确，或日志没有 `dist verified`，不允许继续根据截图修改组件 CSS。
 
 ## 9. 自动红线检查
 
@@ -259,6 +281,7 @@ UI 相关提交至少确认：
 - [ ] 同一块 UI 没有多个 CSS 文件同时维护。
 - [ ] UI Library 修改先在 Showcase 验证。
 - [ ] 实际运行 SHA 与 UI Library main 一致。
+- [ ] UI Library 安装目录包含 `dist/index.js`、`dist/index.d.ts`、`dist/style.css`。
 - [ ] `npm run check:ui-css` 通过。
 - [ ] dark / light 两种模式都检查。
 
