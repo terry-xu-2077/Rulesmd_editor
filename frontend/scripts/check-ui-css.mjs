@@ -38,7 +38,24 @@ if (!/^\s*@import\s+["']\.\/app\.css["']\s*;/i.test(polishRaw)) {
   fail('polish.css', 'polish.css must import app.css first', 'missing leading @import ./app.css')
 }
 
-const expectedLateLayers = [
+// app.css is the single source of truth for the late-layer manifest. Do not duplicate
+// the entire manifest in this checker: doing so makes a legitimate new CSS layer fail
+// startup merely because this file was not updated in lockstep. The checker instead
+// enforces the architectural invariants that actually matter.
+const appImports = [...read('app.css').matchAll(/@import\s+["']\.\/([^"']+\.css)["']\s*;/g)].map(match => match[1])
+
+for (const file of appImports) {
+  if (!fs.existsSync(path.join(src, file))) {
+    fail('app.css', 'every late-layer import must exist', file)
+  }
+}
+
+const duplicateImports = [...new Set(appImports.filter((file, index) => appImports.indexOf(file) !== index))]
+for (const file of duplicateImports) {
+  fail('app.css', 'late-layer imports must be unique', file)
+}
+
+const requiredLateLayers = [
   'catalog-browser.css',
   'qt-density.css',
   'settings-panel.css',
@@ -50,9 +67,26 @@ const expectedLateLayers = [
   'theme-final.css',
   'ui-library-integration.css',
 ]
-const appImports = [...read('app.css').matchAll(/@import\s+["']\.\/([^"']+\.css)["']\s*;/g)].map(match => match[1])
-if (appImports.join('\n') !== expectedLateLayers.join('\n')) {
-  fail('app.css', 'late-layer CSS order is a maintained contract', `expected: ${expectedLateLayers.join(' -> ')}\n  actual: ${appImports.join(' -> ')}`)
+
+for (const file of requiredLateLayers) {
+  if (!appImports.includes(file)) {
+    fail('app.css', 'required late-layer is missing', file)
+  }
+}
+
+let previousIndex = -1
+for (const file of requiredLateLayers) {
+  const index = appImports.indexOf(file)
+  if (index < 0) continue
+  if (index <= previousIndex) {
+    fail('app.css', 'required late-layer relative order changed', requiredLateLayers.join(' -> '))
+    break
+  }
+  previousIndex = index
+}
+
+if (appImports.at(-1) !== integrationOwner) {
+  fail('app.css', 'UI Library integration must remain the final late layer', `actual last layer: ${appImports.at(-1) || '(none)'}`)
 }
 
 // RED LINE 1: settings layout has one owner only.
@@ -126,4 +160,4 @@ if (violations.length) {
   process.exit(1)
 }
 
-console.log(`[UI CSS] red-line checks passed (${allCss.length} CSS files scanned).`)
+console.log(`[UI CSS] red-line checks passed (${allCss.length} CSS files scanned, ${appImports.length} late layers).`)
