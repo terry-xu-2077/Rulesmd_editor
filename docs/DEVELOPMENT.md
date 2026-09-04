@@ -38,7 +38,7 @@
 2. `打开` 保持用户文件的注释、顺序、未知标签、重复 Key 等数据，不进行破坏性格式整理。
 3. 控件类型由旧版 Web 的 `OptionsDesc.ini` 规则驱动，不由前端猜测。
 4. 修改后的值实时写入 Python 无损文档模型。
-5. 只有当前值与打开/保存时原值不同时，UI Library 控件才显示“还原”。
+5. 只有当前值与打开/保存时原值不同时，UI Library 控件才显示还原图标。
 6. 保存后当前值成为新的原值，修改状态清空。
 7. 保存文件重新打开后，值、对象分类、下拉/多选/开关类型必须保持一致。
 8. 右侧帮助来自真实旧资源与 Ares 内置说明，不使用临时占位文案作为主要数据。
@@ -217,7 +217,11 @@ MultiSelect
 Owner=British,French,Americans
 ```
 
-必须显示为国家多选菜单，而不是普通文本框。
+必须显示为国家多选菜单，而不是普通文本框或 Section 引用单选。
+
+**控件优先级固定为：布尔 → MultipleMenu 多选 → Key_List 单选 → UnitMenu/引用选择 → 数值 → 文本。**
+
+这条优先级很重要：`Owner=YuriCountry` 这类单值内容虽然恰好能命中某个 Section，也不能让“引用识别”抢走 `Country_Type` 的多选语义。前端必须先服从后端 `widget`，只有没有明确菜单控件时才做引用型选择增强。
 
 ### 4. `[UnitMenu]` 动态对象选择
 
@@ -253,7 +257,7 @@ widget = slider
 Slider
 ```
 
-Speed / Sight / Strength / Cost 等使用更合理的专用范围；其他数值使用通用范围，后续再逐项补精确元数据。
+普通整数范围按旧 Web 的初始值×4，小数按初始值×6；有明确官方限制的参数由 schema 覆盖通用范围。拖动过程中范围不得随当前值再次膨胀。
 
 ### 6. 其他
 
@@ -286,9 +290,23 @@ Terry_React_UI_Library
 
 通用控件视觉、尺寸、动效和交互问题应优先修 UI Library，不在 Rulesmd Editor 内写近似组件或覆盖补丁。
 
-`BoolSwitch` 是固定短宽度开关，不继承 Text/Select 的宽控件尺寸。
+`BoolSwitch` 默认是紧凑开关，但允许业务通过公开宽度变量提供上下文总宽度；Track/Knob 几何仍属于 UI Library。参数表使用 180px，总设置页使用 78px。
 
-`PropertyRow` 不包含 Copy/onCopy 等业务操作。若以后某业务需要复制，应由业务层单独实现，不能污染通用组件 API。
+`PropertyRow` 不属于通用 UI 控件，不应重新加入 UI Library。复制等业务操作同样不能污染通用控件 API。
+
+## BoolSwitch：直接继承旧 Web 形态
+
+BoolSwitch 的视觉结构以旧 `RulesmdEditorWeb/css/widgets.css` 中 `.edit-wg-check` 为权威来源，不再“近似重画”。
+
+固定原则：
+
+- Track 使用旧 Web 四段式内凹槽：浅边 → 深槽 → 深槽 → 浅边。
+- OFF Knob 使用横向 `深 → 亮 → 深` 灰色浮雕渐变。
+- ON Knob 使用横向 `深青 → 高亮青 → 深青` 渐变。
+- Knob 宽度比例约为旧版 `90 / 220 ≈ 40.9%`，而不是简单 50%。
+- ON 状态移动到右侧并保留小边距。
+- 暗色与亮色必须保持**完全相同的几何、比例、渐变方向和立体结构**，只替换颜色值。
+- 主项目业务 CSS只能提供 `--tc-bool-width`，禁止再次覆盖 Knob 宽度、left/right 或运动距离。
 
 ## 修改与还原语义
 
@@ -303,7 +321,7 @@ current == rawValue
 
 current != rawValue
     -> 已修改
-    -> UI Library 控件显示还原按钮
+    -> UI Library 控件显示还原图标
 ```
 
 点击还原会通过正常 `onChange(rawValue)` 路径写回 Python 文档模型，不做只改 UI 的假还原。
@@ -352,7 +370,7 @@ Section ID
 
 ### Ares
 
-Ares 与 YR 使用同一个参数目录和帮助系统，不单独做“Ares 编辑器”。
+Ares 与 YR 在前端使用同一个参数目录和帮助体验，但数据层分离：YR 规则与 Ares `ares_schema.json` 独立维护。
 
 Ares 开关的含义只影响：
 
@@ -384,7 +402,7 @@ scripts/start-dev.ps1
 4. 若 rules 运行资源不存在，下载旧资料、生成帮助数据库和清洗后的完整默认模板。
 5. `package.json` 变化时自动更新前端依赖，包括 UI Library 固定提交版本。
 6. 同步旧 Web 图标资源。
-7. 由 `frontend/src-tauri/app-icon.png` 调用 Tauri 官方 `tauri icon` 生成平台图标。
+7. 仅在 `frontend/src-tauri/app-icon.png` 指纹变化或生成图标缺失时调用 Tauri 官方 `tauri icon`；普通启动禁止重复生成整套图标。
 8. 预取 Rust/Cargo 依赖。
 9. 启动 `tauri dev`。
 
@@ -492,13 +510,15 @@ CARGO_HTTP_MULTIPLEXING=false
 frontend/src-tauri/app-icon.png
 ```
 
-不要手工维护 Windows `icon.ico`。开发启动时由 Tauri 官方命令生成完整平台资源：
+不要手工维护 Windows `icon.ico`。启动器对源 PNG 计算 SHA256，并将指纹保存在被 Git 忽略的本地 stamp 中。
+
+只有源 PNG 指纹变化或生成产物缺失时才执行：
 
 ```text
 tauri icon src-tauri/app-icon.png --output src-tauri/icons
 ```
 
-这样可以避免：
+这样既避免每次启动重复生成所有平台图标，也避免：
 
 - `icons/icon.ico not found`
 - Windows Resource Compiler 的 `RC2176: old DIB`
