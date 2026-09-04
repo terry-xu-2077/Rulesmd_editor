@@ -52,6 +52,25 @@ def test_legacy_owner_is_a_country_multiselect():
     assert values["French"] == "法国"
 
 
+def test_snapshot_classifies_units_from_country_side_and_owner(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[VehicleTypes]\n1=CMIN\n2=HARV\n3=SMON\n"
+        "[Americans]\nSide=GDI\n[Soviets]\nSide=Nod\n[YuriCountry]\nSide=ThirdSide\n"
+        "[CMIN]\nOwner=Americans,British\n"
+        "[HARV]\nOwner=Russians,Arabs\n"
+        "[SMON]\nOwner=Americans,Russians\n",
+        encoding="utf-8",
+    )
+    workspace = RulesWorkspace()
+    snapshot = workspace.open_file(path)
+    vehicles = next(category for category in snapshot["categories"] if category["name"] == "载具")
+    sides = {item["section"]: item["side"] for item in vehicles["items"]}
+    assert sides["CMIN"] == "allied"
+    assert sides["HARV"] == "soviet"
+    assert sides["SMON"] == "neutral"
+
+
 def test_new_document_uses_clean_full_template_when_available(tmp_path, monkeypatch):
     template = tmp_path / "rulesmd.template.ini"
     template.write_text(
