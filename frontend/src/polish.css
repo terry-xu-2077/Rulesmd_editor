@@ -1,0 +1,73 @@
+/* Final workspace refinements. Keep business layout fixes here rather than patching shared controls. */
+.app{grid-template-rows:60px minmax(0,1fr)!important}
+.titlebar{display:grid!important;grid-template-columns:minmax(240px,1fr) auto minmax(240px,1fr)!important;align-items:center!important;gap:16px!important}
+.brand{justify-self:start;min-width:0!important}
+.toolbar{justify-self:center;flex:none!important}
+.titleViewSwitch{justify-self:end;display:flex;align-items:center;border:1px solid var(--line2);border-radius:14px;padding:2px;background:color-mix(in srgb,var(--panel) 88%,transparent)}
+.titleViewSwitch button{height:24px;min-width:46px;padding:0 10px;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px}
+.titleViewSwitch button.active{background:color-mix(in srgb,var(--accent) 26%,var(--panel));color:var(--text)}
+.titleViewSwitch button:disabled{opacity:.35;cursor:default}
+.titleMeta{display:none!important}
+
+.iconButton:focus:not(:focus-visible){outline:none!important;box-shadow:none!important}
+.iconButtonLabel{display:flex!important;align-items:center;gap:5px}
+.saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#70eeff;box-shadow:0 0 7px rgba(112,238,255,.72);flex:0 0 auto}
+
+/* All reference-like scalar fields use the same single-select editor and keep the jump action outside it. */
+.rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
+.rulesControlHost .tc-text,.rulesControlHost .tc-select,.rulesControlHost .tc-multi,.rulesControlHost .tc-slider{width:180px!important;min-width:180px!important;max-width:180px!important}
+.rulesControlHost .tc-control-wrap:has(.tc-text),.rulesControlHost .tc-control-wrap:has(.tc-select),.rulesControlHost .tc-control-wrap:has(.tc-multi),.rulesControlHost .tc-control-wrap:has(.tc-slider){width:180px;flex:0 0 180px}
+.rulesControlHost .tc-select-list{width:300px!important;max-width:min(360px,46vw)!important}
+.rulesControlHost .referenceOptionFallback{width:28px!important;height:24px!important;border-radius:4px}
+.rulesControlHost:has(.referenceJump) .tc-reset{right:-68px!important}
+.referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
+
+/* Quiet reset affordance: right side, icon only, border change on hover. */
+.rulesControlHost .tc-reset{z-index:3}
+.rulesControlHost .tc-reset:hover{background:transparent!important;box-shadow:none!important;filter:none!important}
+
+/* Inspector hierarchy. */
+.inspectorHeading{height:40px!important}
+.helpDescriptionCard{border-radius:10px!important;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line2))!important;background:linear-gradient(145deg,color-mix(in srgb,var(--panel2) 91%,var(--accent) 9%),var(--panel))!important;box-shadow:0 7px 18px rgba(0,0,0,.12)!important}
+.helpDescriptionCard h3{color:var(--text)!important}
+.helpDescriptionCard p{color:color-mix(in srgb,var(--text) 86%,var(--muted) 14%)!important}
+.helpMeta{border:0!important;background:transparent!important;box-shadow:none!important;opacity:.68}
+.helpMeta span,.helpMeta b{border:0!important;background:transparent!important}
+.inspectorScroll{scrollbar-width:none!important}
+.inspectorScroll::-webkit-scrollbar{display:none!important}
+
+/* Settings: shared BoolSwitch owns its geometry; this grid only positions it. */
+.settingRow>.tc-bool-wrap{justify-self:end!important;align-self:center!important;width:78px!important;min-width:78px!important;max-width:78px!important}
+.settingRow>.tc-control-wrap:not(.tc-bool-wrap){justify-self:end}
+
+.closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--tc-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions .tc-button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:var(--tc-text-muted)!important}
+
+/* Light mode: keep strong readable hierarchy instead of washed-out inherited dark text. */
+.app[data-mode="light"]{--bg:#e8f0f7;--panel:#f6f9fc;--panel2:#dce7f1;--line:rgba(53,82,110,.17);--line2:rgba(39,75,105,.32);--text:#172a3a;--muted:#586e82;--muted2:#708496;--control:#dbe4ec;--control2:#cdd9e4;background:#e8f0f7!important;color:var(--text)!important}
+.app[data-mode="light"] .titlebar,.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector,.app[data-mode="light"] .editor,.app[data-mode="light"] .editorControls,.app[data-mode="light"] .fieldsPane,.app[data-mode="light"] .parameterTableRow{color:var(--text)!important}
+.app[data-mode="light"] .titlebar{background:#f5f8fb!important}
+.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector{background:#edf3f8!important}
+.app[data-mode="light"] .editor{background:#eef4f8!important}
+.app[data-mode="light"] .editorControls{background:#e9f0f6!important}
+.app[data-mode="light"] .searchBox{background:#f8fafc!important;color:#496174!important;border-color:#b8c8d6!important}
+.app[data-mode="light"] .searchBox input,.app[data-mode="light"] .parameterKeyCell code,.app[data-mode="light"] .parameterLabelCell strong,.app[data-mode="light"] .unitText b,.app[data-mode="light"] .panelTitle,.app[data-mode="light"] .inspectorHeading,.app[data-mode="light"] .helpHeader strong{color:#172a3a!important}
+.app[data-mode="light"] .unitText small,.app[data-mode="light"] .treeGroupTitle,.app[data-mode="light"] .helpHeader small,.app[data-mode="light"] .helpMeta,.app[data-mode="light"] .docSource{color:#61788c!important}
+.app[data-mode="light"] .parameterTableHeader{background:#d7e3ed!important;color:#36536a!important}
+.app[data-mode="light"] .fieldGroupHeader{background:linear-gradient(180deg,#d3e0ea,#c5d5e1)!important;color:#29475d!important;border-bottom-color:#aebfcd!important}
+.app[data-mode="light"] .parameterTableRow{background:#eef4f8!important;border-bottom-color:#cad7e1!important}
+.app[data-mode="light"] .parameterTableRow:nth-child(even){background:#f4f8fb!important}
+.app[data-mode="light"] .parameterTableRow.focused{background:#e3f2f5!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.1)!important}
+.app[data-mode="light"] .segmented button{color:#36536a!important;border-color:#b9cbd8!important;background:#f5f8fb!important}
+.app[data-mode="light"] .segmented button.active{color:#0f635b!important;background:#d9f0eb!important;border-color:#58b7a7!important}
+.app[data-mode="light"] .helpDescriptionCard{background:linear-gradient(145deg,#f8fbfd,#e7f2f4)!important;border-color:#75b9c0!important;box-shadow:0 7px 18px rgba(34,76,101,.09)!important}
+.app[data-mode="light"] .helpDescriptionCard h3,.app[data-mode="light"] .helpDescriptionCard p{color:#20394b!important}
+.app[data-mode="light"] .tc-theme{color:#172a3a}
+.app[data-mode="light"] .tc-text input,.app[data-mode="light"] .tc-number,.app[data-mode="light"] .tc-select-button{color:#172a3a!important;background:#d6e0e8!important;border-color:#6d8ca3!important}
+.app[data-mode="light"] .tc-text input:focus,.app[data-mode="light"] .tc-number:focus{color:#172a3a!important;background:#eef5f8!important}
+.app[data-mode="light"] .tc-select-item{color:#172a3a!important;background:#eef4f8!important}
+.app[data-mode="light"] .tc-select-item:hover{color:#fff!important;background:#159f8b!important}
+.app[data-mode="light"] .tc-bool-wrap>.tc-bool{background:linear-gradient(180deg,#d8e2ea,#c4d1dc)!important;border-color:#6f8ea5!important}
+.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{color:#304b60!important;background:linear-gradient(180deg,#ffffff,#d9e3eb)!important}
+.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{color:#fff!important;background:linear-gradient(90deg,#117b6d,#27b9a3)!important}
+
+@media(max-width:980px){.titlebar{grid-template-columns:auto 1fr auto!important}.brand span{display:none}.iconButtonLabel{display:none!important}}
