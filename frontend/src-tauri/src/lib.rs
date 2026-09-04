@@ -1,6 +1,7 @@
 use serde_json::{json, Value};
 use std::env;
 use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
 use tauri::State;
@@ -110,6 +111,41 @@ fn pick_save_file(window: tauri::Window, default_name: Option<String>) -> Result
     Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
 
+#[tauri::command]
+fn pick_game_executable(window: tauri::Window) -> Result<Option<String>, String> {
+    let path = rfd::FileDialog::new()
+        .set_parent(&window)
+        .set_title("选择游戏启动程序")
+        .add_filter("Windows 程序", &["exe"])
+        .pick_file();
+    Ok(path.map(|value| value.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+fn launch_game(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("请先在设置中选择游戏启动程序。".to_string());
+    }
+
+    let executable = PathBuf::from(trimmed);
+    if !executable.is_file() {
+        return Err(format!("游戏启动程序不存在：{}", executable.display()));
+    }
+
+    let mut command = Command::new(&executable);
+    if let Some(parent) = executable.parent() {
+        command.current_dir(parent);
+    }
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|err| format!("启动游戏失败：{err}"))?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -118,7 +154,9 @@ pub fn run() {
             backend_status,
             backend_call,
             pick_rules_file,
-            pick_save_file
+            pick_save_file,
+            pick_game_executable,
+            launch_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rulesmd Editor");
