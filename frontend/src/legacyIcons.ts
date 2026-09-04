@@ -24,7 +24,8 @@ const ICON_POS: Record<string, [number, number]> = {
   YURI:[0,624],YURIPR:[60,624],ZEP:[120,624]
 }
 
-const COUNTRY_ORDER = ['Americans','Alliance','French','Germans','British','Africans','Arabs','Confederation','Russians','YuriCountry'] as const
+// Mirrors RulesmdEditorWeb/js/countryTile.js cell order exactly.
+const COUNTRY_ORDER = ['Confederation','French','Germans','British','Arabs','Alliance','Africans','Russians','Americans','YuriCountry'] as const
 
 export function legacyIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
