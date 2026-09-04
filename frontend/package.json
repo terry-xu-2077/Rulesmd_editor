@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "sync:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/sync-ui.ps1",
-    "dev": "npm run sync:ui && vite",
-    "build": "npm run sync:ui && tsc -b && vite build",
+    "check:ui-css": "node ./scripts/check-ui-css.mjs",
+    "dev": "npm run sync:ui && npm run check:ui-css && vite",
+    "build": "npm run sync:ui && npm run check:ui-css && tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
