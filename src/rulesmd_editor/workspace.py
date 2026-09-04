@@ -448,7 +448,14 @@ class RulesWorkspace:
                 continue
         return str((max(numeric_ids) + 1) if numeric_ids else 0)
 
-    def create_unit(self, *, template: str, section: str, comment: str, values: list[dict[str, str]] | None = None) -> dict:
+    def create_unit(
+        self,
+        *,
+        template: str,
+        section: str,
+        comment: str,
+        included_line_ids: list[int] | None = None,
+    ) -> dict:
         doc = self._doc()
         template_actual = doc._section_name(template)
         if template_actual is None:
@@ -469,27 +476,32 @@ class RulesWorkspace:
             raise ValueError("所选模板不是可注册的单位类型")
 
         registration_id = self._next_registration_id(root)
-        overrides: dict[str, str] = {}
-        for row in values or []:
-            key = str(row.get("key", "")).strip()
-            if key:
-                overrides[key.casefold()] = str(row.get("value", ""))
+        include_all = included_line_ids is None
+        included = {int(line_id) for line_id in (included_line_ids or [])}
+        template_lines = doc.section_lines(template_actual, keys_only=True)
 
-        template_items = doc.items(template_actual)
         doc.set(root, registration_id, new_section)
         doc.add_section(new_section)
 
         saw_name = False
-        for key, template_value in template_items:
+        saw_uiname = False
+        for line in template_lines:
+            key = line.key or ""
             folded = key.casefold()
-            value = overrides.get(folded, template_value)
             if folded == "uiname":
-                value = f"Name:{new_section}"
-            elif folded == "name":
-                value = display_comment
+                doc.set(new_section, key, f"Name:{new_section}")
+                saw_uiname = True
+                continue
+            if folded == "name":
+                doc.set(new_section, key, display_comment)
                 saw_name = True
-            doc.set(new_section, key, value)
+                continue
+            if not include_all and line.line_id not in included:
+                continue
+            doc.set(new_section, key, line.value or "")
 
+        if not saw_uiname:
+            doc.set(new_section, "UIName", f"Name:{new_section}")
         if not saw_name:
             doc.set(new_section, "Name", display_comment)
 
