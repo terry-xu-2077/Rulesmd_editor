@@ -2,6 +2,17 @@ export type ReferenceLabelKind = 'generic' | 'weapon' | 'audio' | 'warhead' | 'p
 
 const DIRECT_LABELS: Record<string, string> = {
   none: '无',
+  yes: '是',
+  no: '否',
+  true: '是',
+  false: '否',
+  soldier: '步兵',
+  infantry: '步兵',
+  vehicle: '载具',
+  aircraft: '飞机',
+  building: '建筑',
+  civilian: '平民',
+  gi: '美国大兵',
 
   // Common weapon Sections.
   defaultdeathweapon: '默认死亡武器',
