@@ -40,16 +40,7 @@ frontend/src/ui-library-integration.css
 
 是 Rulesmd Editor 与 UI Library 的**唯一共享控件接入层**。Rulesmd Editor 中确实需要 `.tc-*` 的业务槽位尺寸、层级或宿主集成规则，只能放在这里。
 
-以下业务 CSS **禁止出现 `.tc-*` 选择器**：
-
-```text
-styles.css
-polish.css
-theme-final.css
-qt-density.css
-workspace-polish.css
-workspace-final-fixes.css
-```
+除上述两个专用文件之外，`frontend/src/` 下其他业务 CSS **禁止出现 `.tc-*` 选择器**。检查器会自动扫描未来新增的 `.css` 文件，不依赖手工维护文件名单。
 
 如果规则是在调整组件内部实现，则连 `ui-library-integration.css` 也不允许处理，必须回 `Terry_React_UI_Library`。
 
@@ -151,19 +142,9 @@ transform:translateY(-1px);
 
 设置窗口只能由 `settings-panel.css` 负责。
 
-禁止在以下文件重新添加设置页规则：
+`styles.css`、`polish.css`、`theme-final.css`、`qt-density.css`、`workspace-polish.css`、`workspace-final-fixes.css`、`navigation-polish.css`、`editor-control-grid.css`、`parameter-picker.css` 等普通业务文件不得重新添加设置页规则，也不得直接接管 `.tc-*` 共享控件。
 
-```text
-styles.css
-polish.css
-theme-final.css
-ui-library-integration.css
-qt-density.css
-workspace-polish.css
-workspace-final-fixes.css
-```
-
-历史文件里若存在旧规则，应直接删除，而不是靠后加载文件反复覆盖。
+历史文件里若存在旧规则，应直接删除并迁移到正确所有者，而不是靠后加载文件反复覆盖。
 
 同一个控件也只能有一个尺寸所有者。例如 BoolSwitch 不允许同时出现：
 
@@ -248,13 +229,15 @@ npm run dev
 npm run build
 ```
 
-检查器当前强制阻止：
+检查器会自动枚举 `frontend/src/*.css`，当前强制阻止：
 
-- 除 `settings-panel.css` 外的历史/业务 CSS 重新接管设置窗口。
+- 除 `settings-panel.css` 外的 CSS 重新接管设置窗口。
 - 设置页重新出现危险的宽泛 descendant 标签 selector。
 - 设置页直接修改 UI Library 内部节点。
-- `styles.css`、`polish.css`、`theme-final.css`、`qt-density.css`、`workspace-polish.css`、`workspace-final-fixes.css` 出现任何 `.tc-*` 选择器。
-- `ui-library-integration.css` 越界修改 BoolSwitch Knob、Select current label 等组件实现细节。
+- 除 `settings-panel.css` 与 `ui-library-integration.css` 外的任何业务 CSS 出现 `.tc-*` 选择器。
+- `ui-library-integration.css` 越界修改 BoolSwitch Knob、Select current label 等已明确属于组件实现的节点。
+
+这意味着以后即使新增一个新的 `foo-polish.css`，只要它直接写 `.tc-*`，开发启动和正式 build 都会立即失败，而不是等到视觉问题出现后再人工排查。
 
 遇到：
 
