@@ -55,9 +55,8 @@
 }
 
 /* Shared Button occupies the business toolbar's third grid cell. The add-parameter
- * command is a frequent primary action, so it receives the same compact geometry as
- * top commands plus a restrained accent fill. The old Plus glyph is hidden and replaced
- * by a centered CSS list-plus role icon until main.tsx can use the public accent variant. */
+ * command is a frequent primary action, so it receives compact geometry and the public
+ * accent treatment. Its ListPlus glyph comes from React markup; no CSS-drawn icon. */
 .editorControls>.tc-button{
   grid-column:3;
   grid-row:1;
@@ -82,20 +81,7 @@
   filter:none;
   box-shadow:0 3px 10px color-mix(in srgb,var(--tc-accent) 30%,transparent),0 0 7px color-mix(in srgb,var(--tc-effect) 16%,transparent);
 }
-.editorControls>.tc-button>svg{display:none}
-.editorControls>.tc-button::before{
-  content:"";
-  width:16px;
-  height:16px;
-  flex:0 0 16px;
-  background:
-    linear-gradient(currentColor,currentColor) 0 3px/8px 1.5px no-repeat,
-    linear-gradient(currentColor,currentColor) 0 7.25px/8px 1.5px no-repeat,
-    linear-gradient(currentColor,currentColor) 0 11.5px/8px 1.5px no-repeat,
-    linear-gradient(currentColor,currentColor) 12px 5px/1.5px 9px no-repeat,
-    linear-gradient(currentColor,currentColor) 8.25px 8.75px/9px 1.5px no-repeat;
-  opacity:.94;
-}
+.editorControls>.tc-button>svg{flex:none}
 .editorControls>.tc-button.variant-accent{font-weight:650;letter-spacing:.1px}
 .parameterDetailFooter>.tc-button{
   height:32px!important;
