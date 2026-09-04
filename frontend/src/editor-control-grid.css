@@ -1,45 +1,13 @@
-/* Old Web kept the value column visually regular: common controls share one fixed editing slot. */
+/*
+ * Parameter editor business grid only.
+ * Shared-control sizing and popup integration live in ui-library-integration.css.
+ */
 .parameterValueCell .rulesControlHost{
-  --rules-editor-control-width:180px;
   display:flex!important;
   align-items:center!important;
   gap:7px!important;
 }
-.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap){
-  width:var(--rules-editor-control-width)!important;
-  min-width:var(--rules-editor-control-width)!important;
-  max-width:var(--rules-editor-control-width)!important;
-  flex:0 0 var(--rules-editor-control-width)!important;
-}
-.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-control,
-.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host,
-.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host>.tc-control{
-  width:100%!important;
-  min-width:0!important;
-  max-width:none!important;
-}
-.parameterValueCell .rulesControlHost .tc-text,
-.parameterValueCell .rulesControlHost .tc-select,
-.parameterValueCell .rulesControlHost .tc-multi,
-.parameterValueCell .rulesControlHost .tc-slider{
-  width:100%!important;
-  min-width:0!important;
-  max-width:none!important;
-}
-/* BoolSwitch keeps its own geometry but consumes the same business slot through the library CSS variable. */
-.parameterValueCell .rulesControlHost .tc-bool-wrap{
-  --tc-bool-width:var(--rules-editor-control-width);
-  margin-right:0!important;
-}
 .parameterValueCell .referenceJump{margin-left:0!important}
-.parameterTableRow:has(.tc-select.is-open){position:relative;z-index:30!important}
-
-/* Pickers may expand independently from the compact 180px closed control. */
-.parameterValueCell .tc-picker,
-.parameterValueCell .tc-visual-picker{
-  width:360px!important;
-  max-width:min(460px,60vw)!important;
-}
 .rulesCountryOptionIcon,.rulesUnitOptionIcon{
   display:block;
   flex:none;
