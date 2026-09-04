@@ -6,6 +6,7 @@ const root = process.cwd()
 const src = path.join(root, 'src')
 
 const read = file => fs.readFileSync(path.join(src, file), 'utf8')
+const cssCode = file => read(file).replace(/\/\*[\s\S]*?\*\//g, '')
 const violations = []
 
 function fail(file, rule, detail) {
@@ -30,7 +31,7 @@ const businessCss = [
 // RED LINE 1: settings layout has one owner only.
 // styles.css is included because the historical .settingRow span leak lived there.
 for (const file of [...businessCss, 'ui-library-integration.css']) {
-  const text = read(file)
+  const text = cssCode(file)
   containsAny(file, text, [
     '.settingsDialogBody',
     '.settingsSectionTitle',
@@ -40,7 +41,7 @@ for (const file of [...businessCss, 'ui-library-integration.css']) {
   ], 'settings styles must live only in settings-panel.css')
 }
 
-const settings = read('settings-panel.css')
+const settings = cssCode('settings-panel.css')
 
 // RED LINE 2: never use broad descendant tag selectors inside settings rows.
 // This exact class of selector caused the BoolSwitch / Select vertical drift incident.
@@ -71,7 +72,7 @@ containsAny('settings-panel.css', settings, [
 // RED LINE 4: business CSS never targets shared UI classes. All contextual .tc-* rules
 // belong in ui-library-integration.css; component internals belong in the UI Library repo.
 for (const file of businessCss) {
-  const text = read(file)
+  const text = cssCode(file)
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
     fail(file, 'shared UI selectors belong only in ui-library-integration.css', 'found .tc-* selector')
   }
@@ -79,7 +80,7 @@ for (const file of businessCss) {
 
 // RED LINE 5: the integration layer may target shared-control roots/context, but must not
 // style implementation details that have no business-slot responsibility.
-const integration = read('ui-library-integration.css')
+const integration = cssCode('ui-library-integration.css')
 containsAny('ui-library-integration.css', integration, [
   '.tc-legacy-switch',
   '.tc-legacy-switch-knob',
