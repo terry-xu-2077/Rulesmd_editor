@@ -5,8 +5,9 @@
 ## 顶部应用栏
 
 - 左侧品牌使用旧 `RulesmdEditorWeb/img/appIcon/资源 1@64x-8.png`，开发启动器同步为 `frontend/public/legacy/app-logo.png`。
-- 新建、打开、保存、启动游戏、设置使用“图标 + 名称”，整组在窗口顶部水平居中；不要再次靠左堆在品牌旁。
-- 右侧仅保留必要的保存状态，不在底部重复显示编码、CRLF、参数数量、Ares 等低价值状态。
+- 新建、打开、保存、启动游戏、设置使用“图标 + 名称”，整组在窗口顶部水平居中；按钮宽度必须按“图标 + 名称”内容自适应，禁止再次固定为仅图标宽度导致文字互相覆盖。
+- 右上角只保留 `表格 / 原文` 两态切换；保存状态不单独占一块区域。有未保存修改时，仅在“保存”文字后显示一个亮色小点。
+- 窗口不足以容纳完整文字按钮时才退回纯图标布局，且右侧视图切换仍保持独立对齐。
 
 ## 启动器图标生成
 
@@ -28,10 +29,12 @@
 
 ## 参数控件尺寸与多选
 
-- 旧 Web 的通用控件参考尺寸是 `220×26px`，但当前 Rulesmd Editor 为提高主表空间利用率，业务值列统一采用 **180px** 编辑槽。
-- `TextField / Select / MultiSelect / Slider` 在参数表中使用同一 180px 槽，引用跳转按钮位于槽外固定位置。
-- 表格内 `BoolSwitch` 也占满同一 180px 槽，但内部滑块约占一半宽度；设置窗口等普通场景继续使用 UI Library 的短开关形态。不得把设置页开关也拉成长条。
-- `Slider` 仍然占满 180px 槽，不做“半槽轨道”；thumb 使用轻微纵向渐变和低调的防滑点细节。
+- 旧 Web 的通用控件参考尺寸是 `220×26px`，当前 Rulesmd Editor 为提高主表空间利用率，业务值列统一采用 **180px** 编辑槽。
+- `TextField / Select / MultiSelect / Slider / BoolSwitch` 在参数表中占用同一 180px 槽；引用跳转按钮位于槽外固定位置。
+- 设置窗口等普通场景的 `BoolSwitch` 仍使用 UI Library 默认短尺寸；表格场景只通过 UI Library 暴露的 `--tc-bool-width` 覆盖总宽度，业务 CSS 不再自行计算 Track/Knob 的运动逻辑。
+- `BoolSwitch` 内部滑块约占总轨道一半，OFF / ON 的滑块高光渐变方向必须相反，以保留旧 Web 的浮雕/立体感。
+- `Slider` 仍然占满 180px 槽；thumb 使用轻微纵向渐变，并使用严格居中的 **2×3** 防滑点阵。
+- Select / 搜索 Select 的弹层必须覆盖后续表格行和跳转按钮；禁止出现下层跳转按钮穿透到菜单上方。候选项背景必须填满弹层宽度，不得按文字长度形成长短不一的条目。
 - 多选弹出菜单不受 180px 关闭态限制，可以扩展到更宽区域以展示候选项。
 - `MultiSelect` 的候选项支持可选图标。国家使用旧 Web `countryTile.png`（每格 60×40，两排五列），单位/建筑使用 `iconTile.jpg`；有图标时显示“图标 + 中文名”，无可用图标时自然退化为文字。
 - 多选关闭态只有在**实际发生文本截断**（`scrollWidth > clientWidth`）时才显示完整内容气泡。该气泡仅用于补全被截断的当前值，不得显示参数注释或帮助说明，也不得在内容完整可见时出现。
@@ -44,18 +47,15 @@
   1. `yr_applicability.py` 中根据 ModEnc / DeeZire 的 Yuri's Revenge `Applicable INI Flags` 与单参数 `Applicable to` 整理出的高置信对象类型；
   2. 旧 `HelpInfor.ini` 中出现“仅用于 / 只能用于 / 只能用在 / 适用于”等明确限制语句时进行保守推断；
   3. 没有明确元数据时，只参考当前打开 rulesmd 中**同一精确对象类型**真实出现过的 Key，禁止再把全部 TechnoType 混在一起作为兜底。
-- `HelpInfor.ini` 的值级说明（例如某个 `Locomotor` 值用于步兵、某个 `PipScale` 值只用于矿车）不得错误提升为整个 Key 的对象限制；只有 Key 级明确限制才用于过滤。
+- `HelpInfor.ini` 的值级说明不得错误提升为整个 Key 的对象限制；只有 Key 级明确限制才用于过滤。
 - Ares 继续使用独立 `ares_schema.json` 的 `applies_to` 与官方文档元数据，不与 YR 过滤数据混存。
 
 ## 对象树阵营分类
 
 - 左侧对象树按阵营组织，不再按国家拆分。
-- 阵营判定禁止依赖 Section ID 前缀猜测作为主逻辑。旧 Web 的国家选择本身以真实 Rules 国家值为依据，因此当前编辑器采用同一数据语义：
-  1. 从国家 Section 的 `Side=` 建立国家→阵营映射（`GDI`=盟军，`Nod`=苏军，`ThirdSide`=尤里）；
-  2. 对单位/建筑等读取其 `Owner=`；缺失时再参考 `RequiredHouses=`；
-  3. 所有国家属于同一阵营时归入该阵营；跨阵营或无法判断时才进入“其他/中立”。
+- 阵营判定禁止依赖 Section ID 前缀猜测作为主逻辑：先从国家 Section 的 `Side=` 建立国家→阵营映射，再用单位/建筑的 `Owner=`，缺失时参考 `RequiredHouses=`。
+- 所有国家属于同一阵营时归入该阵营；跨阵营或无法判断时才进入“其他/中立”。
 - 原版十国映射仅作为缺少国家 `Side=` 时的兼容回退；模组自定义国家应优先服从自身 `Side=`。
-- 前端旧 ID 前缀规则只允许作为兼容旧后端数据的最终 fallback，不能覆盖后端给出的阵营结果。
 
 ## 表格 / 原文
 
@@ -93,13 +93,13 @@
 
 外观设置必须作用于整个 `.app`，不能只改变 UI Library 弹窗。
 
-主题继续只暴露五个公共通道：`Base / Accent / Effect / Text / Text Bright`，但派生色不能简单做成“同一种蓝色不断加深/变浅”。派生角色应明确分工：
+主题继续只暴露五个公共通道：`Base / Accent / Effect / Text / Text Bright`，派生色角色必须明确：
 
-- `Base` 与中性钢蓝共同形成 page / surface / panel / control-fill 的层级；
+- `Base` 与中性钢蓝形成 page / surface / panel / control-fill 层级；
 - `Accent` 主要用于选中、开关、菜单打开等交互状态；
 - `Effect` 主要用于焦点、边缘强调和有限光效；
-- 正文使用 `Text`；暗色模式下编辑框、下拉菜单和数值控件的主要内容统一使用白色 `Text`，避免输入框文字另用青绿色造成视觉割裂；
-- `Text Bright` 保留给真正需要强调的值或状态，不应成为所有输入文本的默认色。
+- 正文使用 `Text`；暗色模式下编辑框、下拉菜单和数值控件的主要内容统一使用白色 `Text`；
+- `Text Bright` 只保留给真正需要强调的值或状态。
 
 亮色模式采用蓝灰层级：页面背景最浅，面板/表格行/控件逐层加深；Accent/Effect 只用于选中、焦点和少量强调，禁止大面积高饱和青色。
 
@@ -107,6 +107,6 @@
 
 ## BoolSwitch
 
-BoolSwitch 是 UI Library 通用组件，默认短形态由 `bool-switch.css` 自己管理内部几何；同时 UI Library 提供显式的 fluid 形态供编辑器槽使用。
+BoolSwitch 是 UI Library 通用组件。默认短形态、可变总宽度、Track/Knob 比例、两态移动与对向浮雕渐变都由 `bool-switch.css` 统一管理。
 
-Rulesmd Editor 只负责选择哪一种形态：设置页使用默认短开关，参数表使用填满 180px 槽的形态。默认形态和 fluid 形态的 Track/Knob 比例、移动距离都属于 UI Library 组件能力，不应在其他业务页面重复实现一套新的开关组件。
+Rulesmd Editor 只负责在参数表提供 `--tc-bool-width:180px`，设置页保持 UI Library 默认的 78px。禁止再次在业务层复制一套 BoolSwitch 组件或重新实现其内部状态几何。
