@@ -30,12 +30,33 @@ class ControlSpec:
     dynamic: str | None = None
 
 
+# HelpInfor.ini is more authoritative than the old web DSL for a handful of keys whose
+# names contain misleading words such as "Weapon". Keep these semantic overrides ahead
+# of generated legacy control metadata so they can never turn into Section-reference menus.
+CURATED_CONTROLS: dict[str, ControlSpec] = {
+    "opentransportweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
+    "deployfireweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
+    "aibaseplanningside": ControlSpec("select", (("0", "盟军"), ("1", "苏军"))),
+    "landtargeting": ControlSpec("select", (
+        ("0", "可以攻击陆地单位"),
+        ("1", "不能攻击陆地单位"),
+        ("2", "使用副武器攻击陆地单位"),
+    )),
+    "specialthreatvalue": ControlSpec("select", (("0", "普通"), ("1", "特殊/英雄单位"))),
+    "deployfacing": ControlSpec("select", (
+        ("0", "北"), ("1", "东北"), ("2", "东"), ("3", "东南"),
+        ("4", "南"), ("5", "西南"), ("6", "西"), ("7", "西北"),
+    )),
+}
+
+
 class ControlSchema:
     """Runtime interpretation of the old RulesmdEditorWeb control DSL.
 
     The generated JSON comes from desc/OptionsDesc.ini and preserves the old web
     editor's key-driven control behavior. Value-shape fallbacks are intentionally
-    last so explicit legacy metadata always wins.
+    last so explicit legacy metadata always wins, except for curated HelpInfor-backed
+    semantic corrections above.
     """
 
     def __init__(self, path: Path | None = None):
@@ -55,6 +76,10 @@ class ControlSchema:
         return None
 
     def explicit(self, key: str) -> ControlSpec | None:
+        curated = CURATED_CONTROLS.get(key.casefold())
+        if curated is not None:
+            return curated
+
         found = self._find(key)
         if not found:
             return None
