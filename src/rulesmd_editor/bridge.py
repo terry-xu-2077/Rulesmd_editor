@@ -5,6 +5,7 @@ import sys
 from typing import Any, TextIO
 
 from .workspace import RulesWorkspace
+from .yr_applicability import infer_yr_applies_to
 
 
 class Bridge:
@@ -55,6 +56,60 @@ class Bridge:
 
     def rpc_option_catalog(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
         return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
+
+    def rpc_option_catalog_all(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
+        """Return every insertable catalog row plus a conservative compatibility flag.
+
+        The normal workspace catalog remains filtered for existing callers/tests. The
+        desktop parameter browser uses this richer endpoint so advanced users can turn
+        filtering off without changing parser/save behavior.
+        """
+        target_type = applies_to
+        if section:
+            target_type = self.workspace._section_types.get(section.casefold()) or applies_to
+        family = self.workspace._family_type(target_type)
+        existing = {
+            key.casefold()
+            for _, key, _ in self.workspace._doc().items_with_ids(section)
+        } if section else set()
+        observed_exact = self.workspace._observed_keys.get(target_type or "", set())
+
+        result: list[dict] = []
+        for meta in self.workspace.schema.available_options(query=query):
+            if not self.workspace.settings.ares_enabled and meta.source.casefold() == "ares":
+                continue
+            if meta.name.casefold() in existing:
+                continue
+
+            declared = tuple(meta.applies_to)
+            if not declared and meta.source.casefold() == "yr":
+                declared = infer_yr_applies_to(meta.name, meta.help_text)
+
+            compatible = False
+            if target_type and declared:
+                compatible = target_type in declared or (family == "TechnoType" and "TechnoType" in declared)
+            elif target_type:
+                # Unknown metadata is only admitted when this exact object class uses
+                # the key somewhere in the opened rules file. Do not aggregate all
+                # TechnoTypes here; that was the source of many false positives.
+                compatible = meta.name.casefold() in observed_exact
+            elif declared:
+                compatible = True
+
+            result.append({
+                "key": meta.name,
+                "label": meta.description or meta.name,
+                "description": meta.help_text,
+                "category": meta.category,
+                "source": meta.source,
+                "value_type": meta.value_type,
+                "applies_to": list(declared),
+                "default": meta.default,
+                "values": [{"value": value, "label": label} for value, label in meta.values],
+                "docs": meta.docs,
+                "compatible": compatible,
+            })
+        return result
 
     def rpc_set_value(self, line_id: int, value: str) -> dict:
         return self.workspace.set_value(line_id, value)
