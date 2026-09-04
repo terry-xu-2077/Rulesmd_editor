@@ -34,9 +34,9 @@
 - `TextField / Select / MultiSelect / Slider / BoolSwitch` 在参数表中占用同一 180px 槽；引用跳转按钮位于槽外固定位置。
 - 设置窗口等普通场景的 `BoolSwitch` 仍使用 UI Library 默认短尺寸；表格场景只通过 UI Library 暴露的 `--tc-bool-width` 覆盖总宽度，业务 CSS 不再自行计算 Track/Knob 的运动逻辑。
 - `BoolSwitch` 的 Track/Knob 几何在暗色和亮色下必须完全一致；主题只能改变颜色，不能改变比例、位置、行程或 relief 方向。
-- `BoolSwitch` Knob 以 Track 的真实垂直中心线定位，禁止使用 `top:0` 造成肉眼可见的上偏。
-- `BoolSwitch` ON 端位必须移动到轨道右端，不再保留旧 Web 的额外 4px 末端空隙。
-- `BoolSwitch` 的 Track 内部必须保留一条独立的内凹滑槽，滑块在滑槽上移动；不能只剩平坦背景。
+- `BoolSwitch` Knob 以控件自身布局居中，禁止再通过业务层 `top/left/transform` 计算位置。
+- `BoolSwitch` ON 端位必须完整落在轨道右半区，OFF 完整落在左半区，不得越界或保留额外末端空隙。
+- `BoolSwitch` 的 Track 内部必须保留旧 Web 风格的内凹滑槽，滑块使用 OFF 灰色浮雕渐变与 ON Accent 浮雕渐变。
 - `Slider` 仍然占满 180px 槽；thumb 使用轻微纵向渐变，并使用严格居中的 **2×3** 防滑点阵。
 - Select / 搜索 Select 的关闭态文字必须在控件高度内严格垂直居中；弹层必须覆盖后续表格行和跳转按钮。候选项背景必须填满弹层宽度，不得按文字长度形成长短不一的条目。
 - 多选弹出菜单不受 180px 关闭态限制，可以扩展到更宽区域以展示候选项。
@@ -117,6 +117,19 @@
 
 ## BoolSwitch
 
-BoolSwitch 是 UI Library 通用组件。默认短形态、可变总宽度、Track/Knob 比例、两态移动、内凹滑槽与对向浮雕渐变都由 `bool-switch.css` 统一管理。
+BoolSwitch 是 UI Library 通用组件，但已经从通用 `.tc-control / .tc-bool` 体系中完全拆离。
 
-Rulesmd Editor 只负责在参数表提供 `--tc-bool-width:180px`，设置页保持 UI Library 默认的 78px。设置页的 260px 右侧布局列只负责摆放位置，不允许拉伸 BoolSwitch 本体。禁止再次在业务层复制一套 BoolSwitch 组件或重新实现其内部状态几何。
+当前唯一结构是：
+
+```text
+.tc-bool-wrap
+└─ .tc-legacy-switch       # 独立两列 Grid 轨道
+   └─ .tc-legacy-switch-knob
+```
+
+- `.tc-legacy-switch` 使用 `grid-template-columns: 1fr 1fr`，OFF 滑块占左格，ON 滑块占右格。
+- Knob 不再使用 absolute / left / transform 计算位置，因此不允许再出现“ON 越出轨道”“表格和设置页上下偏移不同”等几何问题。
+- 组件不再复用 `.tc-control`、`.tc-bool`、`.tc-bool-knob`，旧主题中的遗留 BoolSwitch CSS 不再参与新组件。
+- 暗色和亮色共享完全相同的 Grid、尺寸和 relief 方向，只替换材质颜色。
+- Rulesmd Editor 只允许通过 `--tc-bool-width` 指定总宽度：参数表 180px，设置页使用 UI Library 默认 78px。
+- 业务 CSS 禁止再控制开关内部 Track/Knob 的 width、left、right、top、transform 或 grid-column。
