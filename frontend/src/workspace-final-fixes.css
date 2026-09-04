@@ -1,4 +1,4 @@
-/* Final application-level layout fixes. Shared control internals remain owned by Terry_React_UI_Library. */
+/* Final application-level layout fixes. Shared-control integration lives in ui-library-integration.css. */
 
 /* Top toolbar: icon+label buttons size to their content; the group remains centered without colliding with the right view switch. */
 .app .titlebar{position:relative!important;display:flex!important;align-items:center!important;gap:16px!important}
@@ -27,21 +27,8 @@
 .app .toolbar .divider{flex:0 0 1px!important}
 .app .titleViewSwitch{margin-left:auto!important;flex:0 0 auto!important;justify-self:auto!important}
 
-/* Select popup must sit above row actions and every row fills the menu width. */
-.app .parameterTableRow:has(.tc-select.is-open){position:relative!important;z-index:60!important}
-.app .parameterValueCell .tc-select-list{z-index:2400!important}
-.app .parameterValueCell .tc-select-list .tc-select-item{width:100%!important;min-width:100%!important;max-width:100%!important}
+/* Business row action stays below a Select popup; popup z-index itself is owned by the integration layer. */
 .app .referenceJump{z-index:1!important}
-
-/* Parameter-table BoolSwitch only supplies contextual total width. Track/knob geometry stays inside the shared UI library. */
-.app .parameterValueCell .rulesControlHost>.tc-bool-wrap{
-  --tc-bool-width:180px!important;
-  width:180px!important;
-  min-width:180px!important;
-  max-width:180px!important;
-  flex:0 0 180px!important;
-  margin-right:0!important;
-}
 
 @media(max-width:1040px){
   .app .toolbar{position:static!important;transform:none!important;margin-left:auto!important}
