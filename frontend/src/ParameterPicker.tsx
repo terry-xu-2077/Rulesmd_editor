@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Search, ShieldCheck, Sparkles } from 'lucide-react'
-import { Button, Dialog } from 'terry-react-ui-library'
+import { ChevronDown, ChevronRight, Search, Sparkles } from 'lucide-react'
+import { BoolSwitch, Button, Dialog } from 'terry-react-ui-library'
 import type { CatalogOption } from './backend'
 import './parameter-picker.css'
 
@@ -38,16 +38,19 @@ function valueTypeLabel(type: string) {
 
 export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: Props) {
   const [query, setQuery] = useState('')
+  const [filterEnabled, setFilterEnabled] = useState(true)
   const [expanded, setExpanded] = useState<Record<SourceName, boolean>>({ YR: true, Ares: true })
   const [activeSource, setActiveSource] = useState<SourceName | null>(null)
   const [activeCategory, setActiveCategory] = useState('')
   const [selectedKey, setSelectedKey] = useState('')
 
+  const available = useMemo(() => filterEnabled ? options.filter(option => option.compatible !== false) : options, [filterEnabled, options])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return options
-    return options.filter(option => `${option.label} ${option.key} ${option.description} ${option.category}`.toLowerCase().includes(q))
-  }, [options, query])
+    if (!q) return available
+    return available.filter(option => `${option.label} ${option.key} ${option.description} ${option.category}`.toLowerCase().includes(q))
+  }, [available, query])
 
   const tree = useMemo(() => {
     const result: Record<SourceName, Map<string, CatalogOption[]>> = { YR: new Map(), Ares: new Map() }
@@ -68,19 +71,24 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
   }, [activeSource, activeCategory, filtered, query, tree])
 
   const selected = useMemo(() => {
-    return options.find(option => option.key === selectedKey) ?? list[0] ?? null
-  }, [list, options, selectedKey])
+    return available.find(option => option.key === selectedKey) ?? list[0] ?? null
+  }, [available, list, selectedKey])
 
   useEffect(() => {
     if (!open) return
     setQuery('')
-    const firstSource: SourceName = options.some(option => sourceName(option) === 'YR') ? 'YR' : 'Ares'
-    const firstCategory = [...new Set(options.filter(option => sourceName(option) === firstSource).map(categoryName))][0] ?? ''
+    setFilterEnabled(true)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const firstSource: SourceName = available.some(option => sourceName(option) === 'YR') ? 'YR' : 'Ares'
+    const firstCategory = [...new Set(available.filter(option => sourceName(option) === firstSource).map(categoryName))][0] ?? ''
     setActiveSource(firstSource)
     setActiveCategory(firstCategory)
-    const first = options.find(option => sourceName(option) === firstSource && categoryName(option) === firstCategory) ?? options[0]
+    const first = available.find(option => sourceName(option) === firstSource && categoryName(option) === firstCategory) ?? available[0]
     setSelectedKey(first?.key ?? '')
-  }, [open, options])
+  }, [available, open])
 
   function chooseCategory(source: SourceName, category: string) {
     setQuery('')
@@ -91,12 +99,10 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
 
   return <Dialog open={open} title="添加参数" size="wide" onClose={onClose}>
     <div className="parameterExplorer">
-      <div className="parameterExplorerNotice">
-        <ShieldCheck size={18}/>
-        <div><strong>安全参数浏览器</strong><span>只列出已确认适用于 {objectLabel || '当前对象'} 的参数。先查看说明，再确认添加。</span></div>
+      <div className="parameterExplorerToolbar">
+        <label className="parameterExplorerSearch"><Search size={17}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索用途、中文名称或 Key"/></label>
+        <div className="parameterFilterToggle"><span>参数过滤</span><BoolSwitch value={filterEnabled ? 'yes' : 'no'} onChange={value => setFilterEnabled(value === 'yes')}/></div>
       </div>
-
-      <label className="parameterExplorerSearch"><Search size={17}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索用途、中文名称或 Key"/></label>
 
       <div className="parameterExplorerGrid">
         <aside className="parameterTree" aria-label="参数分类">
@@ -123,7 +129,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
               <code>{option.key}</code>
               <p>{option.description || '暂无简要说明'}</p>
             </button>)}
-            {list.length === 0 && <div className="parameterEmpty">没有符合当前过滤条件的安全参数。</div>}
+            {list.length === 0 && <div className="parameterEmpty">没有符合当前条件的参数。</div>}
           </div>
         </section>
 
@@ -139,7 +145,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
                 <div><dt>分类</dt><dd>{categoryName(selected)}</dd></div>
                 <div><dt>值类型</dt><dd>{valueTypeLabel(selected.value_type)}</dd></div>
                 <div><dt>默认值</dt><dd>{selected.default || '—'}</dd></div>
-                <div><dt>适用对象</dt><dd>{selected.applies_to.length ? selected.applies_to.join('、') : '当前对象已通过安全匹配'}</dd></div>
+                <div><dt>适用对象</dt><dd>{selected.applies_to.length ? selected.applies_to.join('、') : '—'}</dd></div>
               </dl>
 
               {selected.values.length > 0 && <section className="parameterDetailSection"><h3>可选值</h3><div className="parameterChoiceList">{selected.values.map(item => <span key={item.value}><b>{item.label || item.value}</b><code>{item.value}</code></span>)}</div></section>}
