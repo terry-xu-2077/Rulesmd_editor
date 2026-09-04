@@ -611,12 +611,12 @@ function App() {
       <div className="settingsDialogBody settingsGrid">
         <div className="settingsSectionTitle">编辑器</div>
         <div className="settingRow settingPathRow"><div><strong>游戏路径</strong><span>用于“启动游戏”。旧版 Config.ini 的 gamePath。</span></div><TextField value={localSettings.gamePath} onChange={value => updateLocalSetting('gamePath', value)} placeholder="Yuri's Revenge.exe"/></div>
-        <div className="settingRow"><div><strong>紧凑表格视图</strong><span>参考旧版 tableMode，优先显示更多参数。</span></div><BoolSwitch width={180} value={localSettings.tableMode ? 'yes' : 'no'} onChange={value => updateLocalSetting('tableMode', value === 'yes')}/></div>
-        <div className="settingRow"><div><strong>自动保存 Rules</strong><span>已有保存路径时，修改参数后自动写入文件。</span></div><BoolSwitch width={180} value={localSettings.autoSaveRules ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveRules', value === 'yes')}/></div>
-        <div className="settingRow"><div><strong>自动保存描述</strong><span>保留旧版 autoSaveDesc 配置，为描述编辑功能预留。</span></div><BoolSwitch width={180} value={localSettings.autoSaveDesc ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveDesc', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>紧凑表格视图</strong><span>参考旧版 tableMode，优先显示更多参数。</span></div><BoolSwitch value={localSettings.tableMode ? 'yes' : 'no'} onChange={value => updateLocalSetting('tableMode', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>自动保存 Rules</strong><span>已有保存路径时，修改参数后自动写入文件。</span></div><BoolSwitch value={localSettings.autoSaveRules ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveRules', value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>自动保存描述</strong><span>保留旧版 autoSaveDesc 配置，为描述编辑功能预留。</span></div><BoolSwitch value={localSettings.autoSaveDesc ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveDesc', value === 'yes')}/></div>
         <div className="settingRow"><div><strong>外观</strong><span>替代旧版 useTheme 布尔设置。</span></div><Select value={localSettings.appearance} options={[{value:'dark',label:'深色'},{value:'light',label:'浅色'},{value:'system',label:'跟随系统'}]} onChange={value => updateLocalSetting('appearance', value as LocalEditorSettings['appearance'])}/></div>
         <div className="settingsSectionTitle">规则兼容</div>
-        <div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch width={180} value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div>
+        <div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div>
       </div>
     </Dialog>
 
