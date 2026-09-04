@@ -67,6 +67,7 @@ export type CatalogOption = {
   default: string
   values: OptionValue[]
   docs: string
+  compatible?: boolean
 }
 
 async function call<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -161,6 +162,6 @@ export const workspaceApi = {
     await flushPendingValues()
     return call<string>('raw_text')
   },
-  optionCatalog: (query = '', section?: string, appliesTo?: string) => call<CatalogOption[]>('option_catalog', { query, section, applies_to: appliesTo }),
+  optionCatalog: (query = '', section?: string, appliesTo?: string) => call<CatalogOption[]>('option_catalog_all', { query, section, applies_to: appliesTo }),
   setSettings: (aresEnabled: boolean) => call<{ ares_enabled: boolean }>('set_settings', { ares_enabled: aresEnabled }),
 }
