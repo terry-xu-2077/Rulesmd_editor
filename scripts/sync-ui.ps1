@@ -4,6 +4,9 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
 $Modules = Join-Path $Frontend 'node_modules'
 $UiPackage = Join-Path $Modules 'terry-react-ui-library'
+$UiEntry = Join-Path $UiPackage 'dist\index.js'
+$UiTypes = Join-Path $UiPackage 'dist\index.d.ts'
+$UiStyles = Join-Path $UiPackage 'dist\style.css'
 $UiStamp = Join-Path $Modules '.rulesmd-ui-main.sha'
 $ViteCache = Join-Path $Modules '.vite'
 
@@ -27,6 +30,10 @@ function Test-LocalPort([string]$HostName, [int]$Port) {
     } finally {
         $client.Close()
     }
+}
+
+function Test-UiPackage {
+    return (Test-Path $UiPackage) -and (Test-Path $UiEntry) -and (Test-Path $UiTypes) -and (Test-Path $UiStyles)
 }
 
 function Get-UiRemoteHead([bool]$UseProxy) {
@@ -87,18 +94,22 @@ if (-not $RemoteHead -and $ProxyAvailable) {
 }
 
 if (-not $RemoteHead) {
-    if (Test-Path $UiPackage) {
-        Write-Host '[WARN] UI library remote head could not be checked; using the currently installed copy.' -ForegroundColor Yellow
+    if (Test-UiPackage) {
+        Write-Host '[WARN] UI library remote head could not be checked; using the currently installed dist package.' -ForegroundColor Yellow
         exit 0
     }
-    Write-Host '[ERROR] UI library is not installed and its main branch could not be reached.' -ForegroundColor Red
+    Write-Host '[ERROR] UI library dist package is unavailable and its main branch could not be reached.' -ForegroundColor Red
     exit 1
 }
 
 $InstalledHead = if (Test-Path $UiStamp) { (Get-Content $UiStamp -Raw).Trim() } else { '' }
-if ((Test-Path $UiPackage) -and ($InstalledHead -eq $RemoteHead)) {
-    Write-Host "UI library is synchronized: $($RemoteHead.Substring(0, 12))" -ForegroundColor DarkGray
+if ((Test-UiPackage) -and ($InstalledHead -eq $RemoteHead)) {
+    Write-Host "UI library is synchronized: $($RemoteHead.Substring(0, 12)) (dist verified)" -ForegroundColor DarkGray
     exit 0
+}
+
+if ((Test-Path $UiPackage) -and -not (Test-UiPackage)) {
+    Write-Host '[WARN] UI library package exists but standard dist artifacts are incomplete; reinstalling.' -ForegroundColor Yellow
 }
 
 Write-Host "Synchronizing UI library main -> $($RemoteHead.Substring(0, 12)) ($Route)" -ForegroundColor Cyan
@@ -114,6 +125,11 @@ if (-not $Installed) {
     exit 1
 }
 
+if (-not (Test-UiPackage)) {
+    Write-Host '[ERROR] UI library install completed but dist/index.js, dist/index.d.ts or dist/style.css is missing.' -ForegroundColor Red
+    exit 1
+}
+
 New-Item -ItemType Directory -Path $Modules -Force | Out-Null
 Set-Content -Path $UiStamp -Value $RemoteHead -NoNewline
 
@@ -122,4 +138,4 @@ if (Test-Path $ViteCache) {
     Write-Host 'Vite optimized dependency cache invalidated after UI library update.' -ForegroundColor DarkGray
 }
 
-Write-Host "UI library synchronized successfully: $($RemoteHead.Substring(0, 12))" -ForegroundColor Green
+Write-Host "UI library synchronized successfully: $($RemoteHead.Substring(0, 12)) (dist verified)" -ForegroundColor Green
