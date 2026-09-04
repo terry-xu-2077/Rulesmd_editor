@@ -71,12 +71,20 @@
   line-height:1.5!important;
 }
 
-/* Shared controls own their internal geometry. Settings only places the outer host. */
+/* Shared controls own their internals. Settings only places/sizes their outer host. */
 .settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap{
   justify-self:end!important;
   align-self:center!important;
   margin:0!important;
   min-width:0;
+}
+
+/* Settings uses the library's compact BoolSwitch host; Track/Knob remain untouched. */
+.settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap.tc-bool-wrap{
+  width:78px!important;
+  min-width:78px!important;
+  max-width:78px!important;
+  flex-basis:78px!important;
 }
 
 .settingsDialogBody.settingsGrid .settingPathRow>.tc-control-wrap,
