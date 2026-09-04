@@ -5,6 +5,8 @@ $Frontend = Join-Path $Root 'frontend'
 $FrontendPackage = Join-Path $Frontend 'package.json'
 $FrontendModules = Join-Path $Frontend 'node_modules'
 $FrontendStamp = Join-Path $FrontendModules '.rulesmd-package.sha256'
+$ViteCache = Join-Path $FrontendModules '.vite'
+$ViteStamp = Join-Path $FrontendModules '.rulesmd-vite-package.sha256'
 $IconStamp = Join-Path $FrontendModules '.rulesmd-icon-source.sha256'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
@@ -73,8 +75,6 @@ function Refresh-RustPath {
 function Install-RustToolchain {
     Write-Step 'Rust/Cargo not found - installing Rust automatically'
 
-    # rustup-init inspects argv[0] / its executable filename on Windows to decide whether
-    # it is the installer or one of rustup's proxy tools. Keep the canonical filename.
     $RustupInstallerDir = Join-Path $env:TEMP 'rulesmd-rustup'
     $RustupInstaller = Join-Path $RustupInstallerDir 'rustup-init.exe'
     New-Item -ItemType Directory -Path $RustupInstallerDir -Force | Out-Null
@@ -224,10 +224,6 @@ if (Get-Command py -ErrorAction SilentlyContinue) { $PythonBootstrap = 'py' }
 elseif (Get-Command python -ErrorAction SilentlyContinue) { $PythonBootstrap = 'python' }
 else { Fail 'Python 3.10+ was not found. Install Python and run this launcher again.' }
 
-# A Python venv is not portable between Windows installations because pyvenv.cfg and
-# the launcher inside Scripts keep references to the interpreter that created it.
-# If somebody copies the whole project folder to another machine, validate the venv by
-# actually starting its Python rather than merely checking whether python.exe exists.
 if ((Test-Path $Venv) -and (-not (Test-VenvPython))) {
     Write-Step 'Existing Python virtual environment is stale - rebuilding it for this computer'
     Remove-Item $Venv -Recurse -Force -ErrorAction Stop
@@ -247,8 +243,6 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
-# Build the local runtime rule database only when it is missing. The generated bundle
-# contains the cleaned full rulesmd.pre template plus HelpInfor/NamesDesc-derived data.
 if ((-not (Test-Path $RuleTemplate)) -or (-not (Test-Path $RuleSchema)) -or (-not (Test-Path $LegacyHelp)) -or (-not (Test-Path $LegacyNames))) {
     if (-not (Build-RuleResources)) { Fail 'Rules metadata/default-template generation failed.' }
 } else {
@@ -264,6 +258,22 @@ if ((-not (Test-Path $FrontendModules)) -or ($FrontendHash -ne $InstalledHash)) 
     Set-Content -Path $FrontendStamp -Value $FrontendHash -NoNewline
 } else {
     Write-Host 'Frontend dependencies are up to date.' -ForegroundColor DarkGray
+}
+
+# Vite can keep optimized dependency CSS from a previous Git/tarball dependency even
+# after node_modules itself has been refreshed. Keep a separate dependency fingerprint
+# for Vite and invalidate only its cache when package.json changes. This avoids deleting
+# node_modules or the Python/Cargo environments while preventing mixed new-JS/old-CSS runs.
+$ViteInstalledHash = if (Test-Path $ViteStamp) { (Get-Content $ViteStamp -Raw).Trim() } else { '' }
+if ($FrontendHash -ne $ViteInstalledHash) {
+    if (Test-Path $ViteCache) {
+        Write-Step 'Invalidating Vite optimized dependency cache'
+        Remove-Item $ViteCache -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    New-Item -ItemType Directory -Path $FrontendModules -Force | Out-Null
+    Set-Content -Path $ViteStamp -Value $FrontendHash -NoNewline
+} else {
+    Write-Host 'Vite dependency cache matches current frontend dependencies.' -ForegroundColor DarkGray
 }
 
 New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
