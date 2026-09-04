@@ -6,6 +6,7 @@ from pathlib import Path
 from .ares_schema import AresSchemaCatalog
 from .category_rules import categorize_yr_option
 from .schema import OptionMeta, SchemaCatalog
+from .translations_zh import apply_yr_translations
 
 
 RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
@@ -24,6 +25,10 @@ class RuntimeSchemaCatalog(SchemaCatalog):
     def __init__(self) -> None:
         super().__init__(LEGACY_ROOT if LEGACY_ROOT.exists() else None)
         self._load_generated_yr()
+        # Presentation-only correction layer.  This runs after legacy/generated data is
+        # loaded so existing local generated files immediately receive translation fixes
+        # without rewriting rulesmd.ini or forcing a metadata rebuild.
+        apply_yr_translations(self.options, self.name_desc)
         self.ares = AresSchemaCatalog()
 
     def _load_generated_yr(self) -> None:
