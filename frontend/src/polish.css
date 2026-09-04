@@ -13,7 +13,7 @@
 .iconButtonLabel{display:flex!important;align-items:center;gap:5px}
 .saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#70eeff;box-shadow:0 0 7px rgba(112,238,255,.72);flex:0 0 auto}
 
-/* All reference-like scalar fields use the same single-select editor and keep the jump action outside it. */
+/* All scalar editors share the 180px value slot. */
 .rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
 .rulesControlHost .tc-text,.rulesControlHost .tc-select,.rulesControlHost .tc-multi,.rulesControlHost .tc-slider{width:180px!important;min-width:180px!important;max-width:180px!important}
 .rulesControlHost .tc-control-wrap:has(.tc-text),.rulesControlHost .tc-control-wrap:has(.tc-select),.rulesControlHost .tc-control-wrap:has(.tc-multi),.rulesControlHost .tc-control-wrap:has(.tc-slider){width:180px;flex:0 0 180px}
@@ -21,6 +21,40 @@
 .rulesControlHost .referenceOptionFallback{width:28px!important;height:24px!important;border-radius:4px}
 .rulesControlHost:has(.referenceJump) .tc-reset{right:-68px!important}
 .referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
+
+/* In the parameter table BoolSwitch fills the same slot; the switch thumb stays around half width. */
+.parameterValueCell .rulesControlHost>.tc-bool-wrap{
+  width:180px!important;
+  min-width:180px!important;
+  max-width:180px!important;
+  flex:0 0 180px!important;
+  margin-right:0!important;
+}
+.parameterValueCell .rulesControlHost>.tc-bool-wrap>.tc-bool{
+  width:180px!important;
+  min-width:180px!important;
+  max-width:180px!important;
+  flex:0 0 180px!important;
+}
+.parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool-knob{width:86px!important}
+.parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool.is-on .tc-bool-knob{transform:translateX(88px)!important}
+
+/* Stronger table hierarchy: section headers are distinctly deeper than data rows. */
+.parameterTableGroup>.fieldGroupHeader,
+.fieldGroupHeader{
+  background:linear-gradient(180deg,#0a1522 0%,#07111c 58%,#050d16 100%)!important;
+  border-top:1px solid rgba(103,150,196,.12)!important;
+  border-bottom:1px solid rgba(80,130,180,.28)!important;
+  color:#b7c8d9!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.018),0 2px 5px rgba(0,0,0,.22)!important;
+}
+.parameterTableRow.focused{
+  background:linear-gradient(90deg,rgba(34,111,177,.29),rgba(29,88,140,.16) 58%,rgba(18,190,162,.07))!important;
+  box-shadow:inset 4px 0 0 #46c9ee,0 4px 13px rgba(0,0,0,.2)!important;
+  position:relative;
+  z-index:1;
+}
+.parameterTableRow.focused .parameterLabelCell strong,.parameterTableRow.focused .parameterKeyCell code{color:#f3fbff!important}
 
 /* Quiet reset affordance: right side, icon only, border change on hover. */
 .rulesControlHost .tc-reset{z-index:3}
@@ -36,7 +70,7 @@
 .inspectorScroll{scrollbar-width:none!important}
 .inspectorScroll::-webkit-scrollbar{display:none!important}
 
-/* Settings: shared BoolSwitch owns its geometry; this grid only positions it. */
+/* Settings keep the default compact BoolSwitch. */
 .settingRow>.tc-bool-wrap{justify-self:end!important;align-self:center!important;width:78px!important;min-width:78px!important;max-width:78px!important}
 .settingRow>.tc-control-wrap:not(.tc-bool-wrap){justify-self:end}
 
@@ -53,10 +87,11 @@
 .app[data-mode="light"] .searchBox input,.app[data-mode="light"] .parameterKeyCell code,.app[data-mode="light"] .parameterLabelCell strong,.app[data-mode="light"] .unitText b,.app[data-mode="light"] .panelTitle,.app[data-mode="light"] .inspectorHeading,.app[data-mode="light"] .helpHeader strong{color:#172a3a!important}
 .app[data-mode="light"] .unitText small,.app[data-mode="light"] .treeGroupTitle,.app[data-mode="light"] .helpHeader small,.app[data-mode="light"] .helpMeta,.app[data-mode="light"] .docSource{color:#61788c!important}
 .app[data-mode="light"] .parameterTableHeader{background:#d7e3ed!important;color:#36536a!important}
-.app[data-mode="light"] .fieldGroupHeader{background:linear-gradient(180deg,#d3e0ea,#c5d5e1)!important;color:#29475d!important;border-bottom-color:#aebfcd!important}
+.app[data-mode="light"] .fieldGroupHeader{background:linear-gradient(180deg,#bdccd8,#acbecd)!important;color:#213f55!important;border-top-color:#dbe6ed!important;border-bottom-color:#8fa7ba!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 2px 5px rgba(34,76,101,.13)!important}
 .app[data-mode="light"] .parameterTableRow{background:#eef4f8!important;border-bottom-color:#cad7e1!important}
 .app[data-mode="light"] .parameterTableRow:nth-child(even){background:#f4f8fb!important}
-.app[data-mode="light"] .parameterTableRow.focused{background:#e3f2f5!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.1)!important}
+.app[data-mode="light"] .parameterTableRow.focused{background:linear-gradient(90deg,#d4edf2,#e5f3f5 58%,#edf6f7)!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.14)!important}
+.app[data-mode="light"] .parameterTableRow.focused .parameterLabelCell strong,.app[data-mode="light"] .parameterTableRow.focused .parameterKeyCell code{color:#12364a!important}
 .app[data-mode="light"] .segmented button{color:#36536a!important;border-color:#b9cbd8!important;background:#f5f8fb!important}
 .app[data-mode="light"] .segmented button.active{color:#0f635b!important;background:#d9f0eb!important;border-color:#58b7a7!important}
 .app[data-mode="light"] .helpDescriptionCard{background:linear-gradient(145deg,#f8fbfd,#e7f2f4)!important;border-color:#75b9c0!important;box-shadow:0 7px 18px rgba(34,76,101,.09)!important}
