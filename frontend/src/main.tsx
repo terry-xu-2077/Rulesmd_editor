@@ -21,6 +21,7 @@ import {
   FilePlus2,
   FolderOpen,
   Gamepad2,
+  ListPlus,
   Plus,
   Save,
   Search,
@@ -42,9 +43,6 @@ type NavigationState = { items: SectionRow[]; index: number }
 type EditorViewMode = 'table' | 'raw'
 type LocalEditorSettings = {
   gamePath: string
-  tableMode: boolean
-  autoSaveRules: boolean
-  autoSaveDesc: boolean
   appearance: 'dark' | 'light' | 'system'
 }
 
@@ -54,12 +52,6 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 function storedPaneWidth(key: string, fallback: number) {
   const value = Number.parseInt(localStorage.getItem(key) || '', 10)
   return Number.isFinite(value) ? value : fallback
-}
-
-function storedBool(key: string, fallback: boolean) {
-  const value = localStorage.getItem(key)
-  if (value == null) return fallback
-  return value === 'true'
 }
 
 function storedAppearance(): LocalEditorSettings['appearance'] {
@@ -223,9 +215,6 @@ function App() {
   const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
   const [localSettings, setLocalSettings] = useState<LocalEditorSettings>(() => ({
     gamePath: localStorage.getItem('rulesmd.gamePath') || '',
-    tableMode: storedBool('rulesmd.tableMode', true),
-    autoSaveRules: storedBool('rulesmd.autoSaveRules', false),
-    autoSaveDesc: storedBool('rulesmd.autoSaveDesc', false),
     appearance: storedAppearance(),
   }))
   const sectionCache = useRef(new Map<string, SectionData>())
@@ -299,6 +288,32 @@ function App() {
   function updateLocalSetting<K extends keyof LocalEditorSettings>(key: K, value: LocalEditorSettings[K]) {
     setLocalSettings(current => ({ ...current, [key]: value }))
     localStorage.setItem(`rulesmd.${key}`, String(value))
+  }
+
+  async function chooseGameExecutable() {
+    try {
+      const path = await workspaceApi.pickGameExecutable()
+      if (!path) return
+      updateLocalSetting('gamePath', path)
+      setStatus(`已选择游戏启动程序：${path}`)
+    } catch (error) {
+      setStatus(`选择游戏程序失败：${String(error)}`)
+    }
+  }
+
+  async function launchGame() {
+    if (!localSettings.gamePath.trim()) {
+      setShowSettings(true)
+      setStatus('请先在设置中选择游戏启动程序。')
+      return
+    }
+    try {
+      await workspaceApi.launchGame(localSettings.gamePath)
+      setStatus('已启动游戏。')
+    } catch (error) {
+      setStatus(`启动游戏失败：${String(error)}`)
+      setShowSettings(true)
+    }
   }
 
   async function loadSection(row: SectionRow) {
@@ -478,11 +493,6 @@ function App() {
       })
       setSnapshot(current => current ? { ...current, document: { ...current.document, dirty: result.dirty } } : current)
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
-      if (localSettings.autoSaveRules && result.dirty && snapshot.document.path) {
-        await workspaceApi.save(snapshot.document.path)
-        const next = await workspaceApi.snapshot()
-        setSnapshot(next)
-      }
     } catch (error) {
       setStatus(`写入失败：${String(error)}`)
       if (selected) {
@@ -540,7 +550,7 @@ function App() {
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
         <IconButton title="保存" disabled={!snapshot} dirty={Boolean(snapshot?.document.dirty)} onClick={() => void saveRules()}><Save size={18}/></IconButton>
         <span className="divider"/>
-        <IconButton title="启动游戏" disabled={!localSettings.gamePath}><Gamepad2 size={18}/></IconButton>
+        <IconButton title="启动游戏" disabled={busy} onClick={() => void launchGame()}><Gamepad2 size={18}/></IconButton>
         <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
       </nav>
       <div className="titleViewSwitch viewSwitch" role="group" aria-label="编辑视图"><button disabled={!selected} className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>表格</button><button disabled={!selected} className={viewMode === 'raw' ? 'active' : ''} onClick={() => setViewMode('raw')}>原文</button></div>
@@ -569,11 +579,11 @@ function App() {
           <section className="editorControls">
             <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="搜索 Key、参数名或值"/></label>
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
-            <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
+            <Button variant="accent" onClick={() => void openOptionPicker()}><ListPlus size={16}/> 参数</Button>
           </section>
           {viewMode === 'table' ? <section className="fieldsPane parameterTablePane">
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
-            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加参数。</span></div>}
+            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => { if (activeGroup === '全部') setCollapsed(value => ({ ...value, [group]: !value[group] })) }}>{activeGroup === '全部' && collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {(activeGroup !== '全部' || !collapsed[group]) && list.map(option => {
@@ -612,20 +622,17 @@ function App() {
 
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
 
-    <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}>
+    <Dialog open={showSettings} title="设置" icon={<Settings size={18}/>} onClose={() => setShowSettings(false)}>
       <div className="settingsDialogBody settingsGrid">
         <div className="settingsSectionTitle">编辑器</div>
-        <div className="settingRow settingPathRow"><div><strong>游戏路径</strong><span>用于“启动游戏”。旧版 Config.ini 的 gamePath。</span></div><TextField value={localSettings.gamePath} onChange={value => updateLocalSetting('gamePath', value)} placeholder="Yuri's Revenge.exe"/></div>
-        <div className="settingRow"><div><strong>紧凑表格视图</strong><span>参考旧版 tableMode，优先显示更多参数。</span></div><BoolSwitch value={localSettings.tableMode ? 'yes' : 'no'} onChange={value => updateLocalSetting('tableMode', value === 'yes')}/></div>
-        <div className="settingRow"><div><strong>自动保存 Rules</strong><span>已有保存路径时，修改参数后自动写入文件。</span></div><BoolSwitch value={localSettings.autoSaveRules ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveRules', value === 'yes')}/></div>
-        <div className="settingRow"><div><strong>自动保存描述</strong><span>保留旧版 autoSaveDesc 配置，为描述编辑功能预留。</span></div><BoolSwitch value={localSettings.autoSaveDesc ? 'yes' : 'no'} onChange={value => updateLocalSetting('autoSaveDesc', value === 'yes')}/></div>
-        <div className="settingRow"><div><strong>外观</strong><span>替代旧版 useTheme 布尔设置。</span></div><Select value={localSettings.appearance} options={[{value:'dark',label:'深色'},{value:'light',label:'浅色'},{value:'system',label:'跟随系统'}]} onChange={value => updateLocalSetting('appearance', value as LocalEditorSettings['appearance'])}/></div>
+        <div className="settingRow settingPathRow"><div><strong>游戏路径</strong><span>选择游戏启动程序；顶部“启动游戏”会从该程序所在目录启动。</span></div><div className="settingPathControl"><TextField value={localSettings.gamePath} onChange={value => updateLocalSetting('gamePath', value)} placeholder="Yuri's Revenge.exe"/><Button onClick={() => void chooseGameExecutable()}><FolderOpen size={15}/>选择</Button></div></div>
+        <div className="settingRow"><div><strong>外观</strong><span>切换编辑器的深色、浅色或系统外观。</span></div><Select value={localSettings.appearance} options={[{value:'dark',label:'深色'},{value:'light',label:'浅色'},{value:'system',label:'跟随系统'}]} onChange={value => updateLocalSetting('appearance', value as LocalEditorSettings['appearance'])}/></div>
         <div className="settingsSectionTitle">规则兼容</div>
         <div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div>
       </div>
     </Dialog>
 
-    <Dialog open={showClosePrompt} title="保存修改" onClose={() => setShowClosePrompt(false)}>
+    <Dialog open={showClosePrompt} title="保存修改" icon={<Save size={18}/>} onClose={() => setShowClosePrompt(false)}>
       <div className="closePrompt"><p>当前文件还有未保存修改。关闭前是否保存？</p><div className="closePromptActions"><Button onClick={() => void saveAndClose()}>保存并退出</Button><Button className="quietDanger" onClick={() => void closeWithoutSaving()}>不保存</Button><Button className="quietButton" onClick={() => setShowClosePrompt(false)}>取消</Button></div></div>
     </Dialog>
   </div>
