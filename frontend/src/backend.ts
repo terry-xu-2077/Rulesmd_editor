@@ -14,7 +14,7 @@ export type WorkspaceSnapshot = {
   settings: { ares_enabled: boolean }
   categories: Array<{
     name: string
-    items: Array<{ section: string; registration_id: string | null; label?: string }>
+    items: Array<{ section: string; registration_id: string | null; label?: string; side?: 'allied' | 'soviet' | 'yuri' | 'neutral' }>
   }>
 }
 
