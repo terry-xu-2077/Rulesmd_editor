@@ -39,11 +39,11 @@ def _split_inline_comment(value: str) -> tuple[str, str]:
 
 
 class IniDocument:
-    """Lossless Westwood/Ares INI document.
+    """Lossless Westwood/Ares INI document with structural lookup indexes.
 
-    Real rulesmd.ini files may contain duplicate keys, unknown Ares tags, hand-maintained
-    comments and meaningful ordering. Each parsed line therefore receives a stable
-    ``line_id`` so the UI can edit one duplicate occurrence without touching another.
+    The file remains line-oriented and lossless, but section, line-id and section-bound
+    lookups are cached. This avoids repeatedly scanning a large rulesmd.ini while the
+    workspace builds its initial category/index model.
     """
 
     def __init__(
@@ -65,6 +65,34 @@ class IniDocument:
             if line.line_id < 0:
                 line.line_id = self._next_line_id
             self._next_line_id = max(self._next_line_id, line.line_id + 1)
+        self._section_lookup: dict[str, str] = {}
+        self._section_order: list[str] = []
+        self._section_lines_index: dict[str, list[IniLine]] = {}
+        self._section_bounds_index: dict[str, tuple[int, int]] = {}
+        self._line_lookup: dict[int, IniLine] = {}
+        self._reindex_structure()
+
+    def _reindex_structure(self) -> None:
+        self._section_lookup = {}
+        self._section_order = []
+        self._section_lines_index = {}
+        self._section_bounds_index = {}
+        self._line_lookup = {line.line_id: line for line in self.lines}
+
+        section_positions: list[tuple[int, str]] = []
+        for index, line in enumerate(self.lines):
+            if line.section:
+                self._section_lines_index.setdefault(line.section, []).append(line)
+            if line.kind == "section" and line.section:
+                folded = line.section.casefold()
+                if folded not in self._section_lookup:
+                    self._section_lookup[folded] = line.section
+                    self._section_order.append(line.section)
+                    section_positions.append((index, line.section))
+
+        for pos, (start, section) in enumerate(section_positions):
+            end = section_positions[pos + 1][0] if pos + 1 < len(section_positions) else len(self.lines)
+            self._section_bounds_index[section] = (start, end)
 
     def _new_line(self, *args, **kwargs) -> IniLine:
         line = IniLine(*args, **kwargs, line_id=self._next_line_id)
@@ -143,76 +171,53 @@ class IniDocument:
         target = Path(path) if path else self.path
         if target is None:
             raise ValueError("No output path")
-        # Never silently replace characters. The UI can offer an explicit UTF-8 save
-        # when the original encoding cannot represent newly entered text.
         target.write_bytes(self.to_text().encode(self.encoding, errors="strict"))
         self.path = target
         self.dirty = False
         return target
 
     def _section_name(self, section: str) -> str | None:
-        needle = section.casefold()
-        for line in self.lines:
-            if line.kind == "section" and line.section and line.section.casefold() == needle:
-                return line.section
-        return None
+        return self._section_lookup.get(section.casefold())
 
     def sections(self) -> list[str]:
-        out: list[str] = []
-        seen: set[str] = set()
-        for line in self.lines:
-            if line.kind == "section" and line.section:
-                folded = line.section.casefold()
-                if folded not in seen:
-                    out.append(line.section)
-                    seen.add(folded)
-        return out
+        return list(self._section_order)
 
     def has_section(self, section: str) -> bool:
-        return self._section_name(section) is not None
+        return section.casefold() in self._section_lookup
 
     def line(self, line_id: int) -> IniLine | None:
-        return next((line for line in self.lines if line.line_id == line_id), None)
+        return self._line_lookup.get(line_id)
 
     def section_lines(self, section: str, *, keys_only: bool = False) -> list[IniLine]:
         actual = self._section_name(section)
         if actual is None:
             return []
-        return [
-            line for line in self.lines
-            if line.section == actual and (not keys_only or line.kind == "key")
-        ]
+        rows = self._section_lines_index.get(actual, ())
+        if keys_only:
+            return [line for line in rows if line.kind == "key"]
+        return list(rows)
 
     def items(self, section: str) -> list[tuple[str, str]]:
-        return [(l.key or "", l.value or "") for l in self.section_lines(section, keys_only=True)]
+        return [(line.key or "", line.value or "") for line in self.section_lines(section, keys_only=True)]
 
     def items_with_ids(self, section: str) -> list[tuple[int, str, str]]:
-        return [(l.line_id, l.key or "", l.value or "") for l in self.section_lines(section, keys_only=True)]
+        return [(line.line_id, line.key or "", line.value or "") for line in self.section_lines(section, keys_only=True)]
 
     def get(self, section: str, key: str, default: str = "") -> str:
         result = default
-        k = key.casefold()
+        folded = key.casefold()
         for line in self.section_lines(section, keys_only=True):
-            if (line.key or "").casefold() == k:
+            if (line.key or "").casefold() == folded:
                 result = line.value or ""
         return result
 
     def has_option(self, section: str, key: str) -> bool:
-        k = key.casefold()
-        return any((l.key or "").casefold() == k for l in self.section_lines(section, keys_only=True))
+        folded = key.casefold()
+        return any((line.key or "").casefold() == folded for line in self.section_lines(section, keys_only=True))
 
     def _section_bounds(self, section: str) -> tuple[int, int] | None:
         actual = self._section_name(section)
-        if actual is None:
-            return None
-        start = None
-        for i, line in enumerate(self.lines):
-            if line.kind == "section":
-                if start is not None:
-                    return start, i
-                if line.section == actual:
-                    start = i
-        return (start, len(self.lines)) if start is not None else None
+        return self._section_bounds_index.get(actual) if actual else None
 
     def add_section(self, section: str) -> None:
         if self.has_section(section):
@@ -222,6 +227,7 @@ class IniDocument:
         self.lines.append(self._new_line(f"[{section}]", "section", section=section))
         self.final_newline = True
         self.dirty = True
+        self._reindex_structure()
 
     def remove_section(self, section: str) -> None:
         bounds = self._section_bounds(section)
@@ -229,6 +235,7 @@ class IniDocument:
             return
         del self.lines[bounds[0] : bounds[1]]
         self.dirty = True
+        self._reindex_structure()
 
     def set_line_value(self, line_id: int, value: str) -> None:
         line = self.line(line_id)
@@ -238,22 +245,22 @@ class IniDocument:
         self.dirty = True
 
     def remove_line(self, line_id: int) -> None:
-        for index, line in enumerate(self.lines):
-            if line.line_id == line_id:
-                del self.lines[index]
-                self.dirty = True
-                return
-        raise KeyError(f"No INI line with id {line_id}")
+        line = self._line_lookup.get(line_id)
+        if line is None:
+            raise KeyError(f"No INI line with id {line_id}")
+        self.lines.remove(line)
+        self.dirty = True
+        self._reindex_structure()
 
     def set(self, section: str, key: str, value: str) -> int:
         actual = self._section_name(section)
         if actual is None:
             self.add_section(section)
             actual = section
-        k = key.casefold()
+        folded = key.casefold()
         found: IniLine | None = None
         for line in self.section_lines(actual, keys_only=True):
-            if (line.key or "").casefold() == k:
+            if (line.key or "").casefold() == folded:
                 found = line
         if found is not None:
             found.value = str(value)
@@ -267,6 +274,7 @@ class IniDocument:
         line = self._new_line(raw="", kind="key", section=actual, key=key, value=str(value))
         self.lines.insert(insert, line)
         self.dirty = True
+        self._reindex_structure()
         return line.line_id
 
     def remove_option(self, section: str, key: str, *, occurrence: str = "all") -> None:
@@ -284,6 +292,7 @@ class IniDocument:
             ids = {line.line_id for line in matches}
             self.lines = [line for line in self.lines if line.line_id not in ids]
             self.dirty = True
+            self._reindex_structure()
         else:
             raise ValueError("occurrence must be 'first', 'last', or 'all'")
 
@@ -291,15 +300,15 @@ class IniDocument:
         bounds = self._section_bounds(section)
         if not bounds:
             return ""
-        return self.newline.join(self.lines[i].render() for i in range(*bounds)) + self.newline
+        return self.newline.join(self.lines[index].render() for index in range(*bounds)) + self.newline
 
     def references_to(self, value: str) -> list[tuple[str, str]]:
-        result = []
+        result: list[tuple[str, str]] = []
         needle = value.casefold()
         for line in self.lines:
             if line.kind != "key" or not line.section or not line.key:
                 continue
-            tokens = [x.strip().casefold() for x in (line.value or "").split(",")]
+            tokens = [item.strip().casefold() for item in (line.value or "").split(",")]
             if needle in tokens:
                 result.append((line.section, line.key))
         return result
@@ -315,28 +324,30 @@ ROOT_TYPES = {
 
 
 def categorized_sections(doc: IniDocument) -> dict[str, list[tuple[str, str]]]:
-    result: dict[str, list[tuple[str, str]]] = {v: [] for v in ROOT_TYPES.values()}
+    """Classify sections using the document indexes instead of repeated full scans."""
+    result: dict[str, list[tuple[str, str]]] = {label: [] for label in ROOT_TYPES.values()}
     registered = {name.casefold() for name in ROOT_TYPES}
     for root, label in ROOT_TYPES.items():
         for reg_id, section in doc.items(root):
-            if doc.has_section(section):
-                result[label].append((doc._section_name(section) or section, reg_id))
-                registered.add(section.casefold())
+            actual = doc._section_name(section)
+            if actual:
+                result[label].append((actual, reg_id))
+                registered.add(actual.casefold())
 
     result["武器"] = []
     result["弹头"] = []
     result["弹体"] = []
     result["其他"] = []
-    for sec in doc.sections():
-        if sec.casefold() in registered:
+    for section in doc.sections():
+        if section.casefold() in registered:
             continue
-        keys = {k.casefold() for k, _ in doc.items(sec)}
+        keys = {(line.key or "").casefold() for line in doc.section_lines(section, keys_only=True)}
         if "warhead" in keys and ("damage" in keys or "projectile" in keys or "speed" in keys):
-            result["武器"].append((sec, ""))
+            result["武器"].append((section, ""))
         elif "verses" in keys or ("cellspread" in keys and "percentatmax" in keys):
-            result["弹头"].append((sec, ""))
+            result["弹头"].append((section, ""))
         elif "image" in keys and ("arcing" in keys or "inviso" in keys or "rot" in keys):
-            result["弹体"].append((sec, ""))
+            result["弹体"].append((section, ""))
         else:
-            result["其他"].append((sec, ""))
+            result["其他"].append((section, ""))
     return result
