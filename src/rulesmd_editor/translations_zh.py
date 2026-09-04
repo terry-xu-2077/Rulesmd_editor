@@ -8,8 +8,8 @@ presentation layer only. Engine keys, Section ids and user files are never rewri
 
 Reference priority:
 1. Legacy RulesmdEditor / RulesmdEditorWeb Chinese resources.
-2. Verified vanilla/YR object mappings from rulesmd.ini.
-3. Conservative token-based fallback for readable identifiers.
+2. Verified vanilla/YR object mappings from rulesmd.ini and HelpInfor.ini.
+3. Conservative token/help-text fallback for readable identifiers.
 
 The fallback is deliberately presentation-only: a guessed label may help recognition,
 but the exact engine identifier remains visible beside it and remains the saved value.
@@ -86,11 +86,73 @@ PARAMETER_LABEL_FIXES: dict[str, str] = {
     "DeformThreshhold": "地形变形阈值",
     "MultiplayPassive": "多人游戏被动单位",
     "InitialVeteran": "初始老兵等级",
+
+    # HelpInfor.ini-backed selector semantics that must not be inferred from the word
+    # "Weapon" in the key. These are weapon-slot numbers, not weapon Section refs.
+    "OpenTransportWeapon": "开放运输载具使用武器",
+    "DeployFireWeapon": "部署开火使用武器",
+    "AIBasePlanningSide": "AI 基地阵营",
+    "LandTargeting": "海军对陆攻击规则",
+    "SpecialThreatValue": "特殊威胁值",
+    "DeployFacing": "部署朝向",
+
+    # [General] aliases / families where the historical OptionsDesc labels are either
+    # missing or far too generic to distinguish adjacent parameters.
+    "V3": "V3 火箭单位",
+    "Dred": "无畏级导弹单位",
+    "DMisl": "无畏级导弹单位",
+    "CMisl": "雷鸣导弹单位",
+    "PrismType": "光棱塔类型",
+    "PrismSupportModifier": "光棱支援伤害加成",
+    "PrismSupportMax": "最大光棱支援数量",
+    "PrismSupportDelay": "光棱支援延迟",
+    "PrismSupportDuration": "光棱支援持续时间",
+    "PrismSupportHeight": "光棱支援瞄准高度",
+    "ForceShieldRadius": "力场护盾半径",
+    "ForceShieldDuration": "力场护盾持续时间",
+    "ForceShieldBlackoutDuration": "力场护盾断电时间",
+    "ForceShieldPlayFadeSoundTime": "力场护盾淡出音效提前时间",
+}
+
+
+# Value semantics are corrected at runtime after generated/legacy metadata is merged.
+# This guarantees an existing local rules_schema.json cannot re-introduce the old
+# heuristic mistake on the next launch.
+PARAMETER_META_FIXES: dict[str, dict[str, object]] = {
+    "OpenTransportWeapon": {
+        "value_type": "enum",
+        "values": (("0", "主武器"), ("1", "副武器")),
+    },
+    "DeployFireWeapon": {
+        "value_type": "enum",
+        "values": (("0", "主武器"), ("1", "副武器")),
+    },
+    "AIBasePlanningSide": {
+        "value_type": "enum",
+        "values": (("0", "盟军"), ("1", "苏军")),
+    },
+    "LandTargeting": {
+        "value_type": "enum",
+        "values": (("0", "可以攻击陆地单位"), ("1", "不能攻击陆地单位"), ("2", "使用副武器攻击陆地单位")),
+    },
+    "SpecialThreatValue": {
+        "value_type": "enum",
+        "values": (("0", "普通"), ("1", "特殊/英雄单位")),
+    },
+    "DeployFacing": {
+        "value_type": "enum",
+        "values": (
+            ("0", "北"), ("1", "东北"), ("2", "东"), ("3", "东南"),
+            ("4", "南"), ("5", "西南"), ("6", "西"), ("7", "西北"),
+        ),
+    },
 }
 
 
 # Canonical/common object names. These are display aliases only. IDs remain untouched.
 SECTION_NAME_FIXES: dict[str, str] = {
+    "General": "全局规则",
+
     # Countries.
     "Alliance": "韩国",
     "Americans": "美国",
@@ -214,7 +276,37 @@ TOKEN_ZH: dict[str, str] = {
     "Storage": "储存量", "Fire": "开火", "Target": "目标", "Move": "移动", "Turn": "转向",
     "Height": "高度", "Width": "宽度", "Offset": "偏移", "Threshold": "阈值", "Bonus": "加成",
     "Modifier": "修正", "Aircraft": "飞机", "Infantry": "步兵", "Vehicle": "载具", "Building": "建筑",
+    "Ratio": "倍率", "Combat": "战斗力", "ROF": "射速", "Refund": "退款", "Repair": "维修",
+    "Step": "步长", "Heal": "治疗", "Frames": "帧数", "Frame": "帧", "Amount": "数值",
+    "Growth": "生长", "Separate": "独立", "Survivor": "幸存者", "Divisor": "除数", "Placement": "放置",
+    "Capacity": "容量", "Base": "基地", "Defense": "防御", "Close": "接近", "Enough": "距离",
+    "Game": "游戏", "Bias": "系数", "Stray": "离队距离", "Relaxed": "放宽", "Cloak": "隐形",
+    "Suspend": "暂停", "Priority": "优先级", "Flight": "飞行", "Parachute": "降落伞", "Fall": "下降",
+    "Missile": "导弹", "Safety": "安全", "Altitude": "高度", "Team": "小队", "Minimum": "最小",
+    "Maximum": "最大", "Total": "总计", "Probability": "概率", "Extra": "额外", "Refineries": "矿厂",
+    "Harvester": "采矿车", "Heal": "治疗", "Scan": "扫描", "Large": "大型", "Small": "小型",
+    "Lightning": "闪电", "Storm": "风暴", "Deferment": "延迟", "Hit": "命中", "Scatter": "散布",
+    "Cell": "格", "Spread": "扩散", "Separation": "间距", "Ion": "离子", "Force": "力场",
+    "Shield": "护盾", "Blackout": "断电", "Play": "播放", "Fade": "淡出", "Prism": "光棱",
+    "Support": "支援", "Pause": "停顿", "Tilt": "倾斜", "Pitch": "俯仰", "Initial": "初始",
+    "Final": "最终", "Raise": "抬升", "Acceleration": "加速度", "Body": "本体", "Length": "长度",
+    "Lazy": "缓弯", "Curve": "曲线", "Paradrop": "伞兵空投", "Fog": "战争迷雾", "Meteorites": "陨石",
+    "Crew": "乘员", "Escape": "逃生", "Camera": "侦察视野", "Fine": "细分", "Diff": "难度",
+    "Control": "控制", "Pilot": "飞行员", "Allied": "盟军", "Soviet": "苏军", "Third": "第三阵营",
+    "Technician": "技术员", "Engineer": "工程师", "Chrono": "超时空", "Distance": "距离", "Trigger": "触发",
+    "Condition": "状态", "Red": "红色", "Yellow": "黄色", "Gravity": "重力", "Idle": "空闲",
+    "Message": "消息", "Movie": "录像", "Named": "显示名称", "Civilians": "平民", "Shroud": "黑幕",
+    "Ambient": "环境", "Change": "变化", "Speak": "语音提示", "Timer": "计时器", "Warning": "警告",
+    "Unit": "单位", "Local": "本地", "Color": "颜色",
 }
+
+PARAMETER_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("V3Rocket", "V3 火箭"),
+    ("DMisl", "无畏级导弹"),
+    ("CMisl", "雷鸣导弹"),
+    ("PrismSupport", "光棱支援"),
+    ("ForceShield", "力场护盾"),
+)
 
 # Used only when a technical Section id has no source-backed Chinese name.
 REFERENCE_TOKEN_ZH: dict[str, str] = {
@@ -222,7 +314,7 @@ REFERENCE_TOKEN_ZH: dict[str, str] = {
     "Default": "默认", "Death": "死亡", "Oil": "油井", "Barrel": "油桶", "Explosion": "爆炸",
     "Terror": "恐怖分子", "Bomb": "炸弹", "Mini": "迷你", "Gun": "枪", "Cannon": "火炮",
     "Jump": "跳跃", "Psychic": "心灵", "Jab": "冲击", "UC": "驻军", "Virus": "病毒",
-    "Mind": "心灵", "Control": "控制", "Super": "超级", "Rad": "辐射", "Beam": "射线",
+    "Mind": "心灵", "Super": "超级", "Rad": "辐射", "Beam": "射线",
     "Eruption": "爆发", "Punch": "重拳", "Smash": "猛击", "Flare": "信号弹", "Shovel": "铁锹",
 }
 
@@ -241,8 +333,8 @@ def _camel_tokens(key: str) -> list[str]:
     return tokens
 
 
-def _fallback_parameter_label(key: str) -> str | None:
-    tokens = _camel_tokens(key)
+def _translate_tokens(text: str) -> str | None:
+    tokens = _camel_tokens(text)
     if not tokens:
         return None
     translated: list[str] = []
@@ -254,10 +346,52 @@ def _fallback_parameter_label(key: str) -> str | None:
     return "".join(translated)
 
 
+def _fallback_parameter_label(key: str) -> str | None:
+    for prefix, label in PARAMETER_PREFIXES:
+        if key.startswith(prefix) and len(key) > len(prefix):
+            tail = _translate_tokens(key[len(prefix):])
+            if tail:
+                return f"{label}{tail}"
+    return _translate_tokens(key)
+
+
+def _help_parameter_label(help_text: str) -> str | None:
+    """Extract a readable Chinese title from HelpInfor.ini without saving it to INI."""
+    if not help_text:
+        return None
+    lines = [line.strip().strip("。；; ") for line in help_text.replace("\\n", "\n").splitlines() if line.strip()]
+    for line in lines:
+        if not _has_cjk(line):
+            continue
+        if re.fullmatch(r"填\s*(?:yes或no|true或false|数值|[-0-9.]+(?:到|至|-)\s*[-0-9.]+的?数值)", line, re.I):
+            continue
+        candidate = re.sub(r"^这个代码(?:用来)?(?:指定|决定|控制)?", "", line).strip()
+        candidate = re.sub(r"^该(?:代码|参数)(?:指定|决定|控制)?", "", candidate).strip()
+        candidate = re.sub(r"^填(?:入)?[^，,。；;]{0,16}[，,]\s*", "", candidate).strip()
+        if candidate and _has_cjk(candidate):
+            # Keep the table compact while preserving enough semantics to distinguish
+            # adjacent General controls. The full help remains available in the inspector.
+            if len(candidate) > 32:
+                candidate = re.split(r"[，,；;。]", candidate, maxsplit=1)[0].strip() or candidate[:32]
+            return candidate
+    return None
+
+
+def _lookup_casefold(mapping: dict[str, object], key: str):
+    direct = mapping.get(key)
+    if direct is not None:
+        return direct
+    folded = key.casefold()
+    for name, value in mapping.items():
+        if name.casefold() == folded:
+            return value
+    return None
+
+
 def guess_section_name(section: str) -> str | None:
     """Return a conservative Chinese display guess for a readable technical id."""
-    direct = SECTION_NAME_FIXES.get(section)
-    if direct:
+    direct = _lookup_casefold(SECTION_NAME_FIXES, section)
+    if isinstance(direct, str):
         return direct
     tokens = _camel_tokens(section)
     if not tokens:
@@ -272,21 +406,41 @@ def guess_section_name(section: str) -> str | None:
     return result if result and result.casefold() != section.casefold() else None
 
 
-def normalize_parameter_label(key: str, label: str) -> str:
-    fixed = PARAMETER_LABEL_FIXES.get(key)
-    if fixed:
+def normalize_parameter_label(key: str, label: str, help_text: str = "") -> str:
+    fixed = _lookup_casefold(PARAMETER_LABEL_FIXES, key)
+    if isinstance(fixed, str):
         return fixed
+
+    # Family labels from the old metadata (for example every V3Rocket* row being named
+    # simply "V3火箭") are not useful. A key-derived family label is more specific.
+    family = _fallback_parameter_label(key)
+    if any(key.startswith(prefix) for prefix, _ in PARAMETER_PREFIXES) and family:
+        return family
+
     cleaned = label.replace("$-", "").strip()
     if cleaned and cleaned.casefold() != key.casefold() and _has_cjk(cleaned):
         return cleaned
-    return _fallback_parameter_label(key) or cleaned or key
+    return family or _help_parameter_label(help_text) or cleaned or key
+
+
+def translate_option_meta(meta: OptionMeta) -> OptionMeta:
+    """Apply YR display/semantic corrections to one metadata row."""
+    label = normalize_parameter_label(meta.name, meta.description, meta.help_text)
+    patch = _lookup_casefold(PARAMETER_META_FIXES, meta.name)
+    changes: dict[str, object] = {}
+    if label != meta.description:
+        changes["description"] = label
+    if isinstance(patch, dict):
+        if "value_type" in patch:
+            changes["value_type"] = str(patch["value_type"])
+        if "values" in patch:
+            changes["values"] = tuple(tuple(item) for item in patch["values"])
+    return replace(meta, **changes) if changes else meta
 
 
 def apply_yr_translations(options: dict[str, OptionMeta], names: dict[str, str]) -> None:
     for key, meta in list(options.items()):
-        label = normalize_parameter_label(key, meta.description)
-        if label != meta.description:
-            options[key] = replace(meta, description=label)
+        options[key] = translate_option_meta(meta)
 
     for key, value in SECTION_NAME_FIXES.items():
         names[key] = value
