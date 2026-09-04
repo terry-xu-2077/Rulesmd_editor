@@ -97,7 +97,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
     setSelectedKey(tree[source].get(category)?.[0]?.key ?? '')
   }
 
-  return <Dialog open={open} title="添加参数" size="wide" onClose={onClose}>
+  return <Dialog open={open} title="添加参数" icon={<ListPlus size={18}/>} size="wide" onClose={onClose}>
     <div className="parameterExplorer">
       <div className="parameterExplorerToolbar">
         <label className="parameterExplorerSearch"><Search size={17}/><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索用途、中文名称或 Key"/></label>
