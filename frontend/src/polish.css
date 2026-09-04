@@ -81,7 +81,7 @@
 .app[data-mode="light"] .tc-select-item{color:#172a3a!important;background:#eef4f8!important}
 .app[data-mode="light"] .tc-select-item:hover{color:#fff!important;background:#159f8b!important}
 
-/* Settings dialog: app-owned layout and modern controls. Keep it isolated from shared editor controls. */
+/* Settings dialog: application layout only. Shared controls, including BoolSwitch, keep the UI-library appearance. */
 .settingsDialogBody.settingsGrid{
   width:min(760px,82vw);
   max-height:min(640px,78vh);
@@ -105,7 +105,7 @@
 .settingRow{
   min-height:58px!important;
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-columns:minmax(0,1fr) 360px!important;
   align-items:center!important;
   gap:24px!important;
   margin:0 0 8px!important;
@@ -120,58 +120,17 @@
 .settingRow>div:first-child strong{color:#e7eef7!important;font-size:13px!important;font-weight:650!important}
 .settingRow>div:first-child span{color:#8295a9!important;font-size:11px!important;line-height:1.45!important}
 .settingRow>.tc-control-wrap{justify-self:end!important;margin:0!important}
-.settingPathRow{grid-template-columns:minmax(0,1fr) minmax(280px,360px)!important}
 .settingPathRow>.tc-control-wrap,.settingPathRow .tc-text{width:100%!important;min-width:0!important;max-width:none!important}
 .settingPathRow .tc-text input{height:32px!important;border-radius:6px!important}
 .settingRow .tc-select{width:160px!important;min-width:160px!important;max-width:160px!important}
 .settingRow .tc-select-button{height:32px!important;border-radius:6px!important}
-
-/* Settings toggles intentionally use a compact modern switch instead of the editor's legacy rail switch. */
-.settingsGrid .tc-control-wrap.tc-bool-wrap{
-  width:44px!important;
-  min-width:44px!important;
-  max-width:44px!important;
-  flex:0 0 44px!important;
-}
-.settingsGrid .tc-legacy-switch{
-  all:unset!important;
-  box-sizing:border-box!important;
-  position:relative!important;
-  display:block!important;
-  width:44px!important;
-  height:24px!important;
-  border-radius:999px!important;
-  cursor:pointer!important;
-  background:#31425a!important;
-  border:1px solid rgba(143,169,198,.34)!important;
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.32)!important;
-  transition:background .16s ease,border-color .16s ease,box-shadow .16s ease!important;
-}
-.settingsGrid .tc-legacy-switch:hover{border-color:rgba(104,215,199,.58)!important}
-.settingsGrid .tc-legacy-switch.is-on{background:#169a87!important;border-color:#50d6c2!important;box-shadow:0 0 0 2px rgba(22,154,135,.12),inset 0 1px 2px rgba(0,0,0,.22)!important}
-.settingsGrid .tc-legacy-switch-knob{
-  all:unset!important;
-  box-sizing:border-box!important;
-  position:absolute!important;
-  top:3px!important;
-  left:3px!important;
-  width:16px!important;
-  height:16px!important;
-  border-radius:50%!important;
-  background:#dce7f0!important;
-  box-shadow:0 1px 4px rgba(0,0,0,.34)!important;
-  font-size:0!important;
-  transition:transform .16s ease!important;
-}
-.settingsGrid .tc-legacy-switch.is-on .tc-legacy-switch-knob{transform:translateX(20px)!important;background:#fff!important}
+.settingRow .tc-control-wrap.tc-bool-wrap{width:78px!important;min-width:78px!important;max-width:78px!important;flex:0 0 78px!important}
 
 .app[data-mode="light"] .settingRow{background:#f4f8fb!important;border-color:#c9d7e2!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important}
 .app[data-mode="light"] .settingRow:hover{background:#eef5f9!important;border-color:#9fc1d1!important}
 .app[data-mode="light"] .settingRow>div:first-child strong{color:#173044!important}
 .app[data-mode="light"] .settingRow>div:first-child span{color:#61788c!important}
 .app[data-mode="light"] .settingsSectionTitle{color:#168c7d!important}
-.app[data-mode="light"] .settingsGrid .tc-legacy-switch{background:#bccbd6!important;border-color:#8fa8ba!important}
-.app[data-mode="light"] .settingsGrid .tc-legacy-switch.is-on{background:#159f8b!important;border-color:#168b7b!important}
 
 @media(max-width:980px){.titlebar{grid-template-columns:auto 1fr auto!important}.brand span{display:none}.iconButtonLabel{display:none!important}}
 @media(max-width:760px){.settingsDialogBody.settingsGrid{width:min(92vw,620px)!important}.settingRow,.settingPathRow{grid-template-columns:1fr!important;gap:10px!important}.settingRow>.tc-control-wrap{justify-self:start!important}.settingPathRow>.tc-control-wrap{width:100%!important}}
