@@ -14,25 +14,30 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  Bomb,
   Box,
   ChevronDown,
   ChevronRight,
   CircleHelp,
+  Crosshair,
   FilePlus2,
   FolderOpen,
   Gamepad2,
   ListPlus,
   Plus,
+  Rocket,
   Save,
   Search,
   Settings,
   Sparkles,
   Trash2,
+  Volume2,
   WandSparkles,
 } from 'lucide-react'
 import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterPicker } from './ParameterPicker'
+import { sliderRangeFor } from './sliderRanges'
 import { UnitTree } from './UnitTree'
 import './styles.css'
 import './polish.css'
@@ -41,13 +46,20 @@ type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
 type SectionRow = { id: string; label: string; type: string; category: string; side: Side }
 type NavigationState = { items: SectionRow[]; index: number }
 type EditorViewMode = 'table' | 'raw'
+type ReferenceKind = 'generic' | 'weapon' | 'audio' | 'warhead' | 'projectile' | 'debris'
+type ObservedValueIndex = { byKey: Record<string, string[]>; audio: string[] }
 type LocalEditorSettings = {
   gamePath: string
   appearance: 'dark' | 'light' | 'system'
 }
 
 const EMPTY_SECTION: SectionData = { section: '', description: '', options: [], raw: '', references: [] }
+const EMPTY_OBSERVED_VALUES: ObservedValueIndex = { byKey: {}, audio: [] }
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+const WEAPON_REFERENCE_KEYS = new Set([
+  'primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon',
+  'eliteoccupyweapon', 'opentransportweapon', 'deathweapon',
+])
 
 function storedPaneWidth(key: string, fallback: number) {
   const value = Number.parseInt(localStorage.getItem(key) || '', 10)
@@ -125,20 +137,89 @@ function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
   } : null
 }
 
-function numericRange(option: SectionOption) {
-  const sourceValue = option.raw_value ?? option.value
-  const parsed = Number.parseFloat(sourceValue.replace('%', ''))
-  const decimal = sourceValue.includes('.')
+function isAudioKey(key: string) {
+  const normalized = key.trim().toLowerCase()
+  return normalized === 'report' || /(?:sound|voice|audio)/i.test(normalized)
+}
+
+function isAudioOption(option: SectionOption) {
+  return displayGroup(option.category) === '声音' || isAudioKey(option.key)
+}
+
+function referenceKindForOption(option: SectionOption): ReferenceKind {
+  const type = option.value_type.toLowerCase()
   const key = option.key.toLowerCase()
-  if (option.value.includes('%') || option.value_type === 'percent' || /chance$|percent$/.test(key)) {
-    return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: option.value.includes('%') ? '%' : '' }
+  if (isAudioOption(option)) return 'audio'
+  if (type === 'weapon' || WEAPON_REFERENCE_KEYS.has(key)) return 'weapon'
+  if (type === 'warhead' || key.includes('warhead')) return 'warhead'
+  if (type === 'projectile' || key.includes('projectile')) return 'projectile'
+  if (key === 'debristypes') return 'debris'
+  return 'generic'
+}
+
+function referenceCategoryForOption(option: SectionOption): string | undefined {
+  const type = option.value_type.toLowerCase()
+  const key = option.key.toLowerCase()
+  if (type === 'weapon' || WEAPON_REFERENCE_KEYS.has(key)) return '武器'
+  if (type === 'warhead' || key.includes('warhead')) return '弹头'
+  if (type === 'projectile' || key.includes('projectile')) return '弹体'
+  if (key === 'deploysinto') return '建筑'
+  if (key === 'undeploysinto') return '载具'
+  if (key === 'enslaves') return '步兵'
+  if (key === 'spawns') return '飞机'
+  return undefined
+}
+
+function valueWithoutInlineComment(raw: string) {
+  let quote = ''
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index]
+    if ((char === '"' || char === "'") && (!quote || quote === char)) quote = quote === char ? '' : char
+    if (char === ';' && !quote) return raw.slice(0, index).trim()
   }
-  if (!Number.isFinite(parsed)) return { min: 0, max: 100, step: decimal ? 0.01 : 1, suffix: '' }
-  const factor = decimal ? 6 : 4
-  const magnitude = Math.abs(parsed)
-  const max = magnitude === 0 ? (decimal ? 1 : 4) : magnitude * factor
-  const min = parsed < 0 ? parsed * factor : 0
-  return { min, max, step: decimal ? 0.01 : 1, suffix: '' }
+  return raw.trim()
+}
+
+function parseObservedValueIndex(raw: string): ObservedValueIndex {
+  const byKey = new Map<string, Map<string, string>>()
+  const audio = new Map<string, string>()
+  for (const line of raw.split(/\r?\n/)) {
+    const match = line.match(/^\s*([^;#][^=]*?)\s*=\s*(.*)$/)
+    if (!match) continue
+    const key = match[1].trim().toLowerCase()
+    const value = valueWithoutInlineComment(match[2])
+    if (!key || !value) continue
+    const bucket = byKey.get(key) ?? new Map<string, string>()
+    for (const token of value.split(',').map(item => item.trim()).filter(Boolean)) {
+      bucket.set(token.toLowerCase(), token)
+      if (isAudioKey(key)) audio.set(token.toLowerCase(), token)
+    }
+    byKey.set(key, bucket)
+  }
+  return {
+    byKey: Object.fromEntries([...byKey.entries()].map(([key, values]) => [key, [...values.values()]])),
+    audio: [...audio.values()].sort((a, b) => {
+      if (a.toLowerCase() === 'none') return -1
+      if (b.toLowerCase() === 'none') return 1
+      return a.localeCompare(b, undefined, { sensitivity: 'base' })
+    }),
+  }
+}
+
+function withCurrentValues(values: string[], current: string) {
+  const result = new Map(values.map(value => [value.toLowerCase(), value]))
+  for (const token of current.split(',').map(value => value.trim()).filter(Boolean)) result.set(token.toLowerCase(), token)
+  return [...result.values()]
+}
+
+function mergeObservedValue(index: ObservedValueIndex, option: SectionOption, value: string): ObservedValueIndex {
+  const key = option.key.toLowerCase()
+  const tokens = value.split(',').map(item => item.trim()).filter(Boolean)
+  if (!tokens.length) return index
+  const byKey = { ...index.byKey }
+  byKey[key] = withCurrentValues(byKey[key] ?? [], value)
+  const audio = isAudioOption(option) ? withCurrentValues(index.audio, value) : index.audio
+  return { byKey, audio }
 }
 
 function IconButton({ title, children, primary = false, onClick, disabled = false, dirty = false }: {
@@ -159,37 +240,75 @@ function optionVisualIcon(value: string) {
   return undefined
 }
 
-function referenceOptionIcon(value: string) {
+function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic') {
   const visual = optionVisualIcon(value)
   if (visual) return visual
-  return <LegacyUnitIcon id={value} size={28} className="referenceOptionFallback"/>
+  const Icon = kind === 'weapon' ? Crosshair : kind === 'audio' ? Volume2 : kind === 'warhead' ? Bomb : kind === 'projectile' ? Rocket : kind === 'debris' ? Sparkles : Box
+  return <span className={`legacyUnitIcon fallback referenceOptionFallback referenceTypeIcon referenceTypeIcon-${kind}`} style={{ width: 28, height: 24 }}><Icon size={15}/></span>
 }
 
-function FieldControl({ option, onChange, referenceRows = [] }: { option: SectionOption; onChange: (value: string) => void; referenceRows?: SectionRow[] }) {
+function FieldControl({
+  option,
+  onChange,
+  referenceRows = [],
+  observedKeyValues = [],
+  audioValues = [],
+}: {
+  option: SectionOption
+  onChange: (value: string) => void
+  referenceRows?: SectionRow[]
+  observedKeyValues?: string[]
+  audioValues?: string[]
+}) {
   const raw = option.raw_value ?? undefined
+  const referenceKind = referenceKindForOption(option)
+
   if (option.widget === 'boolean') return <BoolSwitch width={180} value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" />
+
+  if (referenceKind === 'audio') {
+    const values = withCurrentValues(audioValues, option.value)
+    const options = values.map(value => ({ value, label: value, icon: referenceOptionIcon(value, 'audio') }))
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索音频名称"/>
+  }
+
+  if (referenceKind === 'debris') {
+    const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
+    const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
+    const options = withCurrentValues(observedKeyValues, option.value).map(value => ({ value, label: value, icon: referenceOptionIcon(value, 'debris') }))
+    return <MultiSelect values={values} rawValues={rawValues} options={options} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
+  }
+
   if (option.widget === 'multi-select') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
     return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
   }
+
   if (option.widget === 'select') {
-    const options = option.values.map(value => ({ value: value.value, label: value.label ? `${value.label} · ${value.value}` : value.value, icon: optionVisualIcon(value.value) }))
-    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: option.value })
+    const semanticIcon = referenceKind !== 'generic'
+    const options = option.values.map(value => ({
+      value: value.value,
+      label: value.label ? `${value.label} · ${value.value}` : value.value,
+      icon: semanticIcon ? referenceOptionIcon(value.value, referenceKind) : optionVisualIcon(value.value),
+    }))
+    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: option.value, icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind) : optionVisualIcon(option.value) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10}/>
   }
+
   if (referenceRows.length) {
-    const options = referenceRows.map(row => ({ value: row.id, label: row.label || row.id, group: row.id, icon: referenceOptionIcon(row.id) }))
-    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: option.value, group: '', icon: referenceOptionIcon(option.value) })
+    const options = referenceRows.map(row => ({ value: row.id, label: row.label || row.id, group: row.id, icon: referenceOptionIcon(row.id, referenceKind) }))
+    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: option.value, group: '', icon: referenceOptionIcon(option.value, referenceKind) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section"/>
   }
+
   if (option.widget === 'slider') {
-    const range = numericRange(option)
+    const range = sliderRangeFor(option.key, option.value, option.value_type)
     const numeric = Number.parseFloat(option.value.replace('%', ''))
     const rawNumeric = option.raw_value == null ? undefined : Number.parseFloat(option.raw_value.replace('%', ''))
-    const value = Number.isFinite(numeric) ? Math.min(range.max, Math.max(range.min, numeric)) : range.min
-    return <Slider value={value} rawValue={rawNumeric != null && Number.isFinite(rawNumeric) ? rawNumeric : undefined} min={range.min} max={range.max} step={range.step} onChange={next => onChange(`${next}${range.suffix}`)}/>
+    const value = Number.isFinite(numeric) ? numeric : range.min
+    return <Slider value={value} rawValue={rawNumeric != null && Number.isFinite(rawNumeric) ? rawNumeric : undefined} min={range.min} max={range.max} step={range.step} allowOutOfRangeInput onChange={next => onChange(`${next}${range.suffix}`)}/>
   }
+
   return <TextField value={option.value} rawValue={raw} onChange={onChange} placeholder={option.label || option.key}/>
 }
 
@@ -217,6 +336,7 @@ function App() {
     gamePath: localStorage.getItem('rulesmd.gamePath') || '',
     appearance: storedAppearance(),
   }))
+  const [observedValues, setObservedValues] = useState<ObservedValueIndex>(EMPTY_OBSERVED_VALUES)
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
   const allowWindowClose = useRef(false)
@@ -262,32 +382,34 @@ function App() {
     return () => unlisten?.()
   }, [snapshot?.document.dirty])
 
-  function referenceTarget(option: SectionOption) {
-    const value = option.value.trim()
-    if (!value || value.includes(',')) return null
-    return rowById.get(value.toLowerCase()) ?? null
-  }
-
   function referenceRows(option: SectionOption) {
-    const type = option.value_type.toLowerCase()
-    const key = option.key.toLowerCase()
-    const target = referenceTarget(option)
-    let category = target?.category
-    if (!category && (type === 'weapon' || ['primary','secondary','eliteprimary','elitesecondary','occupyweapon','eliteoccupyweapon','opentransportweapon','deathweapon'].includes(key))) category = '武器'
-    if (!category && (type === 'warhead' || key.includes('warhead'))) category = '弹头'
-    if (!category && (type === 'projectile' || key.includes('projectile'))) category = '弹体'
-    if (!category && key === 'deploysinto') category = '建筑'
-    if (!category && key === 'undeploysinto') category = '载具'
-    if (!category && key === 'enslaves') category = '步兵'
-    if (!category && key === 'spawns') category = '飞机'
+    const category = referenceCategoryForOption(option)
     if (!category) return []
     const normalized = category.replace('战车', '载具')
     return rows.filter(row => row.category.replace('战车', '载具') === normalized)
   }
 
+  function referenceTarget(option: SectionOption) {
+    const category = referenceCategoryForOption(option)
+    const value = option.value.trim()
+    if (!category || !value || value.includes(',')) return null
+    const target = rowById.get(value.toLowerCase()) ?? null
+    if (!target) return null
+    return target.category.replace('战车', '载具') === category.replace('战车', '载具') ? target : null
+  }
+
   function updateLocalSetting<K extends keyof LocalEditorSettings>(key: K, value: LocalEditorSettings[K]) {
     setLocalSettings(current => ({ ...current, [key]: value }))
     localStorage.setItem(`rulesmd.${key}`, String(value))
+  }
+
+  async function refreshObservedValues() {
+    try {
+      const raw = await workspaceApi.rawText()
+      setObservedValues(parseObservedValueIndex(raw))
+    } catch {
+      setObservedValues(EMPTY_OBSERVED_VALUES)
+    }
   }
 
   async function chooseGameExecutable() {
@@ -394,6 +516,7 @@ function App() {
     setUnitSearch('')
     setFieldSearch('')
     setDocumentEpoch(value => value + 1)
+    await refreshObservedValues()
     const first = firstUsefulRow(next)
     if (first) {
       setNavigation({ items: [first], index: 0 })
@@ -474,6 +597,7 @@ function App() {
   async function setValue(option: SectionOption, value: string) {
     if (!snapshot || option.line_id <= 0) return
     setSelectedOptionId(option.line_id)
+    setObservedValues(current => mergeObservedValue(current, option, value))
     setSectionData(current => {
       const next = { ...current, options: current.options.map(item => item.line_id === option.line_id ? { ...item, value } : item) }
       if (selected) sectionCache.current.set(selected.id, next)
@@ -495,6 +619,7 @@ function App() {
       setStatus(value === option.raw_value ? `已还原 ${selected?.id}.${option.key}` : `已修改 ${selected?.id}.${option.key}`)
     } catch (error) {
       setStatus(`写入失败：${String(error)}`)
+      await refreshObservedValues()
       if (selected) {
         const data = await workspaceApi.section(selected.id)
         sectionCache.current.set(selected.id, data)
@@ -524,6 +649,7 @@ function App() {
       setSelectedOptionId(added?.line_id ?? data.options[0]?.line_id ?? null)
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
+      await refreshObservedValues()
       setCatalog(current => current.filter(item => item.key !== option.key))
       setStatus(`已添加 ${option.label || option.key} (${option.key})`)
     } catch (error) { setStatus(`添加参数失败：${String(error)}`) }
@@ -594,7 +720,7 @@ function App() {
                 return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
-                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} referenceRows={candidates} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
+                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} referenceRows={candidates} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
