@@ -18,17 +18,18 @@ function containsAny(file, text, tokens, rule) {
   }
 }
 
-// RED LINE 1: settings layout has one owner only.
-// styles.css is included because the historical .settingRow span leak lived there.
-for (const file of [
+const businessCss = [
   'styles.css',
   'polish.css',
   'theme-final.css',
-  'ui-library-integration.css',
   'qt-density.css',
   'workspace-polish.css',
   'workspace-final-fixes.css',
-]) {
+]
+
+// RED LINE 1: settings layout has one owner only.
+// styles.css is included because the historical .settingRow span leak lived there.
+for (const file of [...businessCss, 'ui-library-integration.css']) {
   const text = read(file)
   containsAny(file, text, [
     '.settingsDialogBody',
@@ -67,12 +68,25 @@ containsAny('settings-panel.css', settings, [
   '.tc-picker',
 ], 'settings CSS must not style UI Library internals')
 
-// RED LINE 4: the final business theme cannot recolor or reshape shared controls.
-// Terry_React_UI_Library owns dark/light component theming.
-const themeFinal = read('theme-final.css')
-if (/\.tc-[a-z0-9_-]+/i.test(themeFinal)) {
-  fail('theme-final.css', 'business theme must not target .tc-* shared controls', 'found .tc-* selector')
+// RED LINE 4: business CSS never targets shared UI classes. All contextual .tc-* rules
+// belong in ui-library-integration.css; component internals belong in the UI Library repo.
+for (const file of businessCss) {
+  const text = read(file)
+  if (/\.tc-[a-z0-9_-]+/i.test(text)) {
+    fail(file, 'shared UI selectors belong only in ui-library-integration.css', 'found .tc-* selector')
+  }
 }
+
+// RED LINE 5: the integration layer may target shared-control roots/context, but must not
+// style implementation details that have no business-slot responsibility.
+const integration = read('ui-library-integration.css')
+containsAny('ui-library-integration.css', integration, [
+  '.tc-legacy-switch',
+  '.tc-legacy-switch-knob',
+  '.tc-select-current',
+  '.tc-option-icon',
+  '.tc-range::-',
+], 'integration CSS must not own shared component internals')
 
 if (violations.length) {
   console.error('\n[UI CSS RED LINE] Boundary violations found:\n')
