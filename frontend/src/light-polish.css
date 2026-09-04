@@ -53,3 +53,16 @@
 }
 .app[data-mode="light"] .editorControls .segmented button:hover{color:#164d67!important;border-color:#6ea5b7!important;background:#e8f2f6!important}
 .app[data-mode="light"] .editorControls .segmented button.active{color:#0d665b!important;border-color:#3db39f!important;background:#dff4ef!important;box-shadow:none!important}
+
+/* Typed fallback icons are deliberately quieter than real thumbnails in light mode. */
+.app[data-mode="light"] .referenceTypeIcon,
+.app[data-mode="light"] .referenceOptionFallback.legacyUnitIcon.fallback{
+  background:#dce8ef!important;
+  color:#476a7f!important;
+  box-shadow:inset 0 0 0 1px rgba(58,95,120,.16)!important;
+}
+.app[data-mode="light"] .referenceTypeIcon-weapon{color:#4d6376!important}
+.app[data-mode="light"] .referenceTypeIcon-audio{color:#42758a!important}
+.app[data-mode="light"] .referenceTypeIcon-warhead{color:#6a657a!important}
+.app[data-mode="light"] .referenceTypeIcon-projectile{color:#4b7182!important}
+.app[data-mode="light"] .referenceTypeIcon-debris{color:#5e7180!important}
