@@ -570,8 +570,8 @@ function App() {
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
             {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
-              <button className="fieldGroupHeader" onClick={() => setCollapsed(value => ({ ...value, [group]: !value[group] }))}>{collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
-              {!collapsed[group] && list.map(option => {
+              <button className="fieldGroupHeader" onClick={() => { if (activeGroup === '全部') setCollapsed(value => ({ ...value, [group]: !value[group] })) }}>{activeGroup === '全部' && collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
+              {(activeGroup !== '全部' || !collapsed[group]) && list.map(option => {
                 const changed = option.raw_value == null ? true : option.value !== option.raw_value
                 const focused = selectedOption?.line_id === option.line_id
                 const target = referenceTarget(option)
