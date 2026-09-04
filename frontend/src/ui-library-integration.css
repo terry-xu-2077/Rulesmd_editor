@@ -12,6 +12,20 @@
   --tc-text-main:#ffffff;
   --tc-text-bright:#7fe8d8;
 }
+.app.tc-theme[data-mode="light"]{
+  --tc-base:#173a56;
+  --tc-accent:#179f8a;
+  --tc-effect:#3b8faf;
+  --tc-text-main:#17384f;
+  --tc-text-bright:#245e73;
+  --tc-panel:#e2edf3;
+  --tc-panel-2:#edf4f7;
+  --tc-panel-focus:#d7ebef;
+  --tc-border-color:#7199ae;
+  --tc-line:#b2c8d3;
+  --tc-row-hover:#dcecf1;
+  --tc-shadow:rgba(45,76,96,.18);
+}
 
 /*
  * EntityHeader is embedded into the editor's fixed 66px first row.
@@ -47,10 +61,16 @@
   justify-self:end;
   align-self:center;
   height:32px!important;
-  min-width:78px;
+  min-width:92px;
   margin-left:0;
-  border-radius:6px;
+  border-radius:7px;
   flex:0 0 auto;
+}
+.editorControls>.tc-button.variant-accent{font-weight:650;letter-spacing:.1px}
+.parameterDetailFooter>.tc-button{
+  height:32px!important;
+  min-width:126px;
+  border-radius:7px;
 }
 
 /* Parameter-table control slot. Width belongs to the business slot; component geometry stays library-owned. */
@@ -144,8 +164,8 @@
 /* BoolSwitch inside the parameter explorer filter is placed as a compact inline control. */
 .parameterFilterToggle .tc-bool-wrap{flex:none}
 
-.parameterPickerBody{width:min(680px,75vw)}
+.parameterPickerBody{width:min(620px,70vw)}
 .dialogHint{margin:0 0 10px;color:var(--tc-text-muted);font-size:12px;line-height:1.6}
-.parameterPickerBody .catalogList{max-height:58vh}
+.parameterPickerBody .catalogList{max-height:52vh}
 
 /* Settings layout intentionally lives in settings-panel.css only. */
