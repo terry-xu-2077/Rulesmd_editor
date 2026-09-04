@@ -37,6 +37,7 @@ import './styles.css'
 type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
 type SectionRow = { id: string; label: string; type: string; category: string; side: Side }
 type NavigationState = { items: SectionRow[]; index: number }
+type EditorViewMode = 'table' | 'raw'
 type LocalEditorSettings = {
   gamePath: string
   tableMode: boolean
@@ -196,6 +197,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [documentEpoch, setDocumentEpoch] = useState(0)
   const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
+  const [viewMode, setViewMode] = useState<EditorViewMode>('table')
   const [leftPane, setLeftPane] = useState(() => storedPaneWidth('rulesmd.leftPane', 230))
   const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
   const [localSettings, setLocalSettings] = useState<LocalEditorSettings>(() => ({
@@ -229,6 +231,9 @@ function App() {
   const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
   const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
   const headerSectionReady = Boolean(selected && sectionData.section && sectionData.section.toLowerCase() === selected.id.toLowerCase())
+  const effectiveAppearance: 'dark' | 'light' = localSettings.appearance === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    : localSettings.appearance
 
   function referenceTarget(option: SectionOption) {
     const value = option.value.trim()
@@ -458,9 +463,9 @@ function App() {
     '--right-pane': `${rightPane}px`,
   } as React.CSSProperties
 
-  return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode={localSettings.appearance === 'light' ? 'light' : 'dark'}>
+  return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode={effectiveAppearance}>
     <header className="titlebar">
-      <div className="brand"><div className="brandMark">R</div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
+      <div className="brand"><div className="brandMark"><img src="/legacy/app-logo.png" alt=""/></div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
       <nav className="toolbar">
         <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={18}/></IconButton>
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
@@ -488,8 +493,8 @@ function App() {
           <div className="entityHeaderHost">
             <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={headerSectionReady ? (sectionData.description || selected.label) : selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id}/>
             <div className="entityNavigation">
-              <button disabled={!previousSection} title={previousSection ? `后退到 ${previousSection.label} [${previousSection.id}]` : '没有上一项'} onClick={() => void navigateHistory(-1)}><ArrowLeft size={15}/><span>{previousSection?.label || '后退'}</span></button>
-              <button disabled={!nextSection} title={nextSection ? `前进到 ${nextSection.label} [${nextSection.id}]` : '没有下一项'} onClick={() => void navigateHistory(1)}><span>{nextSection?.label || '前进'}</span><ArrowRight size={15}/></button>
+              <button disabled={!previousSection} title={previousSection ? `后退到 ${previousSection.label} [${previousSection.id}]` : '没有上一项'} onClick={() => void navigateHistory(-1)}><ArrowLeft size={14}/><span>{previousSection?.label || '后退'}</span></button>
+              <button disabled={!nextSection} title={nextSection ? `前进到 ${nextSection.label} [${nextSection.id}]` : '没有下一项'} onClick={() => void navigateHistory(1)}><span>{nextSection?.label || '前进'}</span><ArrowRight size={14}/></button>
             </div>
           </div>
           <section className="editorControls">
@@ -497,7 +502,7 @@ function App() {
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
             <Button onClick={() => void openOptionPicker()}><Plus size={16}/> 参数</Button>
           </section>
-          <section className="fieldsPane parameterTablePane">
+          {viewMode === 'table' ? <section className="fieldsPane parameterTablePane">
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
             {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加已确认兼容的参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
@@ -513,26 +518,28 @@ function App() {
                 </div>
               })}
             </div>)}
-          </section>
+          </section> : <section className="rawEditorPane"><pre>{sectionData.raw}</pre></section>}
         </> : <div className="emptyPane"><strong>Rulesmd Editor</strong><span>使用“新建”创建完整原版 rulesmd.ini，或打开已有文件。</span></div>}
       </main>
 
       <div className="paneSplitter" role="separator" aria-label="调整帮助栏宽度" onPointerDown={event => beginResize('right', event)}/>
       <aside className="inspector inspectorCombined">
-        <div className="inspectorHeading"><CircleHelp size={16}/><strong>参数帮助</strong></div>
+        <div className="inspectorHeading"><CircleHelp size={16}/><strong>参数帮助</strong><div className="viewSwitch" role="group" aria-label="编辑视图"><button className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>表格</button><button className={viewMode === 'raw' ? 'active' : ''} onClick={() => setViewMode('raw')}>原文</button></div></div>
         <div className="inspectorScroll">
           <div className="helpContent">
-            {selectedOption ? <><div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div><span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p><div className="infoCard"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b className="valueText">{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>{selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}{selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}</> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
+            {selectedOption ? <>
+              <div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div>
+              <span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span>
+              <div className="helpDescriptionCard"><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p></div>
+              <div className="helpMeta"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b>{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>
+              {selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}
+              {selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}
+            </> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
           </div>
-          <details className="rawInspector">
-            <summary><span>{'{ }'} Section 原文</span><small>{sectionData.section || '—'}</small></summary>
-            <pre className="rawView rawInline">{sectionData.raw}</pre>
-          </details>
         </div>
       </aside>
     </div>
 
-    <footer className="statusbar"><span>{status}</span><div><span>{snapshot?.document.encoding ?? '—'}</span><span>{snapshot?.document.newline ?? '—'}</span><span>{sectionData.options.length} 参数</span><span className="aresStatus"><Sparkles size={13}/> {snapshot?.settings.ares_enabled === false ? 'Ares 辅助关闭' : 'Ares'}</span></div></footer>
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
 
     <Dialog open={showSettings} title="设置" onClose={() => setShowSettings(false)}>
