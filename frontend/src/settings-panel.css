@@ -1,11 +1,124 @@
-.settingsDialogBody.settingsGrid{display:flex;flex-direction:column;gap:0;min-width:min(720px,78vw);padding:8px 10px 12px}
-.settingsSectionTitle{padding:12px 8px 7px;color:#7fe8d8;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid rgba(112,238,255,.12)}
-.settingRow{display:grid!important;grid-template-columns:minmax(0,1fr) 260px!important;align-items:center!important;gap:24px!important;min-height:62px;padding:10px 8px;border-bottom:1px solid rgba(112,238,255,.1)}
-.settingRow>div:first-child{min-width:0;display:flex;flex-direction:column;gap:5px}
-.settingRow>div:first-child strong{font-size:13px;color:#e7eef7}
-.settingRow>div:first-child span{font-size:11px;line-height:1.5;color:#8196aa}
-.settingRow>.tc-control-wrap{justify-self:end!important;margin:0!important}
-.settingPathRow{grid-template-columns:minmax(0,1fr) minmax(300px,360px)!important}
-.settingPathRow>.tc-control-wrap,.settingPathRow .tc-text{width:100%!important;max-width:none!important}
-.settingRow .tc-select{width:180px!important}
-@media(max-width:760px){.settingsDialogBody.settingsGrid{min-width:0;width:min(92vw,620px)}.settingRow,.settingPathRow{grid-template-columns:1fr!important;gap:9px!important}.settingRow>.tc-control-wrap{justify-self:start!important}}
+/*
+ * Settings layout owner.
+ *
+ * Important integration rule: this file may style the settings page's own semantic
+ * children and the OUTER root of shared controls, but it must not reach into UI
+ * Library internals with selectors such as `.settingRow span` / `button` / `input`.
+ */
+
+.tc-dialog-body .settingsDialogBody.settingsGrid{
+  width:min(720px,100%)!important;
+  max-width:100%!important;
+  min-width:0!important;
+  max-height:min(640px,78vh);
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:8px 10px 12px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+}
+
+.settingsDialogBody.settingsGrid .settingsSectionTitle{
+  margin:0!important;
+  padding:12px 8px 7px!important;
+  color:#7fe8d8!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase;
+  border:0!important;
+  border-bottom:1px solid rgba(112,238,255,.12)!important;
+}
+
+.settingsDialogBody.settingsGrid .settingRow{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(260px,360px)!important;
+  align-items:center!important;
+  gap:24px!important;
+  min-width:0!important;
+  min-height:62px!important;
+  margin:0 0 8px!important;
+  padding:10px 14px!important;
+  border:1px solid rgba(112,148,188,.14)!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(24,38,58,.72),rgba(16,28,44,.58))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+
+.settingsDialogBody.settingsGrid .settingRow:hover{
+  border-color:rgba(76,155,214,.26)!important;
+  background:linear-gradient(180deg,rgba(27,44,67,.82),rgba(18,31,49,.68))!important;
+}
+
+/* Only the first direct child is business copy. Never style arbitrary descendant spans. */
+.settingsDialogBody.settingsGrid .settingRow>div:first-child{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:5px!important;
+}
+.settingsDialogBody.settingsGrid .settingRow>div:first-child>strong{
+  margin:0!important;
+  color:#e7eef7!important;
+  font-size:13px!important;
+  font-weight:650!important;
+}
+.settingsDialogBody.settingsGrid .settingRow>div:first-child>span{
+  margin:0!important;
+  color:#8196aa!important;
+  font-size:11px!important;
+  line-height:1.5!important;
+}
+
+/* Shared controls own their internal geometry. Settings only places the outer host. */
+.settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap{
+  justify-self:end!important;
+  align-self:center!important;
+  margin:0!important;
+  min-width:0;
+}
+
+.settingsDialogBody.settingsGrid .settingPathRow>.tc-control-wrap,
+.settingsDialogBody.settingsGrid .settingPathRow .tc-text{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+
+.settingsDialogBody.settingsGrid .settingRow .tc-select{
+  width:160px!important;
+  min-width:160px!important;
+  max-width:160px!important;
+}
+
+.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow{
+  background:#f4f8fb!important;
+  border-color:#c9d7e2!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
+}
+.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow:hover{
+  background:#eef5f9!important;
+  border-color:#9fc1d1!important;
+}
+.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>strong{color:#173044!important}
+.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>span{color:#61788c!important}
+.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingsSectionTitle{color:#168c7d!important}
+
+@media(max-width:760px){
+  .tc-dialog-body .settingsDialogBody.settingsGrid{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .settingsDialogBody.settingsGrid .settingRow,
+  .settingsDialogBody.settingsGrid .settingPathRow{
+    grid-template-columns:1fr!important;
+    gap:9px!important;
+  }
+  .settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap{
+    justify-self:start!important;
+  }
+  .settingsDialogBody.settingsGrid .settingPathRow>.tc-control-wrap{
+    width:100%!important;
+  }
+}
