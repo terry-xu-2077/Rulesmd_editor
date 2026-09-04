@@ -1,3 +1,5 @@
+@import './app.css';
+
 /* Final workspace refinements. Keep business layout fixes here rather than patching shared controls. */
 .app{grid-template-rows:60px minmax(0,1fr)!important}
 .titlebar{display:grid!important;grid-template-columns:minmax(240px,1fr) auto minmax(240px,1fr)!important;align-items:center!important;gap:16px!important}
@@ -60,7 +62,7 @@
 .app[data-mode="light"] .fieldGroupHeader{background:linear-gradient(180deg,#bdccd8,#acbecd)!important;color:#213f55!important;border-top-color:#dbe6ed!important;border-bottom-color:#8fa7ba!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 2px 5px rgba(34,76,101,.13)!important}
 .app[data-mode="light"] .parameterTableRow{background:#eef4f8!important;border-bottom-color:#cad7e1!important}
 .app[data-mode="light"] .parameterTableRow:nth-child(even){background:#f4f8fb!important}
-.app[data-mode="light"] .parameterTableRow.focused{background:linear-gradient(90deg,#d4edf2,#e5f3f5 58%,#edf6f7)!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.14)!important}
+.app[data-mode="light"] .parameterTableRow.focused{background:linear-gradient(90deg,#d4edf2,#e5f3f5 58%,rgba(237,246,247,1))!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.14)!important}
 .app[data-mode="light"] .parameterTableRow.focused .parameterLabelCell strong,.app[data-mode="light"] .parameterTableRow.focused .parameterKeyCell code{color:#12364a!important}
 .app[data-mode="light"] .segmented button{color:#36536a!important;border-color:#b9cbd8!important;background:#f5f8fb!important}
 .app[data-mode="light"] .segmented button.active{color:#0f635b!important;background:#d9f0eb!important;border-color:#58b7a7!important}
