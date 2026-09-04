@@ -1,4 +1,4 @@
-/* Final theme completion layer. Loaded last so light mode never inherits hard-coded dark surfaces. */
+/* Final business-theme completion layer. Shared UI controls are themed by Terry_React_UI_Library. */
 .app[data-mode="light"]{
   --bg:#e7eef5;
   --panel:#f3f7fa;
@@ -44,54 +44,8 @@
 .app[data-mode="light"] .referenceJump svg{stroke:#2f607f!important}
 .app[data-mode="light"] .referenceJump:hover{background:linear-gradient(180deg,#e2f1f6,#c5dde8)!important;border-color:#4783a6!important}
 
-/* Shared dialogs and settings inherit light surfaces. */
-.app[data-mode="light"] .tc-dialog-layer{background:rgba(45,66,86,.34)!important}
-.app[data-mode="light"] .tc-dialog{background:#eef3f7!important;color:#173047!important;border-color:#7998ad!important}
-.app[data-mode="light"] .tc-dialog>header{background:linear-gradient(180deg,#eef3f7,#cfd9e2)!important;color:#173047!important;border-bottom:1px solid #b6c5d1!important}
-.app[data-mode="light"] .tc-dialog-body{background:#dfe7ee!important;color:#173047!important}
-.app[data-mode="light"] .settingsDialogBody{color:#173047!important}
-.app[data-mode="light"] .settingsSectionTitle{color:#168f9f!important;border-bottom-color:#aabfcd!important}
-.app[data-mode="light"] .settingRow{border-bottom-color:#bccbd6!important}
-.app[data-mode="light"] .settingRow>div:first-child strong{color:#223f55!important}
-.app[data-mode="light"] .settingRow>div:first-child span{color:#667f94!important}
-
-/* Light input/select text must stay readable in WebView, including text-fill. */
-.app[data-mode="light"] .tc-text input,.app[data-mode="light"] .tc-number,.app[data-mode="light"] .tc-select-button{
-  color:#173047!important;
-  -webkit-text-fill-color:#173047!important;
-}
-.app[data-mode="light"] .tc-text input::placeholder{color:#7890a2!important;-webkit-text-fill-color:#7890a2!important;opacity:1!important}
-.app[data-mode="light"] .settingPathRow .tc-text,.app[data-mode="light"] .settingPathRow .tc-text input{background:#d6e1e9!important}
-
-/* Settings switches always use the compact library geometry; grid width never participates in switch layout. */
-.settingRow>.tc-control-wrap.tc-bool-wrap{
-  --tc-bool-width:78px!important;
-  width:78px!important;
-  min-width:78px!important;
-  max-width:78px!important;
-  flex:0 0 78px!important;
-  justify-self:end!important;
-  align-self:center!important;
-  place-self:center end!important;
-  margin:0!important;
-}
-.settingRow>.tc-control-wrap.tc-bool-wrap>.tc-bool{width:78px!important;min-width:78px!important;max-width:78px!important;margin:0!important}
-
-/* Light BoolSwitch keeps the exact legacy-web shape; only palette changes. */
-.app[data-mode="light"] .tc-bool-wrap>.tc-bool{
-  border-color:#7c9aae!important;
-  background:linear-gradient(0deg,#dce5ec 30%,#aab9c5 26%,#aab9c5 74%,#dce5ec 70%)!important;
-}
-.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{
-  color:#355166!important;
-  border-color:rgba(255,255,255,.62)!important;
-  background:linear-gradient(90deg,#8393a0 10%,#eef3f6 20%,#8393a0 60%)!important;
-}
-.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
-  color:#fff!important;
-  border-color:rgba(255,255,255,.68)!important;
-  background:linear-gradient(90deg,#0d7d6c 10%,#43e2c8 80%,#0d7d6c 90%)!important;
-}
+/* Shared dialogs, TextField, Select, BoolSwitch and Slider are intentionally absent here.
+   Their light/dark geometry and palette belong to Terry_React_UI_Library. */
 
 /* Parameter explorer follows the application theme completely. */
 .app[data-mode="light"] .parameterExplorer{color:#173047!important}
@@ -126,8 +80,3 @@
 .app[data-mode="light"] .parameterDetailFooter{background:#e2eaf0!important;border-top-color:#b7c8d4!important}
 .app[data-mode="light"] .parameterExplorer ::-webkit-scrollbar-track{background:#dce5ec!important}
 .app[data-mode="light"] .parameterExplorer ::-webkit-scrollbar-thumb{border-color:#dce5ec!important;background:#93a8b8!important}
-
-/* Light slider keeps the same geometry, only the palette changes. */
-.app[data-mode="light"] .tc-slider{background:linear-gradient(180deg,#d8e2e9,#c5d1db)!important}
-.app[data-mode="light"] .tc-range::-webkit-slider-runnable-track{background:#aabcc9!important;border-color:#7f9caf!important;box-shadow:inset 0 2px 3px rgba(43,68,88,.25)!important}
-.app[data-mode="light"] .tc-number{color:#173047!important;-webkit-text-fill-color:#173047!important}
