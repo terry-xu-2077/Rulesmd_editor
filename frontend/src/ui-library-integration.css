@@ -1,8 +1,9 @@
 /*
  * Sole application integration layer for Terry_React_UI_Library.
  *
- * Business CSS files must not reach into .tc-* internals. If a contextual slot really
- * needs shared-control sizing/z-index integration, keep it here and never in settings CSS.
+ * Business CSS files must not reach into .tc-* selectors. If a contextual slot really
+ * needs shared-control sizing/z-index integration, keep it here. Component implementation
+ * details still belong in Terry_React_UI_Library itself.
  */
 .app.tc-theme{
   --tc-base:#011437;
@@ -31,7 +32,18 @@
   gap:5px;
 }
 
-.editorControls>.tc-button{margin-left:auto;min-width:78px;border-radius:6px;height:28px}
+/* Shared Button occupies the business toolbar's third grid cell. */
+.editorControls>.tc-button{
+  grid-column:3;
+  grid-row:1;
+  justify-self:end;
+  align-self:center;
+  height:32px!important;
+  min-width:78px;
+  margin-left:0;
+  border-radius:6px;
+  flex:0 0 auto;
+}
 
 /* Parameter-table control slot. Width belongs to the business slot; component geometry stays library-owned. */
 .rulesControlHost{
@@ -42,19 +54,29 @@
   align-items:center;
   gap:7px;
 }
+.parameterValueCell .rulesControlHost{--rules-editor-control-width:180px}
 .rulesControlHost .tc-control-wrap{min-width:0;max-width:100%}
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap){
+  width:var(--rules-editor-control-width)!important;
+  min-width:var(--rules-editor-control-width)!important;
+  max-width:var(--rules-editor-control-width)!important;
+  flex:0 0 var(--rules-editor-control-width)!important;
+}
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-control,
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host,
+.parameterValueCell .rulesControlHost>.tc-control-wrap:not(.tc-bool-wrap)>.tc-tooltip-host>.tc-control{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
 .rulesControlHost .tc-text,
 .rulesControlHost .tc-select,
 .rulesControlHost .tc-multi,
 .rulesControlHost .tc-slider{
-  width:180px!important;
-  min-width:180px!important;
-  max-width:180px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
 }
-.rulesControlHost .tc-control-wrap:has(.tc-text),
-.rulesControlHost .tc-control-wrap:has(.tc-select),
-.rulesControlHost .tc-control-wrap:has(.tc-multi),
-.rulesControlHost .tc-control-wrap:has(.tc-slider){width:180px;flex:0 0 180px}
 .rulesControlHost .tc-select-list{width:300px!important;max-width:min(360px,46vw)!important}
 .rulesControlHost .referenceOptionFallback{width:28px!important;height:24px!important;border-radius:4px}
 .rulesControlHost:has(.referenceJump) .tc-reset{right:-68px!important}
@@ -69,19 +91,22 @@
 .parameterValueCell .tc-bool-knob{font-size:11.5px!important}
 .parameterValueCell .tc-reset{left:calc(100% + 6px)}
 
-/* Select popup must sit above row actions and every row fills the menu width. */
+/* Select popup must sit above row actions. */
 .parameterTableRow:has(.tc-select.is-open){position:relative!important;z-index:60!important}
 .parameterValueCell .tc-select-list{z-index:2400!important}
-.parameterValueCell .tc-select-list .tc-select-item{width:100%!important;min-width:100%!important;max-width:100%!important}
 
-/* Parameter-table BoolSwitch exposes a wider business slot via its public width prop/context. */
-.parameterValueCell .rulesControlHost>.tc-bool-wrap{
-  width:180px!important;
-  min-width:180px!important;
-  max-width:180px!important;
-  flex:0 0 180px!important;
-  margin-right:0!important;
+/* Parameter-table BoolSwitch gets its 180px width from the public width prop in FieldControl. */
+.parameterValueCell .rulesControlHost>.tc-bool-wrap{margin-right:0!important}
+
+/* Pickers may expand independently from the compact closed control. */
+.parameterValueCell .tc-picker,
+.parameterValueCell .tc-visual-picker{
+  width:360px!important;
+  max-width:min(460px,60vw)!important;
 }
+
+/* BoolSwitch inside the parameter explorer filter is placed as a compact inline control. */
+.parameterFilterToggle .tc-bool-wrap{flex:none}
 
 .parameterPickerBody{width:min(680px,75vw)}
 .dialogHint{margin:0 0 10px;color:var(--tc-text-muted);font-size:12px;line-height:1.6}
