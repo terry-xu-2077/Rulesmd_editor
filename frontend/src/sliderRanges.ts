@@ -14,6 +14,8 @@ type RangeSpec = Omit<SliderRange, 'suffix'>
  * - Never derive min/max by multiplying the current value.
  * - A Key must resolve to the same track range regardless of its current value.
  * - Manual numeric input may intentionally exceed the track range.
+ * - Numeric precision is independent from track range. A floating-point rule must not
+ *   become an integer merely because its semantic range uses an integer-sized domain.
  *
  * Exact Key rules win first. Families are only fallbacks for numeric Keys that share
  * well-known Rules/Ares semantics. Add a new exact rule whenever a Key needs a more
@@ -86,8 +88,46 @@ const FAMILY_RULES: Array<{ test: RegExp; range: RangeSpec }> = [
   { test: /(?:multiplier|modifier|factor|bonus)$/i, range: { min: 0, max: 5, step: 0.01 } },
 ]
 
+// Keep the finest precision ever observed for a Key during the session. This matters
+// because after the first drag a value such as .016 may become .017; recomputing from a
+// rounded intermediate value must never widen the step back to 0.01 or 1.
+const PRECISION_STEP_BY_KEY = new Map<string, number>()
+
 function suffixFor(value: string) {
   return value.trim().endsWith('%') ? '%' : ''
+}
+
+function precisionStepFrom(value: string, valueType: string): number | null {
+  const raw = value.trim().replace(/%$/, '')
+  const exponent = raw.match(/[eE]([+-]?\d+)$/)
+  if (exponent) {
+    const exp = Number.parseInt(exponent[1], 10)
+    if (Number.isFinite(exp) && exp < 0) return Math.max(1e-6, 10 ** exp)
+  }
+
+  const decimal = raw.match(/\.([0-9]+)/)
+  if (decimal) {
+    return Math.max(1e-6, 10 ** -Math.min(decimal[1].length, 6))
+  }
+
+  if (/float|double|decimal/i.test(valueType)) return 0.01
+  return null
+}
+
+function preserveNumericPrecision(key: string, baseStep: number, value: string, valueType: string) {
+  const observed = precisionStepFrom(value, valueType)
+  const previous = PRECISION_STEP_BY_KEY.get(key)
+  const finest = observed == null
+    ? previous
+    : previous == null ? observed : Math.min(previous, observed)
+  if (finest == null) return baseStep
+  const step = Math.min(baseStep, finest)
+  PRECISION_STEP_BY_KEY.set(key, step)
+  return step
+}
+
+function withPrecision(key: string, range: RangeSpec, value: string, valueType: string): RangeSpec {
+  return { ...range, step: preserveNumericPrecision(key, range.step, value, valueType) }
 }
 
 function fallbackRange(value: string, valueType: string): RangeSpec {
@@ -107,14 +147,16 @@ function fallbackRange(value: string, valueType: string): RangeSpec {
 export function sliderRangeFor(key: string, value: string, valueType = ''): SliderRange {
   const normalized = key.trim().toLowerCase()
   const exact = EXACT_RULES[normalized]
-  if (exact) return { ...exact, suffix: suffixFor(value) }
+  if (exact) return { ...withPrecision(normalized, exact, value, valueType), suffix: suffixFor(value) }
 
   if (value.trim().endsWith('%') || valueType.toLowerCase() === 'percent') {
-    return { ...fallbackRange(value, valueType), suffix: suffixFor(value) }
+    const range = fallbackRange(value, valueType)
+    return { ...withPrecision(normalized, range, value, valueType), suffix: suffixFor(value) }
   }
 
   const family = FAMILY_RULES.find(rule => rule.test.test(normalized))
-  if (family) return { ...family.range, suffix: suffixFor(value) }
+  if (family) return { ...withPrecision(normalized, family.range, value, valueType), suffix: suffixFor(value) }
 
-  return { ...fallbackRange(value, valueType), suffix: suffixFor(value) }
+  const range = fallbackRange(value, valueType)
+  return { ...withPrecision(normalized, range, value, valueType), suffix: suffixFor(value) }
 }
