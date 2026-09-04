@@ -1,5 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
   BoolSwitch,
   Button,
@@ -33,6 +34,7 @@ import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterPicker } from './ParameterPicker'
 import { UnitTree } from './UnitTree'
 import './styles.css'
+import './polish.css'
 
 type Side = 'allied' | 'soviet' | 'yuri' | 'neutral'
 type SectionRow = { id: string; label: string; type: string; category: string; side: Side }
@@ -147,10 +149,10 @@ function numericRange(option: SectionOption) {
   return { min, max, step: decimal ? 0.01 : 1, suffix: '' }
 }
 
-function IconButton({ title, children, primary = false, onClick, disabled = false }: {
-  title: string; children: React.ReactNode; primary?: boolean; onClick?: () => void; disabled?: boolean
+function IconButton({ title, children, primary = false, onClick, disabled = false, dirty = false }: {
+  title: string; children: React.ReactNode; primary?: boolean; onClick?: () => void; disabled?: boolean; dirty?: boolean
 }) {
-  return <button className={`iconButton ${primary ? 'primary' : ''}`} title={title} onClick={onClick} disabled={disabled}>{children}<span className="iconButtonLabel">{title}</span></button>
+  return <button className={`iconButton ${primary ? 'primary' : ''}`} title={title} onClick={onClick} disabled={disabled}>{children}<span className="iconButtonLabel">{title}{dirty && <i className="saveDirtyDot" aria-label="有未保存修改"/>}</span></button>
 }
 
 function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: number; className?: string }) {
@@ -165,8 +167,19 @@ function optionVisualIcon(value: string) {
   return undefined
 }
 
-function FieldControl({ option, onChange }: { option: SectionOption; onChange: (value: string) => void }) {
+function referenceOptionIcon(value: string) {
+  const visual = optionVisualIcon(value)
+  if (visual) return visual
+  return <LegacyUnitIcon id={value} size={28} className="referenceOptionFallback"/>
+}
+
+function FieldControl({ option, onChange, referenceRows = [] }: { option: SectionOption; onChange: (value: string) => void; referenceRows?: SectionRow[] }) {
   const raw = option.raw_value ?? undefined
+  if (referenceRows.length) {
+    const options = referenceRows.map(row => ({ value: row.id, label: row.label || row.id, group: row.id, icon: referenceOptionIcon(row.id) }))
+    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: option.value, group: '', icon: referenceOptionIcon(option.value) })
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section"/>
+  }
   if (option.widget === 'boolean') return <BoolSwitch value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" />
   if (option.widget === 'multi-select') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
@@ -174,9 +187,9 @@ function FieldControl({ option, onChange }: { option: SectionOption; onChange: (
     return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
   }
   if (option.widget === 'select') {
-    const options = option.values.map(value => ({ value: value.value, label: value.label ? `${value.label} · ${value.value}` : value.value }))
+    const options = option.values.map(value => ({ value: value.value, label: value.label ? `${value.label} · ${value.value}` : value.value, icon: optionVisualIcon(value.value) }))
     if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: option.value })
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange}/>
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10}/>
   }
   if (option.widget === 'slider') {
     const range = numericRange(option)
@@ -202,6 +215,7 @@ function App() {
   const [showPicker, setShowPicker] = useState(false)
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
   const [showSettings, setShowSettings] = useState(false)
+  const [showClosePrompt, setShowClosePrompt] = useState(false)
   const [documentEpoch, setDocumentEpoch] = useState(0)
   const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
   const [viewMode, setViewMode] = useState<EditorViewMode>('table')
@@ -216,6 +230,7 @@ function App() {
   }))
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
+  const allowWindowClose = useRef(false)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
   const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
@@ -242,10 +257,38 @@ function App() {
     ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
     : localSettings.appearance
 
+  useEffect(() => {
+    const appWindow = getCurrentWindow()
+    let unlisten: (() => void) | undefined
+    void appWindow.onCloseRequested(event => {
+      if (allowWindowClose.current || !snapshot?.document.dirty) return
+      event.preventDefault()
+      setShowClosePrompt(true)
+    }).then(fn => { unlisten = fn })
+    return () => unlisten?.()
+  }, [snapshot?.document.dirty])
+
   function referenceTarget(option: SectionOption) {
     const value = option.value.trim()
     if (!value || value.includes(',')) return null
     return rowById.get(value.toLowerCase()) ?? null
+  }
+
+  function referenceRows(option: SectionOption) {
+    const type = option.value_type.toLowerCase()
+    const key = option.key.toLowerCase()
+    const target = referenceTarget(option)
+    let category = target?.category
+    if (!category && (type === 'weapon' || ['primary','secondary','eliteprimary','elitesecondary','occupyweapon','eliteoccupyweapon','opentransportweapon','deathweapon'].includes(key))) category = '武器'
+    if (!category && (type === 'warhead' || key.includes('warhead'))) category = '弹头'
+    if (!category && (type === 'projectile' || key.includes('projectile'))) category = '弹体'
+    if (!category && key === 'deploysinto') category = '建筑'
+    if (!category && key === 'undeploysinto') category = '载具'
+    if (!category && key === 'enslaves') category = '步兵'
+    if (!category && key === 'spawns') category = '飞机'
+    if (!category) return []
+    const normalized = category.replace('战车', '载具')
+    return rows.filter(row => row.category.replace('战车', '载具') === normalized)
   }
 
   function updateLocalSetting<K extends keyof LocalEditorSettings>(key: K, value: LocalEditorSettings[K]) {
@@ -371,13 +414,13 @@ function App() {
     } finally { setBusy(false) }
   }
 
-  async function saveRules() {
-    if (!snapshot) return
+  async function saveRules(): Promise<boolean> {
+    if (!snapshot) return false
     setBusy(true)
     try {
       let path = snapshot.document.path ?? undefined
       if (!path) path = (await workspaceApi.pickSaveFile('rulesmd.ini')) ?? undefined
-      if (!path) return
+      if (!path) return false
       await workspaceApi.save(path)
       localStorage.setItem('rulesmd.lastFile', path)
       const next = await workspaceApi.snapshot()
@@ -389,9 +432,23 @@ function App() {
         setSectionData(data)
       }
       setStatus(`已保存 ${path}`)
+      return true
     } catch (error) {
       setStatus(`保存失败：${String(error)}`)
+      return false
     } finally { setBusy(false) }
+  }
+
+  async function closeWithoutSaving() {
+    allowWindowClose.current = true
+    await getCurrentWindow().destroy()
+  }
+
+  async function saveAndClose() {
+    const saved = await saveRules()
+    if (!saved) return
+    allowWindowClose.current = true
+    await getCurrentWindow().destroy()
   }
 
   async function setValue(option: SectionOption, value: string) {
@@ -476,12 +533,12 @@ function App() {
       <nav className="toolbar">
         <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={18}/></IconButton>
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
-        <IconButton title="保存" primary disabled={!snapshot} onClick={() => void saveRules()}><Save size={18}/></IconButton>
+        <IconButton title="保存" disabled={!snapshot} dirty={Boolean(snapshot?.document.dirty)} onClick={() => void saveRules()}><Save size={18}/></IconButton>
         <span className="divider"/>
         <IconButton title="启动游戏" disabled={!localSettings.gamePath}><Gamepad2 size={18}/></IconButton>
         <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
       </nav>
-      <div className="titleMeta"><span className={`statusDot ${snapshot?.document.dirty ? 'dirty' : ''}`}/>{snapshot?.document.dirty ? '有未保存修改' : snapshot ? '已保存' : '未打开文档'}</div>
+      <div className="titleViewSwitch viewSwitch" role="group" aria-label="编辑视图"><button disabled={!selected} className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>表格</button><button disabled={!selected} className={viewMode === 'raw' ? 'active' : ''} onClick={() => setViewMode('raw')}>原文</button></div>
     </header>
 
     <div className="workspace" style={workspaceStyle}>
@@ -511,17 +568,18 @@ function App() {
           </section>
           {viewMode === 'table' ? <section className="fieldsPane parameterTablePane">
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
-            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加已确认兼容的参数。</span></div>}
+            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“+ 参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => setCollapsed(value => ({ ...value, [group]: !value[group] }))}>{collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {!collapsed[group] && list.map(option => {
                 const changed = option.raw_value == null ? true : option.value !== option.raw_value
                 const focused = selectedOption?.line_id === option.line_id
                 const target = referenceTarget(option)
+                const candidates = referenceRows(option)
                 return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
-                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
+                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} referenceRows={candidates} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
@@ -531,7 +589,7 @@ function App() {
 
       <div className="paneSplitter" role="separator" aria-label="调整帮助栏宽度" onPointerDown={event => beginResize('right', event)}/>
       <aside className="inspector inspectorCombined">
-        <div className="inspectorHeading"><CircleHelp size={16}/><strong>参数帮助</strong><div className="viewSwitch" role="group" aria-label="编辑视图"><button className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>表格</button><button className={viewMode === 'raw' ? 'active' : ''} onClick={() => setViewMode('raw')}>原文</button></div></div>
+        <div className="inspectorHeading"><CircleHelp size={16}/><strong>参数帮助</strong></div>
         <div className="inspectorScroll">
           <div className="helpContent">
             {selectedOption ? <>
@@ -560,6 +618,10 @@ function App() {
         <div className="settingsSectionTitle">规则兼容</div>
         <div className="settingRow"><div><strong>Ares 支持</strong><span>关闭后不再推荐 Ares 参数，但已有或手写 Ares 标签仍会正常读取、编辑和保存。</span></div><BoolSwitch value={(snapshot?.settings.ares_enabled ?? true) ? 'yes' : 'no'} onChange={value => void toggleAres(value === 'yes')}/></div>
       </div>
+    </Dialog>
+
+    <Dialog open={showClosePrompt} title="保存修改" onClose={() => setShowClosePrompt(false)}>
+      <div className="closePrompt"><p>当前文件还有未保存修改。关闭前是否保存？</p><div className="closePromptActions"><Button onClick={() => void saveAndClose()}>保存并退出</Button><Button className="quietDanger" onClick={() => void closeWithoutSaving()}>不保存</Button><Button className="quietButton" onClick={() => setShowClosePrompt(false)}>取消</Button></div></div>
     </Dialog>
   </div>
 }
