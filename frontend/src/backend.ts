@@ -127,13 +127,6 @@ function queueValueEdit(lineId: number, value: string): Promise<SetValueResult> 
   })
 }
 
-function tableSection(data: SectionData): SectionData {
-  return {
-    ...data,
-    options: data.options.map(option => option.source.toLowerCase() === 'ares' ? { ...option, category: 'Ares' } : option),
-  }
-}
-
 export const workspaceApi = {
   status: () => invoke<{ desktop: string; python: string }>('backend_status'),
   pickFile: () => invoke<string | null>('pick_rules_file'),
@@ -149,7 +142,7 @@ export const workspaceApi = {
   snapshot: () => call<WorkspaceSnapshot>('snapshot'),
   section: async (section: string) => {
     await flushPendingValues()
-    return tableSection(await call<SectionData>('section', { section }))
+    return call<SectionData>('section', { section })
   },
   setValue: (lineId: number, value: string) => queueValueEdit(lineId, value),
   flushPendingValues,
