@@ -24,7 +24,7 @@ import {
   FolderOpen,
   Gamepad2,
   ListPlus,
-  Plus,
+  PackagePlus,
   Rocket,
   Save,
   Search,
@@ -34,7 +34,8 @@ import {
   Volume2,
   WandSparkles,
 } from 'lucide-react'
-import { workspaceApi, type CatalogOption, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
+import { workspaceApi, type CatalogOption, type CreateUnitResult, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
+import { AddUnitDialog } from './AddUnitDialog'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterPicker } from './ParameterPicker'
 import { localizedReferenceLabel } from './referenceLabels'
@@ -59,7 +60,7 @@ const EMPTY_OBSERVED_VALUES: ObservedValueIndex = { byKey: {}, audio: [] }
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
 const WEAPON_REFERENCE_KEYS = new Set([
   'primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon',
-  'eliteoccupyweapon', 'opentransportweapon', 'deathweapon',
+  'eliteoccupyweapon', 'deathweapon',
 ])
 
 function storedPaneWidth(key: string, fallback: number) {
@@ -331,6 +332,7 @@ function App() {
   const [status, setStatus] = useState('新建或打开 rulesmd.ini 开始编辑')
   const [busy, setBusy] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [showAddUnit, setShowAddUnit] = useState(false)
   const [catalog, setCatalog] = useState<CatalogOption[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [showClosePrompt, setShowClosePrompt] = useState(false)
@@ -662,6 +664,28 @@ function App() {
     } catch (error) { setStatus(`添加参数失败：${String(error)}`) }
   }
 
+  async function unitCreated(result: CreateUnitResult) {
+    setShowAddUnit(false)
+    sectionCache.current.clear()
+    sectionRequest.current += 1
+    setSnapshot(result.snapshot)
+    setDocumentEpoch(value => value + 1)
+    setUnitSearch('')
+    setFieldSearch('')
+    const nextRows = rowsFromSnapshot(result.snapshot)
+    const row = nextRows.find(item => item.id.toLowerCase() === result.section.section.toLowerCase()) ?? null
+    if (row) {
+      setSelected(row)
+      setNavigation({ items: [row], index: 0 })
+      sectionCache.current.set(row.id, result.section)
+      setSectionData(result.section)
+      setSelectedOptionId(result.section.options[0]?.line_id ?? null)
+      setActiveGroup('全部')
+    }
+    await refreshObservedValues()
+    setStatus(`已创建 [${result.section.section}] · 自动注册 ${result.root}.${result.registration_id}`)
+  }
+
   async function toggleAres(enabled: boolean) {
     try {
       await workspaceApi.setSettings(enabled)
@@ -696,7 +720,7 @@ function App() {
         <div className="treeList">
           {!snapshot ? <div className="emptyPane"><strong>还没有 Rules 文档</strong><span>点击顶部“新建”使用完整原版模板，或打开已有 rulesmd.ini。</span></div> : <UnitTree rows={rows} selectedId={selected?.id} query={unitSearch} documentEpoch={documentEpoch} onSelect={row => void manualSelect(row)}/>} 
         </div>
-        <div className="sideFooter"><button disabled={!snapshot}><Plus size={16}/> 添加 Section</button><button title="删除" disabled={!selected}><Trash2 size={16}/></button></div>
+        <div className="sideFooter"><button disabled={!snapshot} onClick={() => setShowAddUnit(true)}><PackagePlus size={16}/> 添加新单位</button><button title="删除" disabled={!selected}><Trash2 size={16}/></button></div>
       </aside>
       <div className="paneSplitter" role="separator" aria-label="调整对象栏宽度" onPointerDown={event => beginResize('left', event)}/>
 
@@ -753,6 +777,7 @@ function App() {
       </aside>
     </div>
 
+    <AddUnitDialog open={showAddUnit} rows={rows} initialCategory={selected?.category} onClose={() => setShowAddUnit(false)} onCreated={unitCreated}/>
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
 
     <Dialog open={showSettings} title="设置" icon={<Settings size={18}/>} onClose={() => setShowSettings(false)}>

@@ -27,11 +27,7 @@
   --tc-shadow:rgba(45,76,96,.18);
 }
 
-/*
- * EntityHeader is embedded into the editor's fixed 66px first row.
- * Keep the host and the shared component on the same geometry so the header cannot
- * spill into the search/history toolbar below it.
- */
+/* EntityHeader host geometry. */
 .entityHeaderHost{
   position:relative;
   min-width:0;
@@ -54,9 +50,7 @@
   gap:5px;
 }
 
-/* Shared Button occupies the business toolbar's third grid cell. The add-parameter
- * command is a frequent primary action, so it receives compact geometry and the public
- * accent treatment. Its ListPlus glyph comes from React markup; no CSS-drawn icon. */
+/* Frequent add-parameter action. */
 .editorControls>.tc-button{
   grid-column:3;
   grid-row:1;
@@ -88,6 +82,44 @@
   min-width:126px;
   border-radius:7px;
 }
+
+/* App-specific Dialog geometry. The body size must follow the compact explorer rather
+ * than inheriting the generic 80vh dialog envelope. */
+.tc-dialog:has(.parameterExplorer){
+  width:min(880px,calc(100vw - 64px));
+  max-width:min(880px,calc(100vw - 64px));
+  max-height:570px;
+}
+.tc-dialog:has(.parameterExplorer)>.tc-dialog-body{
+  padding:0;
+  overflow:hidden;
+  max-height:532px;
+}
+.tc-dialog:has(.addUnitDialog){
+  width:min(940px,calc(100vw - 56px));
+  max-width:min(940px,calc(100vw - 56px));
+  max-height:calc(100vh - 54px);
+}
+.tc-dialog:has(.addUnitDialog)>.tc-dialog-body{
+  padding:0;
+  overflow:hidden;
+  max-height:calc(100vh - 92px);
+}
+.addUnitSetup .tc-control-wrap,
+.addUnitParameterRow .tc-control-wrap{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+.addUnitSetup .tc-control,
+.addUnitParameterRow .tc-control,
+.addUnitSetup .tc-tooltip-host,
+.addUnitParameterRow .tc-tooltip-host{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+.addUnitActions>.tc-button{height:32px!important;border-radius:7px;min-width:92px}
 
 /* Parameter-table control slot. Width belongs to the business slot; component geometry stays library-owned. */
 .rulesControlHost{
@@ -135,11 +167,7 @@
 .parameterValueCell .tc-bool-knob{font-size:11.5px!important}
 .parameterValueCell .tc-reset{left:calc(100% + 6px)}
 
-/*
- * Open menus form a temporary foreground layer over the scrolling parameter table.
- * Sticky group headers and controls in later rows must never paint over a Select/MultiSelect
- * popup. We only coordinate business stacking here; popup internals remain library-owned.
- */
+/* Open menus form a temporary foreground layer over the scrolling parameter table. */
 .parameterTablePane:has(.tc-select.is-open) .parameterTableHeader,
 .parameterTablePane:has(.tc-multi.is-open) .parameterTableHeader,
 .parameterTablePane:has(.tc-select.is-open) .fieldGroupHeader,
@@ -167,17 +195,14 @@
   z-index:5000!important;
 }
 
-/* Parameter-table BoolSwitch gets its 180px width from the public width prop in FieldControl. */
 .parameterValueCell .rulesControlHost>.tc-bool-wrap{margin-right:0!important}
 
-/* Pickers may expand independently from the compact closed control. */
 .parameterValueCell .tc-picker,
 .parameterValueCell .tc-visual-picker{
   width:360px!important;
   max-width:min(460px,60vw)!important;
 }
 
-/* BoolSwitch inside the parameter explorer filter is placed as a compact inline control. */
 .parameterFilterToggle .tc-bool-wrap{flex:none}
 
 .parameterPickerBody{width:min(620px,70vw)}

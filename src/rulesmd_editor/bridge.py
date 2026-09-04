@@ -10,12 +10,7 @@ from .yr_applicability import infer_yr_applies_to
 
 
 class Bridge:
-    """Small JSON-RPC-like dispatcher used by the desktop sidecar.
-
-    Expensive parameter-catalog preparation is warmed on a worker as soon as the
-    sidecar is alive. Document open/new stays focused on parsing and the minimal indexes
-    required to render the editor.
-    """
+    """Small JSON-RPC-like dispatcher used by the desktop sidecar."""
 
     def __init__(self, workspace: RulesWorkspace | None = None):
         self.workspace = workspace or RulesWorkspace()
@@ -72,7 +67,6 @@ class Bridge:
         return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
 
     def rpc_option_catalog_all(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
-        """Return every insertable catalog row plus a conservative compatibility flag."""
         target_type = applies_to
         if section:
             target_type = self.workspace._section_types.get(section.casefold()) or applies_to
@@ -122,6 +116,9 @@ class Bridge:
 
     def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)
+
+    def rpc_create_unit(self, template: str, section: str, comment: str, values: list[dict[str, str]] | None = None) -> dict:
+        return self.workspace.create_unit(template=template, section=section, comment=comment, values=values or [])
 
     def rpc_remove_line(self, line_id: int) -> dict:
         return self.workspace.remove_line(line_id)

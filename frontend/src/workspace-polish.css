@@ -10,6 +10,11 @@
 .toolbar{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;flex:none!important;width:auto!important;z-index:3}
 .titleMeta{margin-left:auto!important;z-index:2}
 
+/* Sidebar has four real rows: title, search, scrolling tree, fixed action footer. */
+.sidebar{grid-template-rows:auto auto minmax(0,1fr) 46px!important;min-height:0!important}
+.treeList{min-height:0!important;overflow:auto!important}
+.sideFooter{height:46px!important;min-height:46px!important;align-self:end;background:inherit;z-index:4}
+
 /* History capsule: small and aligned with the first editor-control row. */
 .entityNavigation{
   top:73px!important;

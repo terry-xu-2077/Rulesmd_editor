@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
+import re
 
 from .control_schema import ControlSchema, ControlSpec
 from .ini_document import IniDocument, categorized_sections
@@ -21,6 +22,14 @@ CATEGORY_TYPES = {
     "弹体": "Projectile",
 }
 TECHNO_TYPES = {"InfantryType", "VehicleType", "AircraftType", "BuildingType"}
+UNIT_REGISTRATION_ROOTS = {
+    "InfantryType": "InfantryTypes",
+    "VehicleType": "VehicleTypes",
+    "AircraftType": "AircraftTypes",
+    "BuildingType": "BuildingTypes",
+    "SuperWeapon": "SuperWeaponTypes",
+}
+SECTION_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
 @dataclass(frozen=True)
@@ -39,12 +48,7 @@ class WorkspaceSettings:
 
 
 class RulesWorkspace:
-    """Lossless rules editor service used by the Tauri bridge.
-
-    The full document is indexed once after open/new. Normal section switching then
-    performs only section-local parsing plus O(1) lookups for dynamic menus and reverse
-    references instead of repeatedly scanning the entire rulesmd.ini.
-    """
+    """Lossless rules editor service used by the Tauri bridge."""
 
     def __init__(self, schema: RuntimeSchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
         self.schema = schema or RuntimeSchemaCatalog()
@@ -91,8 +95,6 @@ class RulesWorkspace:
             if side:
                 self._country_sides[section_fold] = side
 
-        # Vanilla/YR canonical country names are only a fallback. Normally the Side=
-        # value in each country section above is authoritative, which also supports mods.
         canonical = {
             "americans": "allied", "alliance": "allied", "french": "allied", "germans": "allied", "british": "allied",
             "africans": "soviet", "arabs": "soviet", "confederation": "soviet", "russians": "soviet",
@@ -106,9 +108,6 @@ class RulesWorkspace:
         direct = self._country_sides.get(section_fold)
         if direct:
             return direct
-
-        # Owner is the same source of truth the game uses for country availability.
-        # RequiredHouses is a useful fallback for sections that omit Owner.
         for key in ("owner", "requiredhouses"):
             raw = self._last_values.get((section_fold, key), "")
             if not raw:
@@ -123,6 +122,13 @@ class RulesWorkspace:
             if len(sides) > 1:
                 return "neutral"
         return "neutral"
+
+    def _section_label(self, section: str) -> str:
+        catalog = (self.schema.section_description(section) or "").strip()
+        if catalog and catalog.casefold() != section.casefold():
+            return catalog
+        comment = self._last_values.get((section.casefold(), "name"), "").strip()
+        return comment or catalog or section
 
     def _rebuild_indexes(self) -> None:
         doc = self._doc()
@@ -169,9 +175,6 @@ class RulesWorkspace:
         self._rebuild_indexes()
 
     def _refresh_dirty(self) -> None:
-        # Value edits are tracked incrementally by line id. The previous implementation
-        # rescanned every line in a full rulesmd.ini after every slider/text change, which
-        # made otherwise tiny edits increasingly expensive as the document grew.
         self._doc().dirty = self._structural_dirty or bool(self._changed_value_ids)
 
     def get_settings(self) -> dict:
@@ -218,7 +221,7 @@ class RulesWorkspace:
                         {
                             "section": section,
                             "registration_id": registration_id,
-                            "label": self.schema.section_description(section) or section,
+                            "label": self._section_label(section),
                             "side": self._section_side(section),
                         }
                         for section, registration_id in entries
@@ -244,7 +247,7 @@ class RulesWorkspace:
                         continue
                 except ValueError:
                     continue
-                values.append((section, self.schema.section_description(section) or section))
+                values.append((section, self._section_label(section)))
             result = tuple(values)
             self._dynamic_cache[dynamic] = result
             return result
@@ -267,7 +270,7 @@ class RulesWorkspace:
         if not category:
             return ()
         result = tuple(
-            (section, self.schema.section_description(section) or section)
+            (section, self._section_label(section))
             for section, _ in self._categories_cache.get(category, [])
         )
         self._dynamic_cache[dynamic] = result
@@ -314,7 +317,7 @@ class RulesWorkspace:
             )
         return {
             "section": actual,
-            "description": self.schema.section_description(actual),
+            "description": self._section_label(actual),
             "options": options,
             "raw": doc.clone_section_text(actual),
             "references": [
@@ -434,6 +437,70 @@ class RulesWorkspace:
             "value": line.value,
             "raw_value": None,
             "dirty": doc.dirty,
+        }
+
+    def _next_registration_id(self, root: str) -> str:
+        numeric_ids: list[int] = []
+        for key, _ in self._doc().items(root):
+            try:
+                numeric_ids.append(int(key.strip()))
+            except ValueError:
+                continue
+        return str((max(numeric_ids) + 1) if numeric_ids else 0)
+
+    def create_unit(self, *, template: str, section: str, comment: str, values: list[dict[str, str]] | None = None) -> dict:
+        doc = self._doc()
+        template_actual = doc._section_name(template)
+        if template_actual is None:
+            raise KeyError(f"Unknown template section: {template}")
+
+        new_section = section.strip()
+        display_comment = comment.strip()
+        if not SECTION_NAME_RE.fullmatch(new_section):
+            raise ValueError("Section 注册名只能使用英文字母、数字和下划线，并且必须以字母开头")
+        if not display_comment:
+            raise ValueError("必须填写注释（Name）")
+        if doc.has_section(new_section):
+            raise ValueError(f"Section 已存在: {new_section}")
+
+        section_type = self._section_types.get(template_actual.casefold())
+        root = UNIT_REGISTRATION_ROOTS.get(section_type or "")
+        if not root:
+            raise ValueError("所选模板不是可注册的单位类型")
+
+        registration_id = self._next_registration_id(root)
+        overrides: dict[str, str] = {}
+        for row in values or []:
+            key = str(row.get("key", "")).strip()
+            if key:
+                overrides[key.casefold()] = str(row.get("value", ""))
+
+        template_items = doc.items(template_actual)
+        doc.set(root, registration_id, new_section)
+        doc.add_section(new_section)
+
+        saw_name = False
+        for key, template_value in template_items:
+            folded = key.casefold()
+            value = overrides.get(folded, template_value)
+            if folded == "uiname":
+                value = f"Name:{new_section}"
+            elif folded == "name":
+                value = display_comment
+                saw_name = True
+            doc.set(new_section, key, value)
+
+        if not saw_name:
+            doc.set(new_section, "Name", display_comment)
+
+        self._structural_dirty = True
+        self._rebuild_indexes()
+        self._refresh_dirty()
+        return {
+            "snapshot": self.snapshot(),
+            "section": self.section(new_section),
+            "registration_id": registration_id,
+            "root": root,
         }
 
     def remove_line(self, line_id: int) -> dict:

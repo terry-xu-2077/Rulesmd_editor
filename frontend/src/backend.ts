@@ -70,6 +70,20 @@ export type CatalogOption = {
   compatible?: boolean
 }
 
+export type CreateUnitRequest = {
+  template: string
+  section: string
+  comment: string
+  values: Array<{ key: string; value: string }>
+}
+
+export type CreateUnitResult = {
+  snapshot: WorkspaceSnapshot
+  section: SectionData
+  registration_id: string
+  root: string
+}
+
 async function call<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>('backend_call', { method, params })
 }
@@ -86,9 +100,6 @@ const pendingValueEdits = new Map<number, PendingValueEdit>()
 const inFlightValueWrites = new Map<number, Promise<SetValueResult>>()
 const latestValuePromises = new Map<number, Promise<SetValueResult>>()
 
-// A short fixed window coalesces noisy controls without the old 120 ms debounce. The
-// window is never extended by subsequent events, so one click cannot acquire an
-// artificial wait and a continuous drag cannot postpone persistence indefinitely.
 const VALUE_EDIT_WINDOW_MS = 32
 
 async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
@@ -97,8 +108,6 @@ async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
   pendingValueEdits.delete(lineId)
   if (pending.timer) clearTimeout(pending.timer)
 
-  // Writes for the same INI line must be ordered. Without this chain, an older bridge
-  // request may finish after a newer one and briefly restore a stale slider/text value.
   const previous = inFlightValueWrites.get(lineId)
   const write = (previous ? previous.catch(() => undefined) : Promise.resolve(undefined))
     .then(() => call<SetValueResult>('set_value', { line_id: lineId, value: pending.value }))
@@ -110,9 +119,6 @@ async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
 
     const latestPromise = latestValuePromises.get(lineId)
     if (latestPromise && latestPromise !== pending.promise) {
-      // A newer edit arrived while this request was in flight. Older callers should see
-      // the final result, not an intermediate echo that would make controlled widgets
-      // jump backwards.
       latestPromise.then(pending.resolve, pending.reject)
     } else {
       if (latestPromise === pending.promise) latestValuePromises.delete(lineId)
@@ -128,8 +134,6 @@ async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
 }
 
 export async function flushPendingValues(): Promise<void> {
-  // Drain until both scheduled and serialized writes are empty. This keeps Save,
-  // section switches and raw-text reads as hard synchronization boundaries.
   while (pendingValueEdits.size || inFlightValueWrites.size) {
     const lineIds = [...pendingValueEdits.keys()]
     if (lineIds.length) await Promise.all(lineIds.map(lineId => flushValueEdit(lineId)))
@@ -189,6 +193,10 @@ export const workspaceApi = {
     await flushPendingValues()
     return call('add_option', { section, key, value })
   },
+  createUnit: async (request: CreateUnitRequest) => {
+    await flushPendingValues()
+    return call<CreateUnitResult>('create_unit', request)
+  },
   removeLine: async (lineId: number) => {
     await flushPendingValues()
     return call('remove_line', { line_id: lineId })
@@ -205,7 +213,4 @@ export const workspaceApi = {
   setSettings: (aresEnabled: boolean) => call<{ ares_enabled: boolean }>('set_settings', { ares_enabled: aresEnabled }),
 }
 
-// Hide Python/schema startup behind normal UI paint and the time the user spends choosing
-// a file. Failure is intentionally silent here; the real command still reports a useful
-// error if the backend is unavailable when the user actually needs it.
 void workspaceApi.status().catch(() => undefined)
