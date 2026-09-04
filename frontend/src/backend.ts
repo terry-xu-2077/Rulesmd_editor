@@ -167,3 +167,8 @@ export const workspaceApi = {
   optionCatalog: (query = '', section?: string, appliesTo?: string) => call<CatalogOption[]>('option_catalog_all', { query, section, applies_to: appliesTo }),
   setSettings: (aresEnabled: boolean) => call<{ ares_enabled: boolean }>('set_settings', { ares_enabled: aresEnabled }),
 }
+
+// Hide Python/schema startup behind normal UI paint and the time the user spends choosing
+// a file. Failure is intentionally silent here; the real command still reports a useful
+// error if the backend is unavailable when the user actually needs it.
+void workspaceApi.status().catch(() => undefined)
