@@ -43,17 +43,18 @@ export function legacyIconStyle(id: string, size = 36): CSSProperties | undefine
 export function countryIconStyle(id: string, width = 32): CSSProperties | undefined {
   const index = COUNTRY_ORDER.indexOf(id as typeof COUNTRY_ORDER[number])
   if (index < 0) return undefined
-  const sourceCell = 60
-  const scale = width / sourceCell
+  const sourceWidth = 60
+  const sourceHeight = 40
+  const scale = width / sourceWidth
   const col = index % 5
   const row = Math.floor(index / 5)
   return {
     width,
-    height: Math.round(width * .68),
+    height: Math.round(sourceHeight * scale),
     backgroundImage: `url(${LEGACY_COUNTRY_TILE})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: `${300 * scale}px auto`,
-    backgroundPosition: `${-col * sourceCell * scale}px ${-row * sourceCell * scale}px`,
+    backgroundPosition: `${-col * sourceWidth * scale}px ${-row * sourceHeight * scale}px`,
   }
 }
 
