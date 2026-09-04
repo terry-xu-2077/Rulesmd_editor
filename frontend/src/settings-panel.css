@@ -10,7 +10,7 @@
   width:min(720px,100%)!important;
   max-width:100%!important;
   min-width:0!important;
-  max-height:min(640px,78vh);
+  max-height:min(560px,74vh);
   overflow-y:auto!important;
   overflow-x:hidden!important;
   padding:8px 10px 12px!important;
@@ -79,17 +79,35 @@
   min-width:0;
 }
 
-.settingsDialogBody.settingsGrid .settingPathRow>.tc-control-wrap,
-.settingsDialogBody.settingsGrid .settingPathRow .tc-text{
-  width:100%!important;
-  min-width:0!important;
-  max-width:none!important;
-}
-
 .settingsDialogBody.settingsGrid .settingRow .tc-select{
   width:160px!important;
   min-width:160px!important;
   max-width:160px!important;
+}
+
+/* Game path is one business control group: flexible text field + standard action button. */
+.settingsDialogBody.settingsGrid .settingPathControl{
+  width:100%;
+  min-width:0;
+  justify-self:end;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+}
+.settingsDialogBody.settingsGrid .settingPathControl>.tc-control-wrap{
+  width:100%;
+  min-width:0;
+  margin:0;
+}
+.settingsDialogBody.settingsGrid .settingPathControl>.tc-control-wrap>.tc-text{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+.settingsDialogBody.settingsGrid .settingPathControl>.tc-button{
+  min-width:78px;
+  flex:none;
 }
 
 .app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow{
@@ -118,7 +136,7 @@
   .settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap{
     justify-self:start!important;
   }
-  .settingsDialogBody.settingsGrid .settingPathRow>.tc-control-wrap{
-    width:100%!important;
+  .settingsDialogBody.settingsGrid .settingPathControl{
+    justify-self:stretch;
   }
 }
