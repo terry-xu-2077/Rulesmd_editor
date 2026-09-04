@@ -1,13 +1,14 @@
 /*
- * Rulesmd Editor global CSS cascade manifest.
+ * Rulesmd Editor late-layer CSS cascade manifest.
  *
- * RED LINE: global application styles are loaded only through this file. Do not add
- * <link rel="stylesheet"> entries for /src/*.css in index.html and do not import these
- * files individually from main.tsx. Keeping one cascade owner prevents late Vite module
- * CSS from silently overriding the intended "final" layers.
+ * Loading contract:
+ *   main.tsx -> styles.css -> polish.css
+ *   polish.css -> app.css (this file) -> purpose-specific late layers
+ *
+ * RED LINE: do not load /src/*.css from index.html. Mixing HTML <link> styles with
+ * Vite module CSS created a second, timing-dependent cascade: styles.css/polish.css
+ * were injected after the supposed "final" link layers and silently overrode them.
  */
-@import './styles.css';
-@import './polish.css';
 @import './catalog-browser.css';
 @import './qt-density.css';
 @import './settings-panel.css';
