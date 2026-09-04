@@ -1,5 +1,5 @@
 /* Final workspace chrome pass: compact navigation, strong help emphasis, raw/table switch,
-   global theme overrides, centered commands, and legacy-inspired scrollbars. */
+   global business theme overrides, centered commands, and legacy-inspired scrollbars. */
 
 /* App chrome */
 .app{grid-template-rows:60px minmax(0,1fr)!important}
@@ -48,18 +48,17 @@
 .inspectorCombined h4,.inspectorCombined .docSource{color:#71869a!important}
 .inspectorCombined .valueChoices{opacity:.72}
 
-/* Legacy web inspired scrollbar: blue transparent track + rounded gray gradient thumb. */
-.treeList,.fieldsPane,.rawEditorPane,.tc-picker-body,.tc-dialog-body{
+/* Business-surface scrollbar only. Shared UI Library popup/dialog scrollbars stay library-owned. */
+.treeList,.fieldsPane,.rawEditorPane{
   scrollbar-width:thin;
   scrollbar-color:rgba(94,94,94,.56) rgba(30,63,133,.24);
 }
-.treeList::-webkit-scrollbar,.fieldsPane::-webkit-scrollbar,.rawEditorPane::-webkit-scrollbar,.tc-picker-body::-webkit-scrollbar,.tc-dialog-body::-webkit-scrollbar{width:10px;height:10px}
-.treeList::-webkit-scrollbar-track,.fieldsPane::-webkit-scrollbar-track,.rawEditorPane::-webkit-scrollbar-track,.tc-picker-body::-webkit-scrollbar-track,.tc-dialog-body::-webkit-scrollbar-track{background:rgba(30,63,133,.24);border-radius:7px}
-.treeList::-webkit-scrollbar-thumb,.fieldsPane::-webkit-scrollbar-thumb,.rawEditorPane::-webkit-scrollbar-thumb,.tc-picker-body::-webkit-scrollbar-thumb,.tc-dialog-body::-webkit-scrollbar-thumb{border-radius:7px;border:2px solid transparent;background:linear-gradient(90deg,rgba(94,94,94,.62),rgba(52,52,52,.38)) padding-box}
-.treeList::-webkit-scrollbar-thumb:hover,.fieldsPane::-webkit-scrollbar-thumb:hover,.rawEditorPane::-webkit-scrollbar-thumb:hover,.tc-picker-body::-webkit-scrollbar-thumb:hover,.tc-dialog-body::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,rgba(95,150,190,.72),rgba(52,82,104,.56)) padding-box}
+.treeList::-webkit-scrollbar,.fieldsPane::-webkit-scrollbar,.rawEditorPane::-webkit-scrollbar{width:10px;height:10px}
+.treeList::-webkit-scrollbar-track,.fieldsPane::-webkit-scrollbar-track,.rawEditorPane::-webkit-scrollbar-track{background:rgba(30,63,133,.24);border-radius:7px}
+.treeList::-webkit-scrollbar-thumb,.fieldsPane::-webkit-scrollbar-thumb,.rawEditorPane::-webkit-scrollbar-thumb{border-radius:7px;border:2px solid transparent;background:linear-gradient(90deg,rgba(94,94,94,.62),rgba(52,52,52,.38)) padding-box}
+.treeList::-webkit-scrollbar-thumb:hover,.fieldsPane::-webkit-scrollbar-thumb:hover,.rawEditorPane::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,rgba(95,150,190,.72),rgba(52,82,104,.56)) padding-box}
 
-/* Full application light mode. Business chrome previously stayed dark while only UI-library
-   dialogs reacted to data-mode. These overrides keep a restrained blue-gray hierarchy. */
+/* Full application light mode. Shared controls use the UI Library's own data-mode implementation. */
 .app[data-mode="light"]{
   --bg:#e6edf5;
   --panel:#f4f7fb;
@@ -112,10 +111,6 @@
 .app[data-mode="light"] .viewSwitch{background:#dce7ef!important;border-color:#b6c8d6!important}
 .app[data-mode="light"] .viewSwitch button{color:#6b8091!important}
 .app[data-mode="light"] .viewSwitch button.active{color:#1d5055!important;background:linear-gradient(180deg,#bee4df,#a9d7d1)!important}
-.app[data-mode="light"] .settingRow>div:first-child strong{color:#2b4154!important}
-.app[data-mode="light"] .settingRow>div:first-child span{color:#758a9e!important}
-.app[data-mode="light"] .settingsSectionTitle{color:#168f9f!important;border-color:rgba(22,143,159,.16)!important}
-.app[data-mode="light"] .settingRow{border-color:rgba(68,96,122,.12)!important}
 
 @media(max-width:1200px){
   .toolbar{position:static!important;transform:none!important;margin-left:auto!important;margin-right:auto!important}
