@@ -33,7 +33,7 @@
 .app .parameterValueCell .tc-select-list .tc-select-item{width:100%!important;min-width:100%!important;max-width:100%!important}
 .app .referenceJump{z-index:1!important}
 
-/* Parameter-table BoolSwitch consumes the normal 180px slot through the library's public geometry variable. */
+/* Parameter-table BoolSwitch only supplies contextual total width. Track/knob geometry stays inside the shared UI library. */
 .app .parameterValueCell .rulesControlHost>.tc-bool-wrap{
   --tc-bool-width:180px!important;
   width:180px!important;
@@ -41,30 +41,6 @@
   max-width:180px!important;
   flex:0 0 180px!important;
   margin-right:0!important;
-}
-.app .parameterValueCell .rulesControlHost>.tc-bool-wrap>.tc-bool{
-  width:var(--tc-bool-width)!important;
-  min-width:var(--tc-bool-width)!important;
-  max-width:var(--tc-bool-width)!important;
-}
-.app .parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool-knob{
-  width:calc((var(--tc-bool-width) - 6px)/2)!important;
-  transform:none!important;
-}
-.app .parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
-  left:auto!important;
-  right:2px!important;
-  transform:none!important;
-}
-
-/* Restore the opposite relief directions in light mode too. */
-.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{
-  background:linear-gradient(0deg,#ffffff,#cbd7e1)!important;
-  box-shadow:0 1px 2px rgba(42,66,86,.18),inset 0 -1px 0 rgba(255,255,255,.55)!important;
-}
-.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{
-  background:linear-gradient(180deg,#39c9b3,#117b6d)!important;
-  box-shadow:0 1px 2px rgba(42,66,86,.16),inset 0 1px 0 rgba(255,255,255,.36)!important;
 }
 
 @media(max-width:1040px){
