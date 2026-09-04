@@ -19,13 +19,23 @@ function containsAny(file, text, tokens, rule) {
 }
 
 // RED LINE 1: settings layout has one owner only.
-for (const file of ['polish.css', 'theme-final.css', 'ui-library-integration.css']) {
+// styles.css is included because the historical .settingRow span leak lived there.
+for (const file of [
+  'styles.css',
+  'polish.css',
+  'theme-final.css',
+  'ui-library-integration.css',
+  'qt-density.css',
+  'workspace-polish.css',
+  'workspace-final-fixes.css',
+]) {
   const text = read(file)
   containsAny(file, text, [
     '.settingsDialogBody',
     '.settingsSectionTitle',
     '.settingRow',
     '.settingPathRow',
+    '.settingsModal',
   ], 'settings styles must live only in settings-panel.css')
 }
 
