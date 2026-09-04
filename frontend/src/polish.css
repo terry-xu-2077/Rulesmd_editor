@@ -13,7 +13,7 @@
 .iconButtonLabel{display:flex!important;align-items:center;gap:5px}
 .saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#70eeff;box-shadow:0 0 7px rgba(112,238,255,.72);flex:0 0 auto}
 
-/* All scalar editors share the 180px value slot. */
+/* Scalar editor slot sizing belongs to the application layout. BoolSwitch receives its width through props. */
 .rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
 .rulesControlHost .tc-text,.rulesControlHost .tc-select,.rulesControlHost .tc-multi,.rulesControlHost .tc-slider{width:180px!important;min-width:180px!important;max-width:180px!important}
 .rulesControlHost .tc-control-wrap:has(.tc-text),.rulesControlHost .tc-control-wrap:has(.tc-select),.rulesControlHost .tc-control-wrap:has(.tc-multi),.rulesControlHost .tc-control-wrap:has(.tc-slider){width:180px;flex:0 0 180px}
@@ -21,23 +21,6 @@
 .rulesControlHost .referenceOptionFallback{width:28px!important;height:24px!important;border-radius:4px}
 .rulesControlHost:has(.referenceJump) .tc-reset{right:-68px!important}
 .referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
-
-/* In the parameter table BoolSwitch fills the same slot; the switch thumb stays around half width. */
-.parameterValueCell .rulesControlHost>.tc-bool-wrap{
-  width:180px!important;
-  min-width:180px!important;
-  max-width:180px!important;
-  flex:0 0 180px!important;
-  margin-right:0!important;
-}
-.parameterValueCell .rulesControlHost>.tc-bool-wrap>.tc-bool{
-  width:180px!important;
-  min-width:180px!important;
-  max-width:180px!important;
-  flex:0 0 180px!important;
-}
-.parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool-knob{width:86px!important}
-.parameterValueCell .rulesControlHost>.tc-bool-wrap .tc-bool.is-on .tc-bool-knob{transform:translateX(88px)!important}
 
 /* Stronger table hierarchy: section headers are distinctly deeper than data rows. */
 .parameterTableGroup>.fieldGroupHeader,
@@ -70,13 +53,9 @@
 .inspectorScroll{scrollbar-width:none!important}
 .inspectorScroll::-webkit-scrollbar{display:none!important}
 
-/* Settings keep the default compact BoolSwitch. */
-.settingRow>.tc-bool-wrap{justify-self:end!important;align-self:center!important;width:78px!important;min-width:78px!important;max-width:78px!important}
-.settingRow>.tc-control-wrap:not(.tc-bool-wrap){justify-self:end}
-
 .closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--tc-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions .tc-button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:var(--tc-text-muted)!important}
 
-/* Light mode: keep strong readable hierarchy instead of washed-out inherited dark text. */
+/* Light mode: keep strong readable hierarchy instead of washed-out inherited dark text. Shared controls keep their own light-theme internals. */
 .app[data-mode="light"]{--bg:#e8f0f7;--panel:#f6f9fc;--panel2:#dce7f1;--line:rgba(53,82,110,.17);--line2:rgba(39,75,105,.32);--text:#172a3a;--muted:#586e82;--muted2:#708496;--control:#dbe4ec;--control2:#cdd9e4;background:#e8f0f7!important;color:var(--text)!important}
 .app[data-mode="light"] .titlebar,.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector,.app[data-mode="light"] .editor,.app[data-mode="light"] .editorControls,.app[data-mode="light"] .fieldsPane,.app[data-mode="light"] .parameterTableRow{color:var(--text)!important}
 .app[data-mode="light"] .titlebar{background:#f5f8fb!important}
@@ -101,8 +80,5 @@
 .app[data-mode="light"] .tc-text input:focus,.app[data-mode="light"] .tc-number:focus{color:#172a3a!important;background:#eef5f8!important}
 .app[data-mode="light"] .tc-select-item{color:#172a3a!important;background:#eef4f8!important}
 .app[data-mode="light"] .tc-select-item:hover{color:#fff!important;background:#159f8b!important}
-.app[data-mode="light"] .tc-bool-wrap>.tc-bool{background:linear-gradient(180deg,#d8e2ea,#c4d1dc)!important;border-color:#6f8ea5!important}
-.app[data-mode="light"] .tc-bool-wrap .tc-bool-knob{color:#304b60!important;background:linear-gradient(180deg,#ffffff,#d9e3eb)!important}
-.app[data-mode="light"] .tc-bool-wrap .tc-bool.is-on .tc-bool-knob{color:#fff!important;background:linear-gradient(90deg,#117b6d,#27b9a3)!important}
 
 @media(max-width:980px){.titlebar{grid-template-columns:auto 1fr auto!important}.brand span{display:none}.iconButtonLabel{display:none!important}}
