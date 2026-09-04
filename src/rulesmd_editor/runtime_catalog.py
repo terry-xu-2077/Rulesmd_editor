@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from threading import Lock
 
 from .ares_schema import AresSchemaCatalog
 from .category_rules import categorize_yr_option
@@ -15,21 +16,15 @@ GENERATED_ROOT = RESOURCE_ROOT / "generated"
 
 
 class RuntimeSchemaCatalog(SchemaCatalog):
-    """Unified presentation catalog backed by physically separate rule sources.
-
-    ``rules_schema.json`` and the legacy INIs contain original Yuri's Revenge data.
-    ``ares_schema.json`` is loaded only by ``AresSchemaCatalog``. The editor sees one
-    catalog, while storage, validation and future maintenance remain independent.
-    """
+    """Unified presentation catalog backed by physically separate rule sources."""
 
     def __init__(self) -> None:
         super().__init__(LEGACY_ROOT if LEGACY_ROOT.exists() else None)
         self._load_generated_yr()
-        # Presentation-only correction layer. This runs after legacy/generated data is
-        # loaded so existing local generated files immediately receive translation fixes
-        # without rewriting rulesmd.ini or forcing a metadata rebuild.
         apply_yr_translations(self.options, self.name_desc)
         self.ares = AresSchemaCatalog()
+        self._all_options_cache: tuple[OptionMeta, ...] | None = None
+        self._all_options_lock = Lock()
 
     def _load_generated_yr(self) -> None:
         schema_path = GENERATED_ROOT / "rules_schema.json"
@@ -70,7 +65,6 @@ class RuntimeSchemaCatalog(SchemaCatalog):
                 self.name_desc.update({str(key): str(value) for key, value in names.items()})
 
     def option(self, key: str) -> OptionMeta:
-        """Prefer original YR metadata for shared keys, otherwise use Ares."""
         base = super().option(key)
         if base.source != "自定义":
             return base
@@ -81,11 +75,32 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         return OptionMeta(key, source=source)
 
     def section_description(self, section: str) -> str:
-        """Prefer source-backed names, then a conservative Chinese display fallback."""
         current = super().section_description(section).strip()
         if current and current.casefold() != section.casefold():
             return current
         return guess_section_name(section) or current
+
+    def _all_options(self) -> tuple[OptionMeta, ...]:
+        cached = self._all_options_cache
+        if cached is not None:
+            return cached
+        with self._all_options_lock:
+            cached = self._all_options_cache
+            if cached is not None:
+                return cached
+            base_rows = super().available_options()
+            seen = {row.name.casefold() for row in base_rows}
+            merged = base_rows + [
+                row for row in self.ares.available_options()
+                if row.name.casefold() not in seen
+            ]
+            cached = tuple(sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name)))
+            self._all_options_cache = cached
+            return cached
+
+    def warm_available_options(self) -> int:
+        """Build the unified add-parameter catalog cache in a background thread."""
+        return len(self._all_options())
 
     def available_options(
         self,
@@ -94,13 +109,17 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         applies_to: str | None = None,
         source: str | None = None,
     ) -> list[OptionMeta]:
-        base_rows = super().available_options(query=query, applies_to=applies_to, source=source)
-        if source and source.casefold() not in {"ares", "yr"}:
-            return base_rows
-        ares_rows = [] if source and source.casefold() == "yr" else self.ares.available_options(
-            query=query,
-            applies_to=applies_to,
-        )
-        seen = {row.name.casefold() for row in base_rows}
-        merged = base_rows + [row for row in ares_rows if row.name.casefold() not in seen]
-        return sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name))
+        q = query.strip().casefold()
+        source_fold = source.casefold() if source else ""
+        result: list[OptionMeta] = []
+        for meta in self._all_options():
+            if source_fold and meta.source.casefold() != source_fold:
+                continue
+            if applies_to and meta.applies_to and applies_to not in meta.applies_to and "TechnoType" not in meta.applies_to:
+                continue
+            if q:
+                haystack = " ".join((meta.name, meta.description, meta.help_text, meta.category)).casefold()
+                if q not in haystack:
+                    continue
+            result.append(meta)
+        return result
