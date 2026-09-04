@@ -77,12 +77,18 @@ async function call<T>(method: string, params: Record<string, unknown> = {}): Pr
 type PendingValueEdit = {
   value: string
   timer: ReturnType<typeof setTimeout> | null
-  resolve: Array<(result: SetValueResult) => void>
-  reject: Array<(error: unknown) => void>
+  promise: Promise<SetValueResult>
+  resolve: (result: SetValueResult) => void
+  reject: (error: unknown) => void
 }
 
 const pendingValueEdits = new Map<number, PendingValueEdit>()
-const VALUE_EDIT_DELAY_MS = 120
+
+// A short coalescing window keeps slider drags from flooding the Python bridge while
+// avoiding the old 120 ms debounce that made discrete controls feel delayed. This is a
+// throttle window, not a debounce: repeated input never keeps pushing the write farther
+// into the future.
+const VALUE_EDIT_WINDOW_MS = 32
 
 async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
   const pending = pendingValueEdits.get(lineId)
@@ -91,10 +97,10 @@ async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
   if (pending.timer) clearTimeout(pending.timer)
   try {
     const result = await call<SetValueResult>('set_value', { line_id: lineId, value: pending.value })
-    pending.resolve.forEach(resolve => resolve(result))
+    pending.resolve(result)
     return result
   } catch (error) {
-    pending.reject.forEach(reject => reject(error))
+    pending.reject(error)
     throw error
   }
 }
@@ -106,25 +112,30 @@ export async function flushPendingValues(): Promise<void> {
 }
 
 function queueValueEdit(lineId: number, value: string): Promise<SetValueResult> {
-  return new Promise<SetValueResult>((resolve, reject) => {
-    const current = pendingValueEdits.get(lineId)
-    if (current) {
-      current.value = value
-      current.resolve.push(resolve)
-      current.reject.push(reject)
-      if (current.timer) clearTimeout(current.timer)
-      current.timer = setTimeout(() => { void flushValueEdit(lineId) }, VALUE_EDIT_DELAY_MS)
-      return
-    }
-    const pending: PendingValueEdit = {
-      value,
-      resolve: [resolve],
-      reject: [reject],
-      timer: null,
-    }
-    pending.timer = setTimeout(() => { void flushValueEdit(lineId) }, VALUE_EDIT_DELAY_MS)
-    pendingValueEdits.set(lineId, pending)
+  const current = pendingValueEdits.get(lineId)
+  if (current) {
+    // Latest value wins inside the current fixed window. Do not reset the timer: that
+    // was the source of the visible interaction latency in the previous debounce design.
+    current.value = value
+    return current.promise
+  }
+
+  let resolvePromise!: (result: SetValueResult) => void
+  let rejectPromise!: (error: unknown) => void
+  const promise = new Promise<SetValueResult>((resolve, reject) => {
+    resolvePromise = resolve
+    rejectPromise = reject
   })
+  const pending: PendingValueEdit = {
+    value,
+    resolve: resolvePromise,
+    reject: rejectPromise,
+    promise,
+    timer: null,
+  }
+  pending.timer = setTimeout(() => { void flushValueEdit(lineId) }, VALUE_EDIT_WINDOW_MS)
+  pendingValueEdits.set(lineId, pending)
+  return promise
 }
 
 export const workspaceApi = {
