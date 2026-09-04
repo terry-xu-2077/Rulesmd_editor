@@ -1,0 +1,4 @@
+/* Business table alignment. The middle column is a label column, so align its content toward the value column. */
+.parameterTableHeader>span:nth-child(2){justify-content:flex-end;text-align:right}
+.parameterLabelCell{justify-content:flex-end;text-align:right}
+.parameterLabelCell strong{display:block;width:100%;text-align:right}
