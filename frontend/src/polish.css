@@ -13,13 +13,8 @@
 .iconButtonLabel{display:flex!important;align-items:center;gap:5px}
 .saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#70eeff;box-shadow:0 0 7px rgba(112,238,255,.72);flex:0 0 auto}
 
-/* Scalar editor integration. Component internals remain owned by the UI library. */
+/* Business slot only. Shared-control integration for this slot lives in ui-library-integration.css. */
 .rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
-.rulesControlHost .tc-text,.rulesControlHost .tc-select,.rulesControlHost .tc-multi,.rulesControlHost .tc-slider{width:180px!important;min-width:180px!important;max-width:180px!important}
-.rulesControlHost .tc-control-wrap:has(.tc-text),.rulesControlHost .tc-control-wrap:has(.tc-select),.rulesControlHost .tc-control-wrap:has(.tc-multi),.rulesControlHost .tc-control-wrap:has(.tc-slider){width:180px;flex:0 0 180px}
-.rulesControlHost .tc-select-list{width:300px!important;max-width:min(360px,46vw)!important}
-.rulesControlHost .referenceOptionFallback{width:28px!important;height:24px!important;border-radius:4px}
-.rulesControlHost:has(.referenceJump) .tc-reset{right:-68px!important}
 .referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
 
 /* Stronger table hierarchy: section headers are distinctly deeper than data rows. */
@@ -39,10 +34,6 @@
 }
 .parameterTableRow.focused .parameterLabelCell strong,.parameterTableRow.focused .parameterKeyCell code{color:#f3fbff!important}
 
-/* Quiet reset affordance: right side, icon only, border change on hover. */
-.rulesControlHost .tc-reset{z-index:3}
-.rulesControlHost .tc-reset:hover{background:transparent!important;box-shadow:none!important;filter:none!important}
-
 /* Inspector hierarchy. */
 .inspectorHeading{height:40px!important}
 .helpDescriptionCard{border-radius:10px!important;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line2))!important;background:linear-gradient(145deg,color-mix(in srgb,var(--panel2) 91%,var(--accent) 9%),var(--panel))!important;box-shadow:0 7px 18px rgba(0,0,0,.12)!important}
@@ -53,7 +44,7 @@
 .inspectorScroll{scrollbar-width:none!important}
 .inspectorScroll::-webkit-scrollbar{display:none!important}
 
-.closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--tc-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions .tc-button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:var(--tc-text-muted)!important}
+.closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--tc-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions>button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:var(--tc-text-muted)!important}
 
 /* Light mode styles business surfaces only. Shared controls use Terry_React_UI_Library light mode. */
 .app[data-mode="light"]{--bg:#e8f0f7;--panel:#f6f9fc;--panel2:#dce7f1;--line:rgba(53,82,110,.17);--line2:rgba(39,75,105,.32);--text:#172a3a;--muted:#586e82;--muted2:#708496;--control:#dbe4ec;--control2:#cdd9e4;background:#e8f0f7!important;color:var(--text)!important}
