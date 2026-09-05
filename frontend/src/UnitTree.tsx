@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Box, ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { isLegacyGlobalSubsection } from './generalGroups'
 import { hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import './unit-tree.css'
 
@@ -63,7 +64,10 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const browsable = rows.filter(row => row.id.trim().toLowerCase() !== 'general')
+    const browsable = rows.filter(row => {
+      const id = row.id.trim().toLowerCase()
+      return id !== 'general' && !isLegacyGlobalSubsection(row.id)
+    })
     if (!q) return browsable
     return browsable.filter(row => `${row.label} ${row.id} ${row.type} ${row.category}`.toLowerCase().includes(q))
   }, [query, rows])
@@ -134,7 +138,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
                   {type.units.map(unit => <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}`}>
                     <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
                   </button>)}
-                </div>}
+                </div>
               </div>
             })}
           </div>}
