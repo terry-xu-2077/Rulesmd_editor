@@ -1,6 +1,6 @@
 .sidebar{grid-template-rows:auto auto minmax(0,1fr) auto}
 .sidebar>.typeTabs{display:none}
-.treeList{padding:0;overflow:hidden}
+.sidebar .treeList{padding:0;overflow:hidden!important}
 .unitHierarchy{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:6px 6px 0}
 .unitGlobalBlock{padding:0 0 7px;margin-bottom:1px}
 .unitGlobalRule{width:100%;min-height:43px;padding:5px 7px;border:1px solid rgba(58,159,184,.25);border-radius:7px;display:flex;align-items:center;gap:8px;text-align:left;color:#bed0df;background:linear-gradient(90deg,rgba(25,80,105,.52),rgba(20,48,70,.72));cursor:pointer;box-shadow:none}
