@@ -80,18 +80,19 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         if base.source != "自定义":
             # ``super().option`` can synthesize a YR row directly from HelpInfor.ini
             # when OptionsDesc omitted a legitimate engine key. Translate/correct that
-            # row on demand just like the eagerly loaded catalog rows.
-            return translate_option_meta(base)
+            # row on demand just like the eagerly loaded catalog rows. Ares may further
+            # enrich an original YR tag when it removes a vanilla hard-coded limit.
+            return self.ares.enrich(translate_option_meta(base))
 
         # Some original YR keys are absent from one or more historical metadata files.
         # Only explicit semantic corrections count as evidence that such a key is YR.
         # A generic Chinese label guess must never shadow a real Ares key.
         if _has_curated_yr_semantics(key):
-            return replace(translate_option_meta(base), source="YR")
+            return self.ares.enrich(replace(translate_option_meta(base), source="YR"))
 
         ares = self.ares.option(key)
         if ares is not None:
-            return ares
+            return self.ares.enrich(ares)
         source = "Ares/扩展" if "." in key else "自定义"
         return OptionMeta(key, source=source)
 
@@ -109,10 +110,10 @@ class RuntimeSchemaCatalog(SchemaCatalog):
             cached = self._all_options_cache
             if cached is not None:
                 return cached
-            base_rows = super().available_options()
+            base_rows = [self.ares.enrich(row) for row in super().available_options()]
             seen = {row.name.casefold() for row in base_rows}
             merged = base_rows + [
-                row for row in self.ares.available_options()
+                self.ares.enrich(row) for row in self.ares.available_options()
                 if row.name.casefold() not in seen
             ]
             cached = tuple(sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name)))
