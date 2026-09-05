@@ -4,7 +4,7 @@ from rulesmd_editor.workspace import RulesWorkspace
 
 def _country_rules() -> IniDocument:
     return IniDocument.from_text(
-        """[Countries]\n"
+        "[Countries]\n"
         "0=Americans\n"
         "1=British\n\n"
         "[Americans]\n"
@@ -47,4 +47,9 @@ def test_country_can_be_created_through_generic_object_creation_flow():
     assert workspace.document.get("MyCountry", "UIName") == "Name:MyCountry"
     assert workspace.document.get("MyCountry", "Name") == "我的国家"
     assert workspace.document.get("MyCountry", "Side") == "GDI"
-    assert any(item["section"] == "MyCountry" for category in result["snapshot"]["categories"] if category["name"] == "国家" for item in category["items"])
+    assert any(
+        item["section"] == "MyCountry"
+        for category in result["snapshot"]["categories"]
+        if category["name"] == "国家"
+        for item in category["items"]
+    )
