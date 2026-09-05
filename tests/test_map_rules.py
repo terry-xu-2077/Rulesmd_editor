@@ -11,6 +11,7 @@ def _write_template(path):
         "[General]\nBuildSpeed=.7\n"
         "[CombatDamage]\nAmmoCrateDamage=200\n",
         encoding="utf-8",
+        newline="",
     )
 
 
@@ -27,7 +28,7 @@ def test_map_open_only_exposes_embedded_rules(tmp_path, monkeypatch):
         "[IsoMapPack5]\n1=opaque-map-data\n"
     )
     path = tmp_path / "test.map"
-    path.write_text(source, encoding="utf-8")
+    path.write_text(source, encoding="utf-8", newline="")
 
     workspace = RulesWorkspace()
     snapshot = workspace.open_file(path)
@@ -56,7 +57,7 @@ def test_empty_map_can_add_known_rule_section_then_parameter(tmp_path, monkeypat
         "[Triggers]\n0=keep-this\n"
     )
     path = tmp_path / "clean.mpr"
-    path.write_text(original, encoding="utf-8")
+    path.write_text(original, encoding="utf-8", newline="")
 
     workspace = RulesWorkspace()
     snapshot = workspace.open_file(path)
@@ -83,7 +84,7 @@ def test_map_rule_catalog_uses_base_rules_categories_and_global_rules(tmp_path, 
     monkeypatch.setattr(workspace_module, "DEFAULT_TEMPLATE", template)
 
     path = tmp_path / "catalog.yrm"
-    path.write_text("[Basic]\nName=Catalog\n", encoding="utf-8")
+    path.write_text("[Basic]\nName=Catalog\n", encoding="utf-8", newline="")
 
     workspace = RulesWorkspace()
     snapshot = workspace.open_file(path)
@@ -102,7 +103,7 @@ def test_non_map_ini_keeps_normal_rules_behavior(tmp_path, monkeypatch):
     monkeypatch.setattr(workspace_module, "DEFAULT_TEMPLATE", template)
 
     path = tmp_path / "rulesmd.ini"
-    path.write_text("[InfantryTypes]\n0=E1\n[E1]\nStrength=125\n", encoding="utf-8")
+    path.write_text("[InfantryTypes]\n0=E1\n[E1]\nStrength=125\n", encoding="utf-8", newline="")
 
     workspace = RulesWorkspace()
     snapshot = workspace.open_file(path)
