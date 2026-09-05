@@ -138,7 +138,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
                   {type.units.map(unit => <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}`}>
                     <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
                   </button>)}
-                </div>
+                </div>}
               </div>
             })}
           </div>}
