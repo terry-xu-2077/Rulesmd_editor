@@ -114,7 +114,10 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   }, [query, rows])
 
   const groups = useMemo<FactionGroup[]>(() => {
-    const effective = filteredRows.map(row => ({ ...row, side: rawRules ? navigation.sideOf(row.id) : row.side }))
+    const effective = filteredRows.map(row => {
+      const inferred = rawRules ? navigation.sideOf(row.id) : 'neutral'
+      return { ...row, side: inferred === 'neutral' ? row.side : inferred }
+    })
     const countryRows = effective.filter(row => normalizedType(row.category) === '国家')
     const countryById = new Map(countryRows.map(row => [row.id.toLowerCase(), row]))
     const countryUnits = new Map<string, UnitTreeRow[]>()
