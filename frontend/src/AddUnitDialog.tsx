@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PackagePlus, Search } from 'lucide-react'
 import { Button, Checkbox, Dialog, Select, TextField } from 'terry-react-ui-library'
-import { workspaceApi, type CreateUnitResult, type SectionData, type SectionOption } from './backend'
+import { workspaceApi, type CreateUnitResult, type MapRuleCatalogItem, type SectionData, type SectionOption } from './backend'
 import { localizedReferenceLabel } from './referenceLabels'
 
 export type UnitTemplateRow = {
@@ -82,6 +82,11 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [mapMode, setMapMode] = useState(false)
+  const [mapCatalog, setMapCatalog] = useState<MapRuleCatalogItem[]>([])
+  const [mapCategory, setMapCategory] = useState('')
+  const [mapSection, setMapSection] = useState('')
+  const [mapQuery, setMapQuery] = useState('')
 
   const categoryRows = useMemo(() => eligibleRows.filter(row => row.category === category), [category, eligibleRows])
   const selectableOptions = useMemo(() => (templateData?.options ?? []).filter(option => !['name', 'uiname'].includes(option.key.toLowerCase())), [templateData])
@@ -96,8 +101,45 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
   }, [displayedValues, parameterQuery, selectableOptions])
   const selectedCount = useMemo(() => selectableOptions.reduce((count, option) => count + (selectedLines[option.line_id] ? 1 : 0), 0), [selectableOptions, selectedLines])
 
+  const mapCategories = useMemo(() => Array.from(new Set(mapCatalog.map(item => item.category))), [mapCatalog])
+  const visibleMapRules = useMemo(() => {
+    const q = mapQuery.trim().toLowerCase()
+    return mapCatalog.filter(item => !item.present)
+      .filter(item => !mapCategory || item.category === mapCategory)
+      .filter(item => !q || `${item.section} ${item.label} ${item.category}`.toLowerCase().includes(q))
+  }, [mapCatalog, mapCategory, mapQuery])
+
   useEffect(() => {
     if (!open) return
+    let cancelled = false
+    setError('')
+    setMapQuery('')
+    void workspaceApi.snapshot().then(snapshot => {
+      if (cancelled) return
+      const isMap = snapshot.document.kind === 'map'
+      setMapMode(isMap)
+      setMapCatalog(isMap ? snapshot.map_rule_catalog : [])
+      if (isMap) {
+        const available = snapshot.map_rule_catalog.filter(item => !item.present)
+        const preferred = available.find(item => normalizedCategory(initialCategory || '') === normalizedCategory(item.category))
+        const first = preferred ?? available[0]
+        setMapCategory(first?.category ?? '')
+        setMapSection(first?.section ?? '')
+      }
+    }).catch(err => {
+      if (!cancelled) setError(`读取文档模式失败：${String(err)}`)
+    })
+    return () => { cancelled = true }
+  }, [initialCategory, open])
+
+  useEffect(() => {
+    if (!mapMode || !open) return
+    const first = visibleMapRules[0]?.section ?? ''
+    setMapSection(current => visibleMapRules.some(item => item.section === current) ? current : first)
+  }, [mapMode, open, visibleMapRules])
+
+  useEffect(() => {
+    if (!open || mapMode) return
     const preferred = normalizedCategory(initialCategory || '')
     const nextCategory = categories.includes(preferred as typeof UNIT_CATEGORIES[number]) ? preferred : (categories[0] ?? '')
     setCategory(nextCategory)
@@ -105,16 +147,16 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     setComment('')
     setParameterQuery('')
     setError('')
-  }, [categories, initialCategory, open])
+  }, [categories, initialCategory, mapMode, open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || mapMode) return
     const first = categoryRows[0]?.id ?? ''
     setTemplateId(current => categoryRows.some(row => row.id === current) ? current : first)
-  }, [categoryRows, open])
+  }, [categoryRows, mapMode, open])
 
   useEffect(() => {
-    if (!open || !templateId) {
+    if (!open || mapMode || !templateId) {
       setTemplateData(null)
       setSelectedLines({})
       return
@@ -136,7 +178,7 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [open, templateId])
+  }, [mapMode, open, templateId])
 
   function selectAll() {
     setSelectedLines(Object.fromEntries(selectableOptions.map(option => [option.line_id, true])))
@@ -148,6 +190,28 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
 
   function toggleLine(lineId: number) {
     setSelectedLines(current => ({ ...current, [lineId]: !current[lineId] }))
+  }
+
+  async function addMapRule() {
+    if (!mapSection) {
+      setError('请选择要添加到地图的规则 Section。')
+      return
+    }
+    setCreating(true)
+    setError('')
+    try {
+      const result = await workspaceApi.createUnit({
+        template: mapSection,
+        section: mapSection,
+        comment: '',
+        included_line_ids: [],
+      })
+      await onCreated(result)
+    } catch (err) {
+      setError(`添加地图规则失败：${String(err)}`)
+    } finally {
+      setCreating(false)
+    }
   }
 
   async function createUnit() {
@@ -181,6 +245,30 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     } finally {
       setCreating(false)
     }
+  }
+
+  if (mapMode) {
+    const categoryOptions = mapCategories.map(value => ({ value, label: value }))
+    const ruleOptions = visibleMapRules.map(item => ({ value: item.section, label: `${item.label} · ${item.section}` }))
+    const selectedRule = mapCatalog.find(item => item.section === mapSection)
+    return <Dialog open={open} title="添加地图规则" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
+      <div className="addUnitDialog mapRuleDialog">
+        <div className="addUnitSetup mapRuleSetup">
+          <label><span>规则类型</span><Select value={mapCategory} options={categoryOptions} onChange={setMapCategory}/></label>
+          <label><span>规则 Section</span><Select value={mapSection} options={ruleOptions} onChange={setMapSection} searchable searchPlaceholder="搜索中文名或 Section"/></label>
+          <label className="mapRuleSearch"><span>搜索目录</span><div className="mapRuleSearchBox"><Search size={15}/><input value={mapQuery} onChange={event => setMapQuery(event.target.value)} placeholder="例如 美国大兵、E1、武器、General"/></div></label>
+        </div>
+        <div className="addUnitRegistrationHint mapRuleHint">
+          <strong>{selectedRule ? `${selectedRule.label} [${selectedRule.section}]` : '选择一个规则 Section'}</strong>
+          <span>这里只在地图末尾创建对应 Section，不复制整段 rulesmd。创建后用主编辑器的“参数”按钮添加需要覆盖的 Key；地图里的地形、触发器、单位摆放与压缩数据不会被当作规则编辑。</span>
+        </div>
+        {error && <div className="addUnitError">{error}</div>}
+        <footer className="addUnitActions">
+          <span>列表只显示尚未嵌入此地图的规则；已有规则会直接出现在左侧对象树。</span>
+          <div><Button onClick={onClose}>取消</Button><Button variant="accent" disabled={creating || !mapSection} onClick={() => void addMapRule()}><PackagePlus size={16}/>{creating ? '正在添加…' : '添加规则'}</Button></div>
+        </footer>
+      </div>
+    </Dialog>
   }
 
   const categoryOptions = categories.map(value => ({ value, label: value }))

@@ -94,8 +94,10 @@ fn backend_call(method: String, params: Option<Value>, state: State<'_, BackendS
 fn pick_rules_file(window: tauri::Window) -> Result<Option<String>, String> {
     let path = rfd::FileDialog::new()
         .set_parent(&window)
-        .set_title("打开 Rules 文件")
+        .set_title("打开 Rules / 地图文件")
+        .add_filter("Rules / RA2-YR 地图", &["ini", "map", "mpr", "yrm"])
         .add_filter("Rules INI", &["ini"])
+        .add_filter("RA2 / YR 地图", &["map", "mpr", "yrm"])
         .pick_file();
     Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }

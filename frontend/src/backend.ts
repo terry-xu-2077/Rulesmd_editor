@@ -7,6 +7,16 @@ export type DocumentInfo = {
   final_newline: boolean
   dirty: boolean
   section_count: number
+  kind: 'rules' | 'map'
+  rule_section_count: number
+}
+
+export type MapRuleCatalogItem = {
+  section: string
+  label: string
+  category: string
+  side?: 'allied' | 'soviet' | 'yuri' | 'neutral'
+  present: boolean
 }
 
 export type WorkspaceSnapshot = {
@@ -16,6 +26,7 @@ export type WorkspaceSnapshot = {
     name: string
     items: Array<{ section: string; registration_id: string | null; label?: string; side?: 'allied' | 'soviet' | 'yuri' | 'neutral' }>
   }>
+  map_rule_catalog: MapRuleCatalogItem[]
 }
 
 export type OptionValue = { value: string; label: string }
@@ -109,6 +120,10 @@ const latestValuePromises = new Map<number, Promise<SetValueResult>>()
 
 const VALUE_EDIT_WINDOW_MS = 32
 
+function applyDocumentMode(snapshot: WorkspaceSnapshot) {
+  document.body.classList.toggle('mapDocumentMode', snapshot.document.kind === 'map')
+}
+
 async function flushValueEdit(lineId: number): Promise<SetValueResult | null> {
   const pending = pendingValueEdits.get(lineId)
   if (!pending) return null
@@ -183,11 +198,15 @@ export const workspaceApi = {
   launchGame: (path: string) => invoke<void>('launch_game', { path }),
   openFile: async (path: string) => {
     await flushPendingValues()
-    return call<WorkspaceSnapshot>('open_file', { path })
+    const snapshot = await call<WorkspaceSnapshot>('open_file', { path })
+    applyDocumentMode(snapshot)
+    return snapshot
   },
   newDocument: async () => {
     await flushPendingValues()
-    return call<WorkspaceSnapshot>('new_document')
+    const snapshot = await call<WorkspaceSnapshot>('new_document')
+    applyDocumentMode(snapshot)
+    return snapshot
   },
   snapshot: () => call<WorkspaceSnapshot>('snapshot'),
   section: async (section: string) => {

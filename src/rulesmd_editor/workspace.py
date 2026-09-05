@@ -5,11 +5,13 @@ from pathlib import Path
 import re
 
 from .control_schema import ControlSchema, ControlSpec
+from .global_rules import GLOBAL_RULE_VIEWS
 from .ini_document import IniDocument, categorized_sections
 from .runtime_catalog import GENERATED_ROOT, RuntimeSchemaCatalog
 
 
 DEFAULT_TEMPLATE = GENERATED_ROOT / "rulesmd.template.ini"
+MAP_EXTENSIONS = {".map", ".mpr", ".yrm"}
 ROOT_SECTIONS = {"InfantryTypes", "VehicleTypes", "AircraftTypes", "BuildingTypes", "SuperWeaponTypes"}
 CATEGORY_TYPES = {
     "步兵": "InfantryType",
@@ -21,6 +23,7 @@ CATEGORY_TYPES = {
     "弹头": "Warhead",
     "弹体": "Projectile",
 }
+MAP_RULE_CATALOG_CATEGORIES = {"步兵", "载具", "飞机", "建筑", "超级武器", "武器", "弹头", "弹体"}
 TECHNO_TYPES = {"InfantryType", "VehicleType", "AircraftType", "BuildingType"}
 UNIT_REGISTRATION_ROOTS = {
     "InfantryType": "InfantryTypes",
@@ -40,6 +43,8 @@ class DocumentInfo:
     final_newline: bool
     dirty: bool
     section_count: int
+    kind: str = "rules"
+    rule_section_count: int = 0
 
 
 @dataclass
@@ -48,17 +53,26 @@ class WorkspaceSettings:
 
 
 class RulesWorkspace:
-    """Lossless rules editor service used by the Tauri bridge."""
+    """Lossless rules editor service used by the Tauri bridge.
+
+    In map mode ``document`` is always the original map document.  The stock rules
+    template is loaded separately and is used only to classify/map known rule sections
+    and provide insertion metadata.  This guarantees that map geometry, triggers,
+    packs and other native sections are never rewritten as a synthetic rules file.
+    """
 
     def __init__(self, schema: RuntimeSchemaCatalog | None = None, settings: WorkspaceSettings | None = None):
         self.schema = schema or RuntimeSchemaCatalog()
         self.controls = ControlSchema()
         self.settings = settings or WorkspaceSettings()
         self.document: IniDocument | None = None
+        self.document_kind = "rules"
+        self.base_document: IniDocument | None = None
         self._original_values: dict[int, str] = {}
         self._changed_value_ids: set[int] = set()
         self._structural_dirty = False
         self._categories_cache: dict[str, list[tuple[str, str]]] = {}
+        self._catalog_categories_cache: dict[str, list[tuple[str, str]]] = {}
         self._section_types: dict[str, str] = {}
         self._reference_index: dict[str, list[tuple[str, str]]] = {}
         self._dynamic_cache: dict[str, tuple[tuple[str, str], ...]] = {}
@@ -70,6 +84,9 @@ class RulesWorkspace:
         if self.document is None:
             raise RuntimeError("No rules document is open")
         return self.document
+
+    def is_map_document(self) -> bool:
+        return self.document_kind == "map"
 
     @staticmethod
     def _family_type(section_type: str | None) -> str | None:
@@ -130,11 +147,27 @@ class RulesWorkspace:
         comment = self._last_values.get((section.casefold(), "name"), "").strip()
         return comment or catalog or section
 
+    def _map_visible_categories(
+        self,
+        base_categories: dict[str, list[tuple[str, str]]],
+        doc: IniDocument,
+    ) -> dict[str, list[tuple[str, str]]]:
+        return {
+            category: [entry for entry in entries if doc.has_section(entry[0])]
+            for category, entries in base_categories.items()
+        }
+
     def _rebuild_indexes(self) -> None:
         doc = self._doc()
-        self._categories_cache = categorized_sections(doc)
+        if self.is_map_document() and self.base_document is not None:
+            self._catalog_categories_cache = categorized_sections(self.base_document)
+            self._categories_cache = self._map_visible_categories(self._catalog_categories_cache, doc)
+        else:
+            self._categories_cache = categorized_sections(doc)
+            self._catalog_categories_cache = self._categories_cache
+
         self._section_types = {}
-        for category, entries in self._categories_cache.items():
+        for category, entries in self._catalog_categories_cache.items():
             section_type = CATEGORY_TYPES.get(category)
             if not section_type:
                 continue
@@ -144,21 +177,26 @@ class RulesWorkspace:
         self._reference_index = {}
         self._last_values = {}
         self._observed_keys = {}
-        for line in doc.lines:
-            if line.kind != "key" or not line.section or not line.key:
-                continue
-            section_fold = line.section.casefold()
-            key_fold = line.key.casefold()
-            self._last_values[(section_fold, key_fold)] = line.value or ""
-            section_type = self._section_types.get(section_fold)
-            if section_type:
-                self._observed_keys.setdefault(section_type, set()).add(key_fold)
-                family = self._family_type(section_type)
-                if family:
-                    self._observed_keys.setdefault(family, set()).add(key_fold)
-            for token in (part.strip() for part in (line.value or "").split(",")):
-                if token:
-                    self._reference_index.setdefault(token.casefold(), []).append((line.section, line.key))
+        source_documents = []
+        if self.is_map_document() and self.base_document is not None:
+            source_documents.append(self.base_document)
+        source_documents.append(doc)
+        for source_doc in source_documents:
+            for line in source_doc.lines:
+                if line.kind != "key" or not line.section or not line.key:
+                    continue
+                section_fold = line.section.casefold()
+                key_fold = line.key.casefold()
+                self._last_values[(section_fold, key_fold)] = line.value or ""
+                section_type = self._section_types.get(section_fold)
+                if section_type:
+                    self._observed_keys.setdefault(section_type, set()).add(key_fold)
+                    family = self._family_type(section_type)
+                    if family:
+                        self._observed_keys.setdefault(family, set()).add(key_fold)
+                for token in (part.strip() for part in (line.value or "").split(",")):
+                    if token:
+                        self._reference_index.setdefault(token.casefold(), []).append((line.section, line.key))
         self._build_country_side_index()
         self._dynamic_cache.clear()
 
@@ -186,6 +224,8 @@ class RulesWorkspace:
         return self.get_settings()
 
     def new_document(self) -> dict:
+        self.document_kind = "rules"
+        self.base_document = None
         if DEFAULT_TEMPLATE.exists():
             self.document = IniDocument.load(DEFAULT_TEMPLATE)
             self.document.path = None
@@ -195,7 +235,10 @@ class RulesWorkspace:
         return self.snapshot()
 
     def open_file(self, path: str | Path) -> dict:
+        path = Path(path)
         self.document = IniDocument.load(path)
+        self.document_kind = "map" if path.suffix.casefold() in MAP_EXTENSIONS else "rules"
+        self.base_document = IniDocument.load(DEFAULT_TEMPLATE) if self.is_map_document() and DEFAULT_TEMPLATE.exists() else None
         self._capture_baseline()
         return self.snapshot()
 
@@ -208,7 +251,45 @@ class RulesWorkspace:
             final_newline=doc.final_newline,
             dirty=doc.dirty,
             section_count=len(doc.sections()),
+            kind=self.document_kind,
+            rule_section_count=sum(len(entries) for entries in self._categories_cache.values()),
         )
+
+    def _map_rule_catalog(self) -> list[dict]:
+        if not self.is_map_document() or self.base_document is None:
+            return []
+        doc = self._doc()
+        rows: list[dict] = []
+        seen: set[str] = set()
+        for category, entries in self._catalog_categories_cache.items():
+            if category not in MAP_RULE_CATALOG_CATEGORIES:
+                continue
+            for section, _ in entries:
+                folded = section.casefold()
+                if folded in seen:
+                    continue
+                seen.add(folded)
+                rows.append({
+                    "section": section,
+                    "label": self._section_label(section),
+                    "category": category,
+                    "side": self._section_side(section),
+                    "present": doc.has_section(section),
+                })
+
+        for label, section, _ in GLOBAL_RULE_VIEWS:
+            folded = section.casefold()
+            if folded in seen or not self.base_document.has_section(section):
+                continue
+            seen.add(folded)
+            rows.append({
+                "section": section,
+                "label": "全局规则" if folded == "general" else label,
+                "category": "全局规则",
+                "side": "neutral",
+                "present": doc.has_section(section),
+            })
+        return rows
 
     def snapshot(self) -> dict:
         return {
@@ -229,6 +310,7 @@ class RulesWorkspace:
                 }
                 for category, entries in self._categories_cache.items()
             ],
+            "map_rule_catalog": self._map_rule_catalog(),
         }
 
     def _dynamic_values(self, spec: ControlSpec) -> tuple[tuple[str, str], ...]:
@@ -240,7 +322,7 @@ class RulesWorkspace:
 
         if dynamic == "buildings":
             values: list[tuple[str, str]] = []
-            for section, _ in self._categories_cache.get("建筑", []):
+            for section, _ in self._catalog_categories_cache.get("建筑", []):
                 raw_level = self._last_values.get((section.casefold(), "techlevel"), "-1")
                 try:
                     if float(raw_level) <= -1:
@@ -271,7 +353,7 @@ class RulesWorkspace:
             return ()
         result = tuple(
             (section, self._section_label(section))
-            for section, _ in self._categories_cache.get(category, [])
+            for section, _ in self._catalog_categories_cache.get(category, [])
         )
         self._dynamic_cache[dynamic] = result
         return result
@@ -448,6 +530,23 @@ class RulesWorkspace:
                 continue
         return str((max(numeric_ids) + 1) if numeric_ids else 0)
 
+    def _add_map_rule_section(self, section: str) -> dict:
+        doc = self._doc()
+        if self.base_document is None or not self.base_document.has_section(section):
+            raise ValueError(f"内置 rules 目录中不存在 Section: {section}")
+        actual = self.base_document._section_name(section) or section
+        if not doc.has_section(actual):
+            doc.add_section(actual)
+            self._structural_dirty = True
+        self._rebuild_indexes()
+        self._refresh_dirty()
+        return {
+            "snapshot": self.snapshot(),
+            "section": self.section(actual),
+            "registration_id": "规则片段",
+            "root": "地图覆盖",
+        }
+
     def create_unit(
         self,
         *,
@@ -456,6 +555,9 @@ class RulesWorkspace:
         comment: str,
         included_line_ids: list[int] | None = None,
     ) -> dict:
+        if self.is_map_document():
+            return self._add_map_rule_section(template)
+
         doc = self._doc()
         template_actual = doc._section_name(template)
         if template_actual is None:
