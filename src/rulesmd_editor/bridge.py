@@ -6,10 +6,11 @@ import sys
 from typing import Any, TextIO
 
 from .global_rules import (
-    GLOBAL_RULE_VIEWS,
+    GLOBAL_RULE_CATEGORY_ORDER,
     global_rule_category,
     global_rule_sections_in_order,
     is_global_rule_section,
+    is_hidden_legacy_global_option,
 )
 from .line_actions import (
     OptionLineState,
@@ -155,6 +156,8 @@ class Bridge:
             references.extend(payload.get("references", []))
             for row in payload["options"]:
                 active_ids.add(row["line_id"])
+                if is_hidden_legacy_global_option(actual, row["key"]):
+                    continue
                 options.append(self._decorate_active_row(
                     row,
                     category=global_rule_category(actual, row["key"]),
@@ -167,12 +170,14 @@ class Bridge:
             for state in section_option_states(doc, actual):
                 if not state.disabled or state.line_id in active_ids:
                     continue
+                if is_hidden_legacy_global_option(state.section, state.key):
+                    continue
                 options.append(self._disabled_row(
                     state,
                     category=global_rule_category(state.section, state.key),
                 ))
 
-        category_order = {label: index for index, (label, _, _) in enumerate(GLOBAL_RULE_VIEWS)}
+        category_order = {label: index for index, label in enumerate(GLOBAL_RULE_CATEGORY_ORDER)}
         options.sort(key=lambda row: (category_order.get(row["category"], 999), row["line_id"]))
         return {
             "section": "General",
@@ -229,7 +234,13 @@ class Bridge:
         return self._rpc_single_section(section)
 
     def rpc_option_catalog(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
-        return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
+        rows = self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
+        if section and section.strip().casefold() == "general":
+            rows = [
+                row for row in rows
+                if not is_hidden_legacy_global_option("General", row["key"])
+            ]
+        return rows
 
     def rpc_option_catalog_all(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
         target_type = applies_to
@@ -248,6 +259,8 @@ class Bridge:
         result: list[dict] = []
         for meta in self.workspace.schema.available_options(query=query):
             if not self.workspace.settings.ares_enabled and meta.source.casefold() == "ares":
+                continue
+            if section and section.casefold() == "general" and is_hidden_legacy_global_option("General", meta.name):
                 continue
             if meta.name.casefold() in existing:
                 continue
