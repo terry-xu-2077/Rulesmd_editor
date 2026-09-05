@@ -17,7 +17,7 @@ dev = ["pytest>=8", "ruff>=0.6", "pyinstaller>=6"]
 
 [project.scripts]
 rulesmd-editor = "rulesmd_editor.app:main"
-rulesmd-backend = "rulesmd_editor.bridge:main"
+rulesmd-backend = "rulesmd_editor.desktop_bridge:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rulesmd_editor"]
