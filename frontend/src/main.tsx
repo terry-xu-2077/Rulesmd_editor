@@ -34,9 +34,11 @@ import {
   Volume2,
   WandSparkles,
 } from 'lucide-react'
-import { workspaceApi, type CatalogOption, type CreateUnitResult, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
+import { workspaceApi, type CatalogOption, type CreateUnitResult, type LineActionResult, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { AddUnitDialog } from './AddUnitDialog'
+import { legacyGeneralGroup, orderedGeneralGroups } from './generalGroups'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
+import { ParameterContextMenu, type ParameterContextMenuState } from './ParameterContextMenu'
 import { ParameterPicker } from './ParameterPicker'
 import { localizedReferenceLabel } from './referenceLabels'
 import { sliderRangeFor } from './sliderRanges'
@@ -90,6 +92,13 @@ function toneForSide(side: Side): 'blue' | 'red' | 'purple' | 'neutral' {
 
 function displayGroup(category: string) {
   return category.replace(/^Ares\s*·\s*/i, '').trim() || '其他'
+}
+
+function optionDisplayGroup(section: string, option: SectionOption) {
+  if (section.trim().toLowerCase() === 'general') {
+    return legacyGeneralGroup(option) ?? displayGroup(option.category)
+  }
+  return displayGroup(option.category)
 }
 
 function sectionKind(category: string): string | undefined {
@@ -258,12 +267,14 @@ function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic') {
 function FieldControl({
   option,
   onChange,
+  disabled = false,
   referenceRows = [],
   observedKeyValues = [],
   audioValues = [],
 }: {
   option: SectionOption
   onChange: (value: string) => void
+  disabled?: boolean
   referenceRows?: SectionRow[]
   observedKeyValues?: string[]
   audioValues?: string[]
@@ -271,25 +282,25 @@ function FieldControl({
   const raw = option.raw_value ?? undefined
   const referenceKind = referenceKindForOption(option)
 
-  if (option.widget === 'boolean') return <BoolSwitch width={180} value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" />
+  if (option.widget === 'boolean') return <BoolSwitch width={180} value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" disabled={disabled}/>
 
   if (referenceKind === 'audio') {
     const values = withCurrentValues(audioValues, option.value)
     const options = values.map(value => ({ value, label: localizedReferenceLabel(value, 'audio'), icon: referenceOptionIcon(value, 'audio') }))
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索音频名称或中文名"/>
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索音频名称或中文名" disabled={disabled}/>
   }
 
   if (referenceKind === 'debris') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
     const options = withCurrentValues(observedKeyValues, option.value).map(value => ({ value, label: localizedReferenceLabel(value, 'debris'), icon: referenceOptionIcon(value, 'debris') }))
-    return <MultiSelect values={values} rawValues={rawValues} options={options} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
+    return <MultiSelect values={values} rawValues={rawValues} options={options} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key} disabled={disabled}/>
   }
 
   if (option.widget === 'multi-select') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
-    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key}/>
+    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key} disabled={disabled}/>
   }
 
   if (option.widget === 'select') {
@@ -300,13 +311,13 @@ function FieldControl({
       icon: semanticIcon ? referenceOptionIcon(value.value, referenceKind) : optionVisualIcon(value.value),
     }))
     if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind) : optionVisualIcon(option.value) })
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10}/>
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10} disabled={disabled}/>
   }
 
   if (referenceRows.length) {
     const options = referenceRows.map(row => ({ value: row.id, label: row.label || localizedReferenceLabel(row.id, referenceKind), group: row.id, icon: referenceOptionIcon(row.id, referenceKind) }))
     if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), group: '', icon: referenceOptionIcon(option.value, referenceKind) })
-    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section"/>
+    return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section" disabled={disabled}/>
   }
 
   if (option.widget === 'slider') {
@@ -314,10 +325,10 @@ function FieldControl({
     const numeric = Number.parseFloat(option.value.replace('%', ''))
     const rawNumeric = option.raw_value == null ? undefined : Number.parseFloat(option.raw_value.replace('%', ''))
     const value = Number.isFinite(numeric) ? numeric : range.min
-    return <Slider value={value} rawValue={rawNumeric != null && Number.isFinite(rawNumeric) ? rawNumeric : undefined} min={range.min} max={range.max} step={range.step} allowOutOfRangeInput onChange={next => onChange(`${next}${range.suffix}`)}/>
+    return <Slider value={value} rawValue={rawNumeric != null && Number.isFinite(rawNumeric) ? rawNumeric : undefined} min={range.min} max={range.max} step={range.step} allowOutOfRangeInput onChange={next => onChange(`${next}${range.suffix}`)} disabled={disabled}/>
   }
 
-  return <TextField value={option.value} rawValue={raw} onChange={onChange} placeholder={option.label || option.key}/>
+  return <TextField value={option.value} rawValue={raw} onChange={onChange} placeholder={option.label || option.key} disabled={disabled}/>
 }
 
 function App() {
@@ -339,6 +350,8 @@ function App() {
   const [documentEpoch, setDocumentEpoch] = useState(0)
   const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
   const [viewMode, setViewMode] = useState<EditorViewMode>('table')
+  const [parameterMenu, setParameterMenu] = useState<ParameterContextMenuState | null>(null)
+  const [pendingDeleteLineId, setPendingDeleteLineId] = useState<number | null>(null)
   const [leftPane, setLeftPane] = useState(() => storedPaneWidth('rulesmd.leftPane', 230))
   const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
   const [localSettings, setLocalSettings] = useState<LocalEditorSettings>(() => ({
@@ -353,26 +366,37 @@ function App() {
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
   const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
   const groups = useMemo(() => {
-    const categories = Array.from(new Set(sectionData.options.map(option => displayGroup(option.category))))
+    const categoryNames = sectionData.options.map(option => optionDisplayGroup(sectionData.section, option))
+    const categories = sectionData.section.trim().toLowerCase() === 'general'
+      ? orderedGeneralGroups(categoryNames)
+      : Array.from(new Set(categoryNames))
     const hasAres = sectionData.options.some(option => option.source.toLowerCase() === 'ares')
     return ['全部', ...(hasAres ? ['Ares'] : []), ...categories.filter(group => group !== 'Ares')]
   }, [sectionData])
   const visibleFields = useMemo(() => sectionData.options.filter(option => {
+    const group = optionDisplayGroup(sectionData.section, option)
     const groupOk = activeGroup === '全部'
-      || (activeGroup === 'Ares' ? option.source.toLowerCase() === 'ares' : displayGroup(option.category) === activeGroup)
+      || (activeGroup === 'Ares' ? option.source.toLowerCase() === 'ares' : group === activeGroup)
     const searchOk = `${option.key} ${option.label} ${option.value} ${option.description}`.toLowerCase().includes(fieldSearch.toLowerCase())
     return groupOk && searchOk
   }), [sectionData, activeGroup, fieldSearch])
   const groupedFields = useMemo(() => {
     const result = new Map<string, SectionOption[]>()
     for (const option of visibleFields) {
-      const group = displayGroup(option.category)
+      const group = optionDisplayGroup(sectionData.section, option)
       if (!result.has(group)) result.set(group, [])
       result.get(group)!.push(option)
     }
-    return [...result.entries()]
-  }, [visibleFields])
+    const order = groups.filter(group => group !== '全部' && group !== 'Ares')
+    return [...result.entries()].sort((a, b) => {
+      const ai = order.indexOf(a[0])
+      const bi = order.indexOf(b[0])
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi)
+    })
+  }, [groups, sectionData.section, visibleFields])
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
+  const contextOption = parameterMenu ? sectionData.options.find(option => option.line_id === parameterMenu.lineId) ?? null : null
+  const pendingDeleteOption = pendingDeleteLineId == null ? null : sectionData.options.find(option => option.line_id === pendingDeleteLineId) ?? null
   const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
   const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
   const headerSectionReady = Boolean(selected && sectionData.section && sectionData.section.toLowerCase() === selected.id.toLowerCase())
@@ -451,6 +475,7 @@ function App() {
     const requestId = ++sectionRequest.current
     setSelected(row)
     setActiveGroup('全部')
+    setParameterMenu(null)
     const cached = sectionCache.current.get(row.id)
     if (cached) {
       setSectionData(cached)
@@ -524,6 +549,8 @@ function App() {
     setSnapshot(next)
     setUnitSearch('')
     setFieldSearch('')
+    setParameterMenu(null)
+    setPendingDeleteLineId(null)
     setDocumentEpoch(value => value + 1)
     await refreshObservedValues()
     const first = firstUsefulRow(next)
@@ -604,7 +631,7 @@ function App() {
   }
 
   async function setValue(option: SectionOption, value: string) {
-    if (!snapshot || option.line_id <= 0) return
+    if (!snapshot || option.line_id <= 0 || option.disabled) return
     setSelectedOptionId(option.line_id)
     setObservedValues(current => mergeObservedValue(current, option, value))
     setSectionData(current => {
@@ -634,6 +661,52 @@ function App() {
         sectionCache.current.set(selected.id, data)
         setSectionData(data)
       }
+    }
+  }
+
+  async function applyLineActionResult(result: LineActionResult, preferredLineId?: number | null) {
+    sectionCache.current.set(result.section.section, result.section)
+    setSectionData(result.section)
+    setSelectedOptionId(current => {
+      if (preferredLineId != null && result.section.options.some(option => option.line_id === preferredLineId)) return preferredLineId
+      if (current != null && result.section.options.some(option => option.line_id === current)) return current
+      return result.section.options[0]?.line_id ?? null
+    })
+    const next = await workspaceApi.snapshot()
+    setSnapshot(next)
+    await refreshObservedValues()
+  }
+
+  async function toggleParameterDisabled(option: SectionOption) {
+    try {
+      const result = await workspaceApi.setLineDisabled(option.line_id, !option.disabled)
+      await applyLineActionResult(result, option.line_id)
+      setStatus(`${option.disabled ? '已启用' : '已禁用'} ${sectionData.section}.${option.key}`)
+    } catch (error) {
+      setStatus(`参数状态修改失败：${String(error)}`)
+    }
+  }
+
+  async function restoreParameter(option: SectionOption) {
+    try {
+      const result = await workspaceApi.restoreLine(option.line_id)
+      await applyLineActionResult(result, option.line_id)
+      setStatus(`已还原 ${sectionData.section}.${option.key} 到打开文件时的状态`)
+    } catch (error) {
+      setStatus(`还原参数失败：${String(error)}`)
+    }
+  }
+
+  async function deletePendingParameter() {
+    const option = pendingDeleteOption
+    if (!option) return
+    try {
+      const result = await workspaceApi.removeLine(option.line_id)
+      setPendingDeleteLineId(null)
+      await applyLineActionResult(result, null)
+      setStatus(`已删除 ${sectionData.section}.${option.key}`)
+    } catch (error) {
+      setStatus(`删除参数失败：${String(error)}`)
     }
   }
 
@@ -738,20 +811,33 @@ function App() {
             <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
             <Button variant="accent" onClick={() => void openOptionPicker()}><ListPlus size={16}/> 参数</Button>
           </section>
-          {viewMode === 'table' ? <section className="fieldsPane parameterTablePane">
+          {viewMode === 'table' ? <section className="fieldsPane parameterTablePane" onContextMenu={event => { if (!(event.target as HTMLElement).closest('.parameterTableRow')) event.preventDefault() }}>
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
             {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => { if (activeGroup === '全部') setCollapsed(value => ({ ...value, [group]: !value[group] })) }}>{activeGroup === '全部' && collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {(activeGroup !== '全部' || !collapsed[group]) && list.map(option => {
-                const changed = option.raw_value == null ? true : option.value !== option.raw_value
+                const changed = option.raw_value == null
+                  ? true
+                  : option.value !== option.raw_value || Boolean(option.disabled) !== Boolean(option.raw_disabled)
                 const focused = selectedOption?.line_id === option.line_id
                 const target = referenceTarget(option)
                 const candidates = referenceRows(option)
-                return <div className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''}`} key={option.line_id} onClick={() => setSelectedOptionId(option.line_id)}>
-                  <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
+                return <div
+                  className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''} ${option.disabled ? 'disabled' : ''}`}
+                  key={option.line_id}
+                  title="右键：禁用 / 还原 / 删除参数"
+                  onClick={() => setSelectedOptionId(option.line_id)}
+                  onContextMenu={event => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setSelectedOptionId(option.line_id)
+                    setParameterMenu({ lineId: option.line_id, x: event.clientX, y: event.clientY })
+                  }}
+                >
+                  <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}{option.disabled && <span className="disabledBadge">禁用</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
-                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} referenceRows={candidates} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
+                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} disabled={Boolean(option.disabled)} referenceRows={candidates} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{!option.disabled && target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
@@ -768,7 +854,7 @@ function App() {
               <div className="helpHeader"><WandSparkles size={19}/><div><small>当前参数</small><strong>{selectedOption.key}</strong></div></div>
               <span className={`docBadge ${selectedOption.source === 'Ares' ? 'ares' : ''}`}>{selectedOption.source === 'Ares' && <Sparkles size={13}/>} {selectedOption.source === 'Ares' ? 'Ares 扩展' : 'Yuri 原版'}</span>
               <div className="helpDescriptionCard"><h3>{selectedOption.label || selectedOption.key}</h3><p>{selectedOption.description || '暂无内置中文说明；该参数仍会被无损读取、编辑和保存。'}</p></div>
-              <div className="helpMeta"><span>Key</span><b>{selectedOption.key}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b>{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>
+              <div className="helpMeta"><span>Key</span><b>{selectedOption.key}</b><span>状态</span><b>{selectedOption.disabled ? '已禁用' : '启用'}</b><span>控件</span><b>{selectedOption.widget}</b><span>当前值</span><b>{selectedOption.value || '—'}</b><span>类型</span><b>{selectedOption.value_type || '—'}</b><span>来源</span><b>{selectedOption.source}</b></div>
               {selectedOption.docs && <><div className="helpDivider"/><h4>资料来源</h4><p className="docSource">{selectedOption.docs}</p></>}
               {selectedOption.values.length > 0 && <><div className="helpDivider"/><h4>可选值</h4><div className="valueChoices">{selectedOption.values.slice(0, 30).map(item => <span key={item.value}>{item.label || item.value}<small>{item.value}</small></span>)}</div></>}
             </> : <div className="emptyHelp">选择一个参数查看来自旧版资料库和 Ares 元数据的中文帮助。</div>}
@@ -777,8 +863,21 @@ function App() {
       </aside>
     </div>
 
+    <ParameterContextMenu
+      state={parameterMenu}
+      option={contextOption}
+      onClose={() => setParameterMenu(null)}
+      onToggleDisabled={option => void toggleParameterDisabled(option)}
+      onRestore={option => void restoreParameter(option)}
+      onDelete={option => setPendingDeleteLineId(option.line_id)}
+    />
+
     <AddUnitDialog open={showAddUnit} rows={rows} initialCategory={selected?.category} onClose={() => setShowAddUnit(false)} onCreated={unitCreated}/>
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
+
+    <Dialog open={Boolean(pendingDeleteOption)} title="删除参数" icon={<Trash2 size={18}/>} onClose={() => setPendingDeleteLineId(null)}>
+      <div className="closePrompt"><p>确定从 [{sectionData.section}] 删除参数 <strong>{pendingDeleteOption?.label || pendingDeleteOption?.key}</strong>（{pendingDeleteOption?.key}）吗？</p><div className="closePromptActions"><Button className="quietDanger" onClick={() => void deletePendingParameter()}>删除</Button><Button className="quietButton" onClick={() => setPendingDeleteLineId(null)}>取消</Button></div></div>
+    </Dialog>
 
     <Dialog open={showSettings} title="设置" icon={<Settings size={18}/>} onClose={() => setShowSettings(false)}>
       <div className="settingsDialogBody settingsGrid">
