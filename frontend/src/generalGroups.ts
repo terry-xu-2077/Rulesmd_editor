@@ -29,7 +29,8 @@ export const GENERAL_LEGACY_VIEWS = [
 
 export type GeneralLegacyViewLabel = typeof GENERAL_LEGACY_VIEWS[number]['label']
 
-export const GENERAL_LEGACY_GROUP_ORDER = GENERAL_LEGACY_VIEWS.map(view => view.label)
+/** main.tsx already adds the “全部” source view before these labels. */
+export const GENERAL_LEGACY_GROUP_ORDER = GENERAL_LEGACY_VIEWS.slice(1).map(view => view.label)
 
 const GLOBAL_SUBSECTION_IDS = new Set(
   GENERAL_LEGACY_VIEWS
@@ -54,9 +55,9 @@ export function matchesLegacyGeneralFilter(option: SectionOption, label: string)
 }
 
 /**
- * Compatibility helper used by older call sites. For [General] it only returns one of
- * the five hand-curated Qt filters. Unmatched keys deliberately remain unclassified;
- * they belong to the Qt “全部” view rather than to a newly invented semantic bucket.
+ * Compatibility helper used by main.tsx. Backend global-rule bundles already stamp the
+ * dedicated Qt category onto each row; only the five [General] substring filters need
+ * to be derived from the key here.
  */
 export function legacyGeneralGroup(option: SectionOption): string | null {
   for (const view of GENERAL_LEGACY_VIEWS.slice(1, 6)) {
@@ -65,7 +66,7 @@ export function legacyGeneralGroup(option: SectionOption): string | null {
   return null
 }
 
-/** Return the exact legacy Qt ordering, not only categories currently represented by rows. */
+/** Return every legacy Qt category in its original order, even if that section is empty. */
 export function orderedGeneralGroups(_groups: string[] = []): string[] {
   return [...GENERAL_LEGACY_GROUP_ORDER]
 }
