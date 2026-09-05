@@ -31,6 +31,7 @@ export type GeneralLegacyViewLabel = typeof GENERAL_LEGACY_VIEWS[number]['label'
 
 /** main.tsx already adds the “全部” source view before these labels. */
 export const GENERAL_LEGACY_GROUP_ORDER = GENERAL_LEGACY_VIEWS.slice(1).map(view => view.label)
+const GENERAL_LEGACY_LABELS = new Set(GENERAL_LEGACY_VIEWS.map(view => view.label as string))
 
 const GLOBAL_SUBSECTION_IDS = new Set(
   GENERAL_LEGACY_VIEWS
@@ -55,11 +56,13 @@ export function matchesLegacyGeneralFilter(option: SectionOption, label: string)
 }
 
 /**
- * Compatibility helper used by main.tsx. Backend global-rule bundles already stamp the
- * dedicated Qt category onto each row; only the five [General] substring filters need
- * to be derived from the key here.
+ * Backend global-rule bundles stamp every row with its old-Qt category. Prefer that
+ * authoritative category first; the key matcher only remains as compatibility for a
+ * plain [General] payload from an older backend.
  */
 export function legacyGeneralGroup(option: SectionOption): string | null {
+  const category = option.category.trim()
+  if (GENERAL_LEGACY_LABELS.has(category) && category !== '全部') return category
   for (const view of GENERAL_LEGACY_VIEWS.slice(1, 6)) {
     if (matchesLegacyGeneralFilter(option, view.label)) return view.label
   }
