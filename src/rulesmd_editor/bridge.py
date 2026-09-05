@@ -27,6 +27,8 @@ class Bridge:
         self._baseline_lines: dict[int, OptionLineState] = {}
         self._baseline_structure: tuple[tuple, ...] = ()
         self._schedule_catalog_warmup()
+        if self.workspace.document is not None:
+            self._capture_baseline()
 
     def _schedule_catalog_warmup(self) -> None:
         if self._catalog_warm_future is not None:
@@ -40,7 +42,14 @@ class Bridge:
         for line in self.workspace.document.lines:
             state = option_line_state(line)
             if state is not None:
-                signature.append(("option", state.line_id, state.section.casefold(), state.key.casefold(), state.disabled))
+                signature.append((
+                    "option",
+                    state.line_id,
+                    state.section.casefold(),
+                    state.key.casefold(),
+                    state.disabled,
+                    state.value if state.disabled else None,
+                ))
             else:
                 signature.append(("line", line.line_id, line.kind, line.section or "", line.raw))
         return tuple(signature)
