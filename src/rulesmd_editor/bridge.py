@@ -5,6 +5,12 @@ import json
 import sys
 from typing import Any, TextIO
 
+from .global_rules import (
+    GLOBAL_RULE_VIEWS,
+    global_rule_category,
+    global_rule_sections_in_order,
+    is_global_rule_section,
+)
 from .line_actions import (
     OptionLineState,
     all_option_keys,
@@ -71,9 +77,109 @@ class Bridge:
         self.workspace._refresh_dirty()
 
     def _line_action_result(self, section: str) -> dict:
+        target = "General" if is_global_rule_section(section) else section
         return {
-            "section": self.rpc_section(section),
+            "section": self.rpc_section(target),
             "dirty": self.workspace.info().dirty,
+        }
+
+    def _decorate_active_row(self, row: dict, *, category: str | None = None) -> dict:
+        baseline = self._baseline_lines.get(row["line_id"])
+        row["disabled"] = False
+        row["raw_disabled"] = baseline.disabled if baseline is not None else None
+        if baseline is not None:
+            row["raw_value"] = baseline.value
+        if category is not None:
+            row["category"] = category
+        return row
+
+    def _disabled_row(self, state: OptionLineState, *, category: str | None = None) -> dict:
+        meta = self.workspace.schema.option(state.key)
+        control = self.workspace._control_for(state.key, state.value, meta)
+        baseline = self._baseline_lines.get(state.line_id)
+        return {
+            "line_id": state.line_id,
+            "key": state.key,
+            "value": state.value,
+            "raw_value": baseline.value if baseline is not None else None,
+            "raw_disabled": baseline.disabled if baseline is not None else None,
+            "disabled": True,
+            "suffix": state.suffix,
+            "label": meta.description or state.key,
+            "description": meta.help_text,
+            "category": category if category is not None else meta.category,
+            "source": meta.source,
+            "value_type": meta.value_type,
+            "widget": control.widget,
+            "values": [{"value": item_value, "label": label} for item_value, label in control.values],
+            "docs": meta.docs,
+        }
+
+    def _global_raw(self) -> str:
+        doc = self.workspace._doc()
+        parts = [
+            doc.clone_section_text(section).rstrip("\r\n")
+            for section in global_rule_sections_in_order()
+            if doc.has_section(section)
+        ]
+        text = (doc.newline * 2).join(part for part in parts if part)
+        return text + (doc.newline if text else "")
+
+    def _rpc_single_section(self, section: str) -> dict:
+        result = self.workspace.section(section)
+        actual = result["section"]
+        active_by_id = {row["line_id"]: row for row in result["options"]}
+
+        for row in result["options"]:
+            self._decorate_active_row(row)
+
+        for state in section_option_states(self.workspace._doc(), actual):
+            if not state.disabled or state.line_id in active_by_id:
+                continue
+            result["options"].append(self._disabled_row(state))
+
+        result["options"].sort(key=lambda row: row["line_id"])
+        return result
+
+    def _rpc_global_section(self) -> dict:
+        doc = self.workspace._doc()
+        options: list[dict] = []
+        references: list[dict] = []
+        active_ids: set[int] = set()
+
+        for section in global_rule_sections_in_order():
+            if not doc.has_section(section):
+                continue
+            payload = self.workspace.section(section)
+            actual = payload["section"]
+            references.extend(payload.get("references", []))
+            for row in payload["options"]:
+                active_ids.add(row["line_id"])
+                options.append(self._decorate_active_row(
+                    row,
+                    category=global_rule_category(actual, row["key"]),
+                ))
+
+        for section in global_rule_sections_in_order():
+            if not doc.has_section(section):
+                continue
+            actual = doc._section_name(section) or section
+            for state in section_option_states(doc, actual):
+                if not state.disabled or state.line_id in active_ids:
+                    continue
+                options.append(self._disabled_row(
+                    state,
+                    category=global_rule_category(state.section, state.key),
+                ))
+
+        category_order = {label: index for index, (label, _, _) in enumerate(GLOBAL_RULE_VIEWS)}
+        options.sort(key=lambda row: (category_order.get(row["category"], 999), row["line_id"]))
+        return {
+            "section": "General",
+            "description": "全局规则",
+            "options": options,
+            "raw": self._global_raw(),
+            "references": references,
         }
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -118,43 +224,9 @@ class Bridge:
         return self.workspace.snapshot()
 
     def rpc_section(self, section: str) -> dict:
-        result = self.workspace.section(section)
-        actual = result["section"]
-        active_by_id = {row["line_id"]: row for row in result["options"]}
-
-        for row in result["options"]:
-            baseline = self._baseline_lines.get(row["line_id"])
-            row["disabled"] = False
-            row["raw_disabled"] = baseline.disabled if baseline is not None else None
-            if baseline is not None:
-                row["raw_value"] = baseline.value
-
-        for state in section_option_states(self.workspace._doc(), actual):
-            if not state.disabled or state.line_id in active_by_id:
-                continue
-            meta = self.workspace.schema.option(state.key)
-            control = self.workspace._control_for(state.key, state.value, meta)
-            baseline = self._baseline_lines.get(state.line_id)
-            result["options"].append({
-                "line_id": state.line_id,
-                "key": state.key,
-                "value": state.value,
-                "raw_value": baseline.value if baseline is not None else None,
-                "raw_disabled": baseline.disabled if baseline is not None else None,
-                "disabled": True,
-                "suffix": state.suffix,
-                "label": meta.description or state.key,
-                "description": meta.help_text,
-                "category": meta.category,
-                "source": meta.source,
-                "value_type": meta.value_type,
-                "widget": control.widget,
-                "values": [{"value": item_value, "label": label} for item_value, label in control.values],
-                "docs": meta.docs,
-            })
-
-        result["options"].sort(key=lambda row: row["line_id"])
-        return result
+        if section.strip().casefold() == "general":
+            return self._rpc_global_section()
+        return self._rpc_single_section(section)
 
     def rpc_option_catalog(self, query: str = "", applies_to: str | None = None, section: str | None = None) -> list[dict]:
         return self.workspace.option_catalog(query=query, applies_to=applies_to, section=section)
@@ -164,7 +236,13 @@ class Bridge:
         if section:
             target_type = self.workspace._section_types.get(section.casefold()) or applies_to
         family = self.workspace._family_type(target_type)
-        existing = all_option_keys(self.workspace._doc(), section) if section else set()
+        if section and section.casefold() == "general":
+            existing: set[str] = set()
+            for global_section in global_rule_sections_in_order():
+                if self.workspace._doc().has_section(global_section):
+                    existing.update(all_option_keys(self.workspace._doc(), global_section))
+        else:
+            existing = all_option_keys(self.workspace._doc(), section) if section else set()
         observed_exact = self.workspace._observed_keys.get(target_type or "", set())
 
         result: list[dict] = []
@@ -202,7 +280,11 @@ class Bridge:
         return result
 
     def rpc_set_value(self, line_id: int, value: str) -> dict:
-        return self.workspace.set_value(line_id, value)
+        result = self.workspace.set_value(line_id, value)
+        if is_global_rule_section(result["section"]):
+            result["section"] = "General"
+            result["raw"] = self._global_raw()
+        return result
 
     def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)
