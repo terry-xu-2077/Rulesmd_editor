@@ -10,6 +10,7 @@ from .schema import OptionMeta
 RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 ARES_SCHEMA_PATH = RESOURCE_ROOT / "generated" / "ares_schema.json"
 ARES_HARDCODE_UNLOCKS_PATH = RESOURCE_ROOT / "ares_hardcode_unlocks.json"
+UNLOCK_ICON = "🔓︎"  # U+FE0E text presentation: keep the icon flat/monochrome instead of emoji-style.
 
 
 class AresSchemaCatalog:
@@ -63,7 +64,7 @@ class AresSchemaCatalog:
 
     @staticmethod
     def _unlock_help(row: dict[str, object]) -> str:
-        parts = ["🔓【Ares 解除原版硬编码】"]
+        parts = [f"{UNLOCK_ICON}【Ares 解除原版硬编码】"]
         vanilla = str(row.get("vanilla_limit", "")).strip()
         unlock = str(row.get("ares_unlock", "")).strip()
         notes = str(row.get("notes", "")).strip()
@@ -121,7 +122,7 @@ class AresSchemaCatalog:
         help_text = f"{base_help}\n\n{unlock_help}" if base_help else unlock_help
         description = str(row.get("description", meta.description)).strip() or meta.name
         if not description.startswith("🔓"):
-            description = f"🔓 {description}"
+            description = f"{UNLOCK_ICON} {description}"
         values = meta.values
         if "values" in row:
             values = tuple(
