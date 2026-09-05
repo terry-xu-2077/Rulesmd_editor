@@ -137,6 +137,9 @@ def test_extract_rules_recognizes_mental_omega_rulesmo(tmp_path):
 
     extracted = extract_rules(path)
 
+    workspace = MixRulesWorkspace()
+    snapshot = workspace.open_file(path)
+    assert snapshot["document"]["path"] == str(tmp_path / "rulesmo.ini")
     assert extracted.filename == "rulesmo.ini"
     assert extracted.data == payload
     assert extract_rulesmd_bytes(path) == payload
@@ -156,7 +159,7 @@ def test_mix_workspace_creates_loose_csf_name_for_new_unit(tmp_path):
 
     workspace = MixRulesWorkspace()
     snapshot = workspace.open_file(mix_path)
-    assert snapshot["document"]["path"] is None
+    assert snapshot["document"]["path"] == str(tmp_path / "rulesmd.ini")
     assert snapshot["companion"]["suggested_rules_name"] == "rulesmd.ini"
 
     created = workspace.create_unit(
@@ -170,7 +173,7 @@ def test_mix_workspace_creates_loose_csf_name_for_new_unit(tmp_path):
     assert created["snapshot"]["companion"]["pending_strings"] == 1
 
     output = tmp_path / "rulesmd.ini"
-    saved = workspace.save(output)
+    saved = workspace.save()
 
     assert saved["path"] == str(output)
     assert saved["csf_path"] == str(tmp_path / "stringtable99.csf")

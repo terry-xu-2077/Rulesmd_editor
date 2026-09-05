@@ -147,9 +147,10 @@ class MixRulesWorkspace(RulesWorkspace):
         extracted = extract_rules(source)
         self._reset_companion_context(source.parent, extracted.filename)
         self.document = _ini_document_from_bytes(extracted.data)
-        # A MIX is an import source, not a writable INI path. Keeping path unset makes
-        # the existing Save flow ask for a loose INI and can never overwrite the archive.
-        self.document.path = None
+        # MIX is always a read-only source. Bind Save to the loose override that the
+        # game actually reads, never to the archive itself. This also keeps custom mod
+        # names correct (for example expandmo99.mix -> rulesmo.ini).
+        self.document.path = source.parent / extracted.filename
         self.document_kind = "rules"
         self.base_document = None
         self._capture_baseline()
