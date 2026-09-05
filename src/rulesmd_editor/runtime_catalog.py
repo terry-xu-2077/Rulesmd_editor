@@ -20,6 +20,17 @@ RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 LEGACY_ROOT = RESOURCE_ROOT / "legacy"
 GENERATED_ROOT = RESOURCE_ROOT / "generated"
 
+# These are original Yuri's Revenge keys whose behavior/range is extended by Ares.
+# They must stay available when Ares assistance is disabled; only their explanatory
+# metadata is enriched with the Ares hard-code-unlock note.
+ARES_EXTENDED_YR_KEYS = frozenset({
+    "armor",
+    "cellspread",
+    "gunner",
+    "sight",
+    "turretcount",
+})
+
 
 def _has_curated_yr_semantics(key: str) -> bool:
     folded = key.casefold()
@@ -90,6 +101,12 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         if _has_curated_yr_semantics(key):
             return self.ares.enrich(replace(translate_option_meta(base), source="YR"))
 
+        # A handful of well-known vanilla tags are missing from the historical metadata
+        # snapshots even though the engine supports them. Ares only extends their range
+        # or removes a hard-coded identity check, so never reclassify them as Ares-only.
+        if key.casefold() in ARES_EXTENDED_YR_KEYS and self.ares.is_hardcode_unlock(key):
+            return replace(self.ares.enrich(base), source="YR")
+
         ares = self.ares.option(key)
         if ares is not None:
             return self.ares.enrich(ares)
@@ -112,10 +129,16 @@ class RuntimeSchemaCatalog(SchemaCatalog):
                 return cached
             base_rows = [self.ares.enrich(row) for row in super().available_options()]
             seen = {row.name.casefold() for row in base_rows}
-            merged = base_rows + [
-                self.ares.enrich(row) for row in self.ares.available_options()
-                if row.name.casefold() not in seen
-            ]
+            extra_rows: list[OptionMeta] = []
+            for row in self.ares.available_options():
+                folded = row.name.casefold()
+                if folded in seen:
+                    continue
+                enriched = self.ares.enrich(row)
+                if folded in ARES_EXTENDED_YR_KEYS:
+                    enriched = replace(enriched, source="YR")
+                extra_rows.append(enriched)
+            merged = base_rows + extra_rows
             cached = tuple(sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name)))
             self._all_options_cache = cached
             return cached
