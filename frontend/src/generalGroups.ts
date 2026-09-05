@@ -88,16 +88,19 @@ const GENERAL_SUPPLEMENT_RULES: Array<{ name: GeneralSupplementGroup; match: (ke
   },
   {
     name: '环境与地图',
-    match: key => /(?:fogofwar|cameraRange|visceroid|treestrength|winddirection|blendedfog|cliffback|icecracking|icebreaking|shipsinking|treeflammability|craterlevel|bridgevoxel|tiberiumtransmogrify)/i.test(key),
+    match: key => /(?:fogofwar|camerarange|visceroid|treestrength|winddirection|blendedfog|cliffback|icecracking|icebreaking|shipsinking|treeflammability|craterlevel|bridgevoxel|tiberiumtransmogrify)/i.test(key),
   },
 ]
 
+const ORIGINAL_QT_LABELS = GENERAL_LEGACY_VIEWS.slice(1).map(view => view.label as string)
+const ORIGINAL_QT_LABEL_SET = new Set(ORIGINAL_QT_LABELS)
+
 /** main.tsx already adds the “全部” source view before these labels. */
-export const GENERAL_LEGACY_GROUP_ORDER = [
-  ...GENERAL_LEGACY_VIEWS.slice(1, 6).map(view => view.label),
+export const GENERAL_LEGACY_GROUP_ORDER = Array.from(new Set([
+  ...GENERAL_LEGACY_VIEWS.slice(1, 6).map(view => view.label as string),
   ...GENERAL_SUPPLEMENT_GROUP_ORDER,
-  ...GENERAL_LEGACY_VIEWS.slice(6).map(view => view.label),
-]
+  ...GENERAL_LEGACY_VIEWS.slice(6).map(view => view.label as string),
+]))
 const GENERAL_LEGACY_LABELS = new Set(GENERAL_LEGACY_VIEWS.map(view => view.label as string))
 
 const GLOBAL_SUBSECTION_IDS = new Set(
@@ -144,8 +147,11 @@ export function legacyGeneralGroup(option: SectionOption): string {
   return supplementalGeneralGroup(option)
 }
 
-/** Return global-rule categories in stable old-Qt-first order. */
+/**
+ * Keep every old-Qt category visible in its original order. Supplemental General-only
+ * groups appear only when the current document actually contains matching parameters.
+ */
 export function orderedGeneralGroups(groups: string[] = []): string[] {
   const present = new Set(groups)
-  return GENERAL_LEGACY_GROUP_ORDER.filter(group => present.has(group))
+  return GENERAL_LEGACY_GROUP_ORDER.filter(group => ORIGINAL_QT_LABEL_SET.has(group) || present.has(group))
 }
