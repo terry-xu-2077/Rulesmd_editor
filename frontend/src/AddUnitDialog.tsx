@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Check, PackagePlus, Search } from 'lucide-react'
-import { Button, Dialog, Select, TextField } from 'terry-react-ui-library'
+import { PackagePlus, Search } from 'lucide-react'
+import { Button, Checkbox, Dialog, Select, TextField } from 'terry-react-ui-library'
 import { workspaceApi, type CreateUnitResult, type SectionData, type SectionOption } from './backend'
 import { localizedReferenceLabel } from './referenceLabels'
 
@@ -48,35 +48,21 @@ function valueKind(option: SectionOption) {
 
 function displayTemplateValue(option: SectionOption, rowsById: Map<string, UnitTemplateRow>) {
   const raw = option.value.trim()
-  if (!raw) return { label: '空值', localized: false }
+  if (!raw) return '空值'
 
   const explicit = new Map(option.values.map(item => [item.value.toLowerCase(), item.label.trim() || item.value]))
-  let localized = false
-  const labels = raw.split(',').map(part => {
+  return raw.split(',').map(part => {
     const token = part.trim()
     if (!token) return token
 
     const enumLabel = explicit.get(token.toLowerCase())
-    if (enumLabel && enumLabel.toLowerCase() !== token.toLowerCase()) {
-      localized = true
-      return enumLabel
-    }
+    if (enumLabel && enumLabel.toLowerCase() !== token.toLowerCase()) return enumLabel
 
     const row = rowsById.get(token.toLowerCase())
-    if (row?.label && row.label.toLowerCase() !== token.toLowerCase()) {
-      localized = true
-      return row.label
-    }
+    if (row?.label && row.label.toLowerCase() !== token.toLowerCase()) return row.label
 
-    const guessed = localizedReferenceLabel(token, valueKind(option))
-    if (guessed && guessed.toLowerCase() !== token.toLowerCase()) {
-      localized = true
-      return guessed
-    }
-    return token
-  })
-
-  return { label: localized ? labels.join('、') : raw, localized }
+    return localizedReferenceLabel(token, valueKind(option)) || token
+  }).join('、')
 }
 
 export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated }: Props) {
@@ -104,7 +90,7 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     const q = parameterQuery.trim().toLowerCase()
     if (!q) return selectableOptions
     return selectableOptions.filter(option => {
-      const display = displayedValues.get(option.line_id)?.label ?? option.value
+      const display = displayedValues.get(option.line_id) ?? option.value
       return `${option.key} ${option.label} ${option.value} ${display}`.toLowerCase().includes(q)
     })
   }, [displayedValues, parameterQuery, selectableOptions])
@@ -224,24 +210,20 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
         </div>
       </div>
 
-      <div className="addUnitParameterTable">
-        <div className="addUnitParameterHeader"><span>Key</span><span>参数名</span><span>模板值</span><span>使用</span></div>
+      <div className="addUnitParameterTable parameterTablePane">
+        <div className="addUnitParameterHeader parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span><span>使用</span></div>
         <div className="addUnitParameterRows">
           {loading && <div className="addUnitEmpty">正在读取模板参数…</div>}
           {!loading && visibleOptions.map(option => {
-            const display = displayedValues.get(option.line_id) ?? { label: option.value || '空值', localized: false }
+            const display = displayedValues.get(option.line_id) ?? option.value || '空值'
             const checked = Boolean(selectedLines[option.line_id])
-            return <div className={`addUnitParameterRow ${checked ? 'selected' : 'excluded'}`} key={option.line_id}>
-              <code title={option.key}>{option.key}</code>
-              <strong title={option.label || option.key}>{option.label || option.key}</strong>
-              <span className="addUnitParameterValue" title={option.value || '空值'}>
-                <b>{display.label}</b>
-                {display.localized && option.value && <small>{option.value}</small>}
-              </span>
-              <label className="addUnitParameterUse" title={checked ? '创建时继承此参数' : '创建时不写入此参数'}>
-                <input type="checkbox" checked={checked} onChange={() => toggleLine(option.line_id)}/>
-                <span className="addUnitCheckBox" aria-hidden="true">{checked && <Check size={13}/>}</span>
-              </label>
+            return <div className={`addUnitParameterRow parameterTableRow ${checked ? 'selected' : 'excluded'}`} key={option.line_id}>
+              <div className="parameterKeyCell"><code title={option.key}>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
+              <div className="parameterLabelCell"><strong title={option.label || option.key}>{option.label || option.key}</strong></div>
+              <div className="parameterValueCell addUnitReadOnlyValue"><div className="rulesControlHost"><TextField value={display} onChange={() => {}} disabled/></div></div>
+              <div className="addUnitParameterUse">
+                <Checkbox checked={checked} onChange={() => toggleLine(option.line_id)} title={checked ? '创建时继承此参数' : '创建时不写入此参数'} ariaLabel={`${checked ? '取消继承' : '继承'} ${option.key}`}/>
+              </div>
             </div>
           })}
           {!loading && !visibleOptions.length && <div className="addUnitEmpty">没有匹配的模板参数。</div>}
