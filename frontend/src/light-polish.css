@@ -14,6 +14,31 @@
 .app[data-mode="light"] .factionBranch{border-left-color:rgba(55,101,130,.18)!important}
 .app[data-mode="light"] .unitTreeLevel.type{color:#43647b!important}
 
+/* General is a fixed business row above the scrolling hierarchy, not a pseudo group. */
+.app[data-mode="light"] .unitGlobalRule{
+  color:#29485d!important;
+  background:#e3edf2!important;
+  border-color:#abc2cf!important;
+  box-shadow:none!important;
+}
+.app[data-mode="light"] .unitGlobalRule:hover{
+  color:#173f56!important;
+  background:#d7e8ec!important;
+  border-color:#72b5b0!important;
+}
+.app[data-mode="light"] .unitGlobalRule.selected{
+  color:#173f50!important;
+  background:#d4ece8!important;
+  border-color:#55aa9f!important;
+  box-shadow:inset 3px 0 0 #179f8a!important;
+}
+.app[data-mode="light"] .unitGlobalIcon{
+  color:#237c70!important;
+  background:#d5e9e6!important;
+  box-shadow:inset 0 0 0 1px rgba(53,125,119,.18)!important;
+}
+.app[data-mode="light"] .unitGlobalText small{color:#6d8797!important}
+
 /* Keep the selected table row cool and clear instead of muddy grey. */
 .app[data-mode="light"] .parameterTableRow{background:#edf3f7!important;color:#244157!important;border-bottom-color:rgba(55,93,122,.15)!important}
 .app[data-mode="light"] .parameterTableRow:nth-child(even){background:#e8f0f5!important}
