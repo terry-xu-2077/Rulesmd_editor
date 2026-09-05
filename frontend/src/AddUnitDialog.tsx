@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { PackagePlus, Search, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft,
+  Building2,
+  Flag,
+  Landmark,
+  PackagePlus,
+  Plane,
+  Search,
+  Sparkles,
+  Truck,
+  Users,
+} from 'lucide-react'
 import { Button, Checkbox, Dialog, Select, TextField } from 'terry-react-ui-library'
 import { workspaceApi, type CreateUnitResult, type MapRuleCatalogItem, type SectionData, type SectionOption } from './backend'
+import { countryIconStyle } from './legacyIcons'
 import { localizedReferenceLabel } from './referenceLabels'
 
 export type UnitTemplateRow = {
@@ -18,13 +30,18 @@ type Props = {
   onCreated: (result: CreateUnitResult) => void | Promise<void>
 }
 
-const UNIT_CATEGORIES = ['步兵', '载具', '飞机', '建筑', '超级武器'] as const
+type ObjectKind = '' | 'unit' | 'country' | 'superweapon'
+type WizardStep = 'kind' | 'unit-type' | 'details' | 'parameters'
+
+const OBJECT_CATEGORIES = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家'] as const
+const UNIT_CATEGORIES = ['步兵', '载具', '飞机', '建筑'] as const
 const CATEGORY_ROOT: Record<string, string> = {
   步兵: 'InfantryTypes',
   载具: 'VehicleTypes',
   飞机: 'AircraftTypes',
   建筑: 'BuildingTypes',
   超级武器: 'SuperWeaponTypes',
+  国家: 'Countries',
 }
 
 const ARES_SUPERWEAPON_TYPES = new Set([
@@ -45,13 +62,19 @@ const SUPERWEAPON_TYPES = [
   { value: 'SpyPlane', label: '侦察机 · SpyPlane' },
   { value: 'PsychicReveal', label: '心灵探测 · PsychicReveal' },
   { value: 'SonarPulse', label: '声呐脉冲 · SonarPulse' },
-  { value: 'GenericWarhead', label: '🔓 通用弹头 · GenericWarhead · Ares' },
-  { value: 'UnitDelivery', label: '🔓 单位投送 · UnitDelivery · Ares' },
-  { value: 'Firestorm', label: '🔓 火风暴 · Firestorm · Ares' },
-  { value: 'HunterSeeker', label: '🔓 猎杀搜寻 · HunterSeeker · Ares' },
-  { value: 'DropPod', label: '🔓 空降舱 · DropPod · Ares' },
-  { value: 'EMPulse', label: '🔓 EMP 脉冲 · EMPulse · Ares' },
-  { value: 'Battery', label: '🔓 电池 / 充能 · Battery · Ares' },
+  { value: 'GenericWarhead', label: '🔓︎ 通用弹头 · GenericWarhead · Ares' },
+  { value: 'UnitDelivery', label: '🔓︎ 单位投送 · UnitDelivery · Ares' },
+  { value: 'Firestorm', label: '🔓︎ 火风暴 · Firestorm · Ares' },
+  { value: 'HunterSeeker', label: '🔓︎ 猎杀搜寻 · HunterSeeker · Ares' },
+  { value: 'DropPod', label: '🔓︎ 空降舱 · DropPod · Ares' },
+  { value: 'EMPulse', label: '🔓︎ EMP 脉冲 · EMPulse · Ares' },
+  { value: 'Battery', label: '🔓︎ 电池 / 充能 · Battery · Ares' },
+]
+
+const COUNTRY_SIDES = [
+  { value: 'GDI', label: '盟军 · GDI' },
+  { value: 'Nod', label: '苏军 · Nod' },
+  { value: 'ThirdSide', label: '尤里 · ThirdSide' },
 ]
 
 function normalizedCategory(value: string) {
@@ -76,18 +99,14 @@ function valueKind(option: SectionOption) {
 function displayTemplateValue(option: SectionOption, rowsById: Map<string, UnitTemplateRow>) {
   const raw = option.value.trim()
   if (!raw) return '空值'
-
   const explicit = new Map(option.values.map(item => [item.value.toLowerCase(), item.label.trim() || item.value]))
   return raw.split(',').map(part => {
     const token = part.trim()
     if (!token) return token
-
     const enumLabel = explicit.get(token.toLowerCase())
     if (enumLabel && enumLabel.toLowerCase() !== token.toLowerCase()) return enumLabel
-
     const row = rowsById.get(token.toLowerCase())
     if (row?.label && row.label.toLowerCase() !== token.toLowerCase()) return row.label
-
     return localizedReferenceLabel(token, valueKind(option)) || token
   }).join('、')
 }
@@ -103,13 +122,21 @@ function slotIsFree(option: SectionOption | undefined) {
   return !value || value === 'none'
 }
 
-export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated }: Props) {
+function CountryOptionFlag({ id }: { id: string }) {
+  const style = countryIconStyle(id, 30)
+  return style ? <span className="wizardCountryFlag" style={style}/> : undefined
+}
+
+export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
   const eligibleRows = useMemo(() => rows
     .map(row => ({ ...row, category: normalizedCategory(row.category) }))
-    .filter(row => UNIT_CATEGORIES.includes(row.category as typeof UNIT_CATEGORIES[number])), [rows])
-
+    .filter(row => OBJECT_CATEGORIES.includes(row.category as typeof OBJECT_CATEGORIES[number])), [rows])
   const rowsById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
-  const categories = useMemo(() => UNIT_CATEGORIES.filter(category => eligibleRows.some(row => row.category === category)), [eligibleRows])
+
+  const [modeReady, setModeReady] = useState(false)
+  const [mapMode, setMapMode] = useState(false)
+  const [wizardStep, setWizardStep] = useState<WizardStep>('kind')
+  const [objectKind, setObjectKind] = useState<ObjectKind>('')
   const [category, setCategory] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [templateData, setTemplateData] = useState<SectionData | null>(null)
@@ -120,24 +147,28 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
-  const [mapMode, setMapMode] = useState(false)
+
   const [mapCatalog, setMapCatalog] = useState<MapRuleCatalogItem[]>([])
   const [mapCategory, setMapCategory] = useState('')
   const [mapSection, setMapSection] = useState('')
   const [mapQuery, setMapQuery] = useState('')
+
   const [aresEnabled, setAresEnabled] = useState(true)
   const [superweaponType, setSuperweaponType] = useState('')
   const [providerBuilding, setProviderBuilding] = useState('')
+  const [countrySide, setCountrySide] = useState('GDI')
 
-  const isSuperweapon = category === '超级武器'
+  const isSuperweapon = objectKind === 'superweapon'
+  const isCountry = objectKind === 'country'
   const categoryRows = useMemo(() => eligibleRows.filter(row => row.category === category), [category, eligibleRows])
-  const buildingRows = useMemo(() => rows.filter(row => normalizedCategory(row.category) === '建筑'), [rows])
+  const buildingRows = useMemo(() => eligibleRows.filter(row => row.category === '建筑'), [eligibleRows])
   const selectableOptions = useMemo(() => (templateData?.options ?? []).filter(option => {
     const key = option.key.toLowerCase()
     if (['name', 'uiname'].includes(key)) return false
     if (isSuperweapon && key === 'type') return false
+    if (isCountry && key === 'side') return false
     return true
-  }), [isSuperweapon, templateData])
+  }), [isCountry, isSuperweapon, templateData])
   const displayedValues = useMemo(() => new Map(selectableOptions.map(option => [option.line_id, displayTemplateValue(option, rowsById)])), [rowsById, selectableOptions])
   const visibleOptions = useMemo(() => {
     const q = parameterQuery.trim().toLowerCase()
@@ -160,8 +191,22 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    setModeReady(false)
     setError('')
     setMapQuery('')
+    setWizardStep('kind')
+    setObjectKind('')
+    setCategory('')
+    setTemplateId('')
+    setTemplateData(null)
+    setSectionName('')
+    setComment('')
+    setParameterQuery('')
+    setSelectedLines({})
+    setSuperweaponType('')
+    setProviderBuilding('')
+    setCountrySide('GDI')
+
     void workspaceApi.snapshot().then(snapshot => {
       if (cancelled) return
       const isMap = snapshot.document.kind === 'map'
@@ -170,16 +215,19 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
       setMapCatalog(isMap ? snapshot.map_rule_catalog : [])
       if (isMap) {
         const available = snapshot.map_rule_catalog.filter(item => !item.present)
-        const preferred = available.find(item => normalizedCategory(initialCategory || '') === normalizedCategory(item.category))
-        const first = preferred ?? available[0]
+        const first = available[0]
         setMapCategory(first?.category ?? '')
         setMapSection(first?.section ?? '')
       }
+      setModeReady(true)
     }).catch(err => {
-      if (!cancelled) setError(`读取文档模式失败：${String(err)}`)
+      if (!cancelled) {
+        setError(`读取文档模式失败：${String(err)}`)
+        setModeReady(true)
+      }
     })
     return () => { cancelled = true }
-  }, [initialCategory, open])
+  }, [open])
 
   useEffect(() => {
     if (!mapMode || !open) return
@@ -188,23 +236,10 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
   }, [mapMode, open, visibleMapRules])
 
   useEffect(() => {
-    if (!open || mapMode) return
-    const preferred = normalizedCategory(initialCategory || '')
-    const nextCategory = categories.includes(preferred as typeof UNIT_CATEGORIES[number]) ? preferred : (categories[0] ?? '')
-    setCategory(nextCategory)
-    setSectionName('')
-    setComment('')
-    setParameterQuery('')
-    setSuperweaponType('')
-    setProviderBuilding('')
-    setError('')
-  }, [categories, initialCategory, mapMode, open])
-
-  useEffect(() => {
-    if (!open || mapMode) return
+    if (!open || mapMode || !category) return
     const first = categoryRows[0]?.id ?? ''
     setTemplateId(current => categoryRows.some(row => row.id === current) ? current : first)
-  }, [categoryRows, mapMode, open])
+  }, [category, categoryRows, mapMode, open])
 
   useEffect(() => {
     if (!open || mapMode || !templateId) {
@@ -218,12 +253,24 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     void workspaceApi.section(templateId).then(data => {
       if (cancelled) return
       setTemplateData(data)
-      const templateType = data.options.find(option => option.key.toLowerCase() === 'type')?.value ?? ''
-      if (category === '超级武器') setSuperweaponType(templateType)
+      if (isSuperweapon) {
+        const templateType = data.options.find(option => option.key.toLowerCase() === 'type')?.value ?? ''
+        setSuperweaponType(templateType)
+      }
+      if (isCountry) {
+        const templateSide = data.options.find(option => option.key.toLowerCase() === 'side')?.value ?? ''
+        if (templateSide) setCountrySide(templateSide)
+      }
       setSelectedLines(Object.fromEntries(
         data.options
-          .filter(option => !['name', 'uiname', ...(category === '超级武器' ? ['type'] : [])].includes(option.key.toLowerCase()))
-          .map(option => [option.line_id, category !== '超级武器']),
+          .filter(option => {
+            const key = option.key.toLowerCase()
+            if (['name', 'uiname'].includes(key)) return false
+            if (isSuperweapon && key === 'type') return false
+            if (isCountry && key === 'side') return false
+            return true
+          })
+          .map(option => [option.line_id, !isSuperweapon]),
       ))
     }).catch(err => {
       if (!cancelled) setError(`读取模板失败：${String(err)}`)
@@ -231,7 +278,50 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [category, mapMode, open, templateId])
+  }, [isCountry, isSuperweapon, mapMode, open, templateId])
+
+  function selectObjectKind(kind: Exclude<ObjectKind, ''>) {
+    setObjectKind(kind)
+    setError('')
+    if (kind === 'unit') {
+      setCategory('')
+      setWizardStep('unit-type')
+      return
+    }
+    setCategory(kind === 'country' ? '国家' : '超级武器')
+    setWizardStep('details')
+  }
+
+  function selectUnitType(nextCategory: typeof UNIT_CATEGORIES[number]) {
+    setCategory(nextCategory)
+    setWizardStep('details')
+    setError('')
+  }
+
+  function backFromDetails() {
+    setError('')
+    setWizardStep(objectKind === 'unit' ? 'unit-type' : 'kind')
+  }
+
+  function detailsError() {
+    if (!templateId || !templateData) return '请选择一个有效的参考模板。'
+    if (!validSectionName(sectionName.trim())) return '注册名只能使用英文字母、数字和下划线，并且必须以字母开头。'
+    if (!comment.trim()) return isCountry ? '必须填写国家名称 / 注释。' : isSuperweapon ? '必须填写超级武器名称 / 注释。' : '必须填写注释（Name）。'
+    if (isSuperweapon && !superweaponType) return '请选择超级武器 Type。'
+    if (isSuperweapon && ARES_SUPERWEAPON_TYPES.has(superweaponType) && !aresEnabled) return `${superweaponType} 是 Ares 新增的超级武器 Type；请先在设置中开启 Ares 支持。`
+    if (isCountry && !countrySide) return '请选择国家所属阵营。'
+    return ''
+  }
+
+  function goParameters() {
+    const problem = detailsError()
+    if (problem) {
+      setError(problem)
+      return
+    }
+    setError('')
+    setWizardStep('parameters')
+  }
 
   function selectAll() {
     setSelectedLines(Object.fromEntries(selectableOptions.map(option => [option.line_id, true])))
@@ -253,12 +343,7 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     setCreating(true)
     setError('')
     try {
-      const result = await workspaceApi.createUnit({
-        template: mapSection,
-        section: mapSection,
-        comment: '',
-        included_line_ids: [],
-      })
+      const result = await workspaceApi.createUnit({ template: mapSection, section: mapSection, comment: '', included_line_ids: [] })
       await onCreated(result)
     } catch (err) {
       setError(`添加地图规则失败：${String(err)}`)
@@ -274,9 +359,7 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     const secondary = optionByKey(building, 'SuperWeapon2')
     if (slotIsFree(primary)) return { key: 'SuperWeapon', option: primary, current: '' }
     if (slotIsFree(secondary)) return { key: 'SuperWeapon2', option: secondary, current: '' }
-    if (!aresEnabled) {
-      throw new Error('该建筑的原版 SuperWeapon / SuperWeapon2 两个槽位都已占用。开启 Ares 支持后，编辑器才能使用 SuperWeapons= 追加更多超级武器。')
-    }
+    if (!aresEnabled) throw new Error('该建筑的原版 SuperWeapon / SuperWeapon2 两个槽位都已占用。开启 Ares 支持后，编辑器才能使用 SuperWeapons= 追加更多超级武器。')
     const additional = optionByKey(building, 'SuperWeapons')
     return { key: 'SuperWeapons', option: additional, current: additional?.value ?? '' }
   }
@@ -295,30 +378,13 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     else await workspaceApi.addOption(providerBuilding, target.key, newSection)
   }
 
-  async function createUnit() {
+  async function createObject() {
+    const problem = detailsError()
+    if (problem) {
+      setError(problem)
+      return
+    }
     const cleanSection = sectionName.trim()
-    const cleanComment = comment.trim()
-    if (!validSectionName(cleanSection)) {
-      setError('注册名只能使用英文字母、数字和下划线，并且必须以字母开头。')
-      return
-    }
-    if (!cleanComment) {
-      setError(isSuperweapon ? '必须填写超级武器名称 / 注释。' : '必须填写注释（Name）。它也是自定义单位没有内置名称资料时的显示名称。')
-      return
-    }
-    if (!templateData || !templateId) {
-      setError('请先选择一个有效模板。')
-      return
-    }
-    if (isSuperweapon && !superweaponType) {
-      setError('请选择超级武器 Type。')
-      return
-    }
-    if (isSuperweapon && ARES_SUPERWEAPON_TYPES.has(superweaponType) && !aresEnabled) {
-      setError(`${superweaponType} 是 Ares 新增的超级武器 Type；请先在设置中开启 Ares 支持。`)
-      return
-    }
-
     setCreating(true)
     setError('')
     try {
@@ -326,26 +392,39 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
       const result = await workspaceApi.createUnit({
         template: templateId,
         section: cleanSection,
-        comment: cleanComment,
+        comment: comment.trim(),
         included_line_ids: selectableOptions.filter(option => selectedLines[option.line_id]).map(option => option.line_id),
       })
 
+      let needsRefresh = false
       if (isSuperweapon) {
         await workspaceApi.addOption(cleanSection, 'Type', superweaponType)
         await attachSuperweapon(providerTarget, cleanSection)
-        const [snapshot, section] = await Promise.all([
-          workspaceApi.snapshot(),
-          workspaceApi.section(cleanSection),
-        ])
+        needsRefresh = true
+      }
+      if (isCountry) {
+        await workspaceApi.addOption(cleanSection, 'Side', countrySide)
+        needsRefresh = true
+      }
+
+      if (needsRefresh) {
+        const [snapshot, section] = await Promise.all([workspaceApi.snapshot(), workspaceApi.section(cleanSection)])
         await onCreated({ ...result, snapshot, section })
       } else {
         await onCreated(result)
       }
     } catch (err) {
-      setError(`${isSuperweapon ? '添加超级武器' : '添加单位'}失败：${String(err)}`)
+      const objectName = isCountry ? '国家' : isSuperweapon ? '超级武器' : '单位'
+      setError(`添加${objectName}失败：${String(err)}`)
     } finally {
       setCreating(false)
     }
+  }
+
+  if (!modeReady) {
+    return <Dialog open={open} title="添加新对象" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
+      <div className="addUnitDialog wizardLoading"><div className="addUnitEmpty">正在读取对象目录…</div></div>
+    </Dialog>
   }
 
   if (mapMode) {
@@ -372,34 +451,83 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
     </Dialog>
   }
 
-  const categoryOptions = categories.map(value => ({ value, label: value }))
-  const templateOptions = categoryRows.map(row => ({ value: row.id, label: `${row.label} · ${row.id}` }))
+  const templateOptions = categoryRows.map(row => ({
+    value: row.id,
+    label: `${row.label} · ${row.id}`,
+    icon: isCountry ? <CountryOptionFlag id={row.id}/> : undefined,
+  }))
   const selectedTemplate = categoryRows.find(row => row.id === templateId)
   const providerOptions = [
     { value: '', label: '不自动挂载到建筑' },
     ...buildingRows.map(row => ({ value: row.id, label: `${row.label} · ${row.id}` })),
   ]
 
-  return <Dialog open={open} title={isSuperweapon ? '新增超级武器' : '添加新单位'} icon={isSuperweapon ? <Sparkles size={18}/> : <PackagePlus size={18}/>} size="wide" onClose={onClose}>
-    <div className="addUnitDialog">
-      <div className="addUnitSetup">
-        <label><span>单位类型</span><Select value={category} options={categoryOptions} onChange={setCategory}/></label>
-        <label><span>{isSuperweapon ? '参考模板' : '现有单位模板'}</span><Select value={templateId} options={templateOptions} onChange={setTemplateId} searchable searchPlaceholder="搜索中文名或 Section"/></label>
-        <label><span>{isSuperweapon ? '新超级武器 Section' : '新单位 Section'}</span><TextField value={sectionName} onChange={setSectionName} placeholder={isSuperweapon ? '例如 MY_SUPERWEAPON' : '例如 MYTANK'}/></label>
-        <label><span>{isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>
-        {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={SUPERWEAPON_TYPES.filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
-        {isSuperweapon && <label><span>提供该超武的建筑</span><Select value={providerBuilding} options={providerOptions} onChange={setProviderBuilding} searchable searchPlaceholder="搜索建筑"/></label>}
-      </div>
+  const dialogIcon = isCountry ? <Flag size={18}/> : isSuperweapon ? <Sparkles size={18}/> : <PackagePlus size={18}/>
 
-      <div className="addUnitRegistrationHint">
-        <strong>{isSuperweapon ? '超级武器注册与挂载自动处理' : '注册 ID 自动分配'}</strong>
-        <span>{isSuperweapon
-          ? `创建时自动写入 [SuperWeaponTypes]。若选择提供建筑，编辑器会依次使用 SuperWeapon、SuperWeapon2；两个原版槽位都已占用时${aresEnabled ? '自动改用 Ares 的 SuperWeapons= 追加，不覆盖已有超武。' : '会停止创建并提示开启 Ares，不会覆盖已有超武。'} Type= / Action= 不能靠地图或游戏模式 INI 改写，因此新 Type 应在 rulesmd.ini 中创建。`
-          : `创建时会自动写入 [${CATEGORY_ROOT[category] || 'Types'}] 的下一个数字 ID；Name 使用上方必填注释，UIName 自动指向新 Section。下方参数只决定是否从模板继承，不在此窗口修改参数值。`}</span>
+  if (wizardStep === 'kind') {
+    return <Dialog open={open} title="添加新对象" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
+      <div className="objectWizardChoice">
+        <h2>你想创建什么对象？</h2>
+        <div className="objectWizardCards">
+          <button onClick={() => selectObjectKind('unit')}><Users size={24}/><strong>单位</strong></button>
+          <button onClick={() => selectObjectKind('country')} disabled={!eligibleRows.some(row => row.category === '国家')}><Flag size={24}/><strong>国家</strong></button>
+          <button onClick={() => selectObjectKind('superweapon')}><Sparkles size={24}/><strong>超级武器</strong></button>
+        </div>
       </div>
+    </Dialog>
+  }
 
+  if (wizardStep === 'unit-type') {
+    return <Dialog open={open} title="添加新对象" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
+      <div className="objectWizardChoice">
+        <h2>你想创建哪类单位？</h2>
+        <div className="objectWizardCards unitKinds">
+          <button onClick={() => selectUnitType('步兵')} disabled={!eligibleRows.some(row => row.category === '步兵')}><Users size={23}/><strong>步兵</strong></button>
+          <button onClick={() => selectUnitType('载具')} disabled={!eligibleRows.some(row => row.category === '载具')}><Truck size={23}/><strong>载具</strong></button>
+          <button onClick={() => selectUnitType('飞机')} disabled={!eligibleRows.some(row => row.category === '飞机')}><Plane size={23}/><strong>飞机</strong></button>
+          <button onClick={() => selectUnitType('建筑')} disabled={!eligibleRows.some(row => row.category === '建筑')}><Building2 size={23}/><strong>建筑</strong></button>
+        </div>
+        <button className="wizardBackLink" onClick={() => setWizardStep('kind')}><ArrowLeft size={14}/> 返回</button>
+      </div>
+    </Dialog>
+  }
+
+  if (wizardStep === 'details') {
+    return <Dialog open={open} title="添加新对象" icon={dialogIcon} size="wide" onClose={onClose}>
+      <div className="addUnitDialog objectWizardDetails">
+        <div className="objectWizardStepLabel">对象信息</div>
+        <div className="addUnitSetup wizardDetailsGrid">
+          <label><span>{isCountry ? '参考国家' : isSuperweapon ? '参考模板' : '现有单位模板'}</span><Select value={templateId} options={templateOptions} onChange={setTemplateId} searchable searchPlaceholder="搜索中文名或 Section"/></label>
+          <label><span>{isCountry ? '新国家 Section' : isSuperweapon ? '新超级武器 Section' : '新单位 Section'}</span><TextField value={sectionName} onChange={setSectionName} placeholder={isCountry ? '例如 MYCOUNTRY' : isSuperweapon ? '例如 MY_SUPERWEAPON' : '例如 MYTANK'}/></label>
+          <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>
+          {isCountry && <label><span>所属阵营 <b>必填</b></span><Select value={countrySide} options={COUNTRY_SIDES} onChange={setCountrySide}/></label>}
+          {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={SUPERWEAPON_TYPES.filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
+          {isSuperweapon && <label><span>提供该超武的建筑</span><Select value={providerBuilding} options={providerOptions} onChange={setProviderBuilding} searchable searchPlaceholder="搜索建筑"/></label>}
+        </div>
+
+        <div className="addUnitRegistrationHint">
+          <strong>{isCountry ? '国家注册自动处理' : isSuperweapon ? '超级武器注册与挂载自动处理' : '注册 ID 自动分配'}</strong>
+          <span>{isCountry
+            ? '创建时自动写入 [Countries] 的下一个数字 ID，并使用所选阵营写入 Side=。下一步只需要决定从参考国家继承哪些其他参数。'
+            : isSuperweapon
+              ? `创建时自动写入 [SuperWeaponTypes]。若选择提供建筑，编辑器会依次使用 SuperWeapon、SuperWeapon2；两个原版槽位都已占用时${aresEnabled ? '自动改用 Ares 的 SuperWeapons= 追加，不覆盖已有超武。' : '会停止创建并提示开启 Ares，不会覆盖已有超武。'}`
+              : `创建时自动写入 [${CATEGORY_ROOT[category] || 'Types'}] 的下一个数字 ID。下一步再选择需要从模板继承的参数。`}</span>
+        </div>
+
+        {loading && <div className="addUnitEmpty">正在读取参考模板…</div>}
+        {error && <div className="addUnitError">{error}</div>}
+        <footer className="addUnitActions wizardNavActions">
+          <span>{selectedTemplate ? `参考：${selectedTemplate.label} [${selectedTemplate.id}]` : '请选择参考模板。'}</span>
+          <div><Button onClick={backFromDetails}><ArrowLeft size={15}/>上一步</Button><Button variant="accent" disabled={loading || !templateData} onClick={goParameters}>下一步：选择参数</Button></div>
+        </footer>
+      </div>
+    </Dialog>
+  }
+
+  return <Dialog open={open} title="添加新对象" icon={dialogIcon} size="wide" onClose={onClose}>
+    <div className="addUnitDialog objectWizardParameters">
       <div className="addUnitParameterToolbar">
-        <div className="addUnitTemplateMeta"><strong>{isSuperweapon ? '可选继承模板参数' : '继承模板参数'}</strong><span>{selectedTemplate ? `${selectedTemplate.label} [${selectedTemplate.id}]` : '未选择模板'}</span><em>已选 {selectedCount}/{selectableOptions.length}</em></div>
+        <div className="addUnitTemplateMeta"><strong>最后一步 · 继承参数</strong><span>{selectedTemplate ? `${selectedTemplate.label} [${selectedTemplate.id}]` : '未选择模板'}</span><em>已选 {selectedCount}/{selectableOptions.length}</em></div>
         <div className="addUnitParameterTools">
           <button type="button" onClick={selectAll} disabled={!selectableOptions.length}>全选</button>
           <button type="button" onClick={invertSelection} disabled={!selectableOptions.length}>反选</button>
@@ -418,19 +546,17 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
               <div className="parameterKeyCell"><code title={option.key}>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
               <div className="parameterLabelCell"><strong title={option.label || option.key}>{option.label || option.key}</strong></div>
               <div className="parameterValueCell addUnitReadOnlyValue"><div className="rulesControlHost"><TextField value={display} onChange={() => {}} disabled/></div></div>
-              <div className="addUnitParameterUse">
-                <Checkbox checked={checked} onChange={() => toggleLine(option.line_id)} title={checked ? '创建时继承此参数' : '创建时不写入此参数'} ariaLabel={`${checked ? '取消继承' : '继承'} ${option.key}`}/>
-              </div>
+              <div className="addUnitParameterUse"><Checkbox checked={checked} onChange={() => toggleLine(option.line_id)} title={checked ? '创建时继承此参数' : '创建时不写入此参数'} ariaLabel={`${checked ? '取消继承' : '继承'} ${option.key}`}/></div>
             </div>
           })}
-          {!loading && !visibleOptions.length && <div className="addUnitEmpty">没有匹配的模板参数。</div>}
+          {!loading && !visibleOptions.length && <div className="addUnitEmpty">这个模板没有其他可继承参数，可以直接创建。</div>}
         </div>
       </div>
 
       {error && <div className="addUnitError">{error}</div>}
-      <footer className="addUnitActions">
-        <span>{isSuperweapon ? '超级武器默认不继承模板参数，避免把旧 Type 的专用配置误带入新 Type；需要的参数可勾选或创建后继续添加。' : '未勾选的模板参数不会写入新单位；创建后可在主编辑器继续添加或修改参数。'}</span>
-        <div><Button onClick={onClose}>取消</Button><Button variant="accent" disabled={creating || loading || !templateId || !validSectionName(sectionName) || !comment.trim() || (isSuperweapon && !superweaponType)} onClick={() => void createUnit()}><PackagePlus size={16}/>{creating ? '正在创建…' : (isSuperweapon ? '创建超级武器' : '创建单位')}</Button></div>
+      <footer className="addUnitActions wizardNavActions">
+        <span>{isSuperweapon ? '超级武器默认不继承模板参数，避免把旧 Type 的专用配置误带入新 Type。' : '未勾选的参数不会写入新对象；创建后仍可在主编辑器继续添加。'}</span>
+        <div><Button onClick={() => setWizardStep('details')}><ArrowLeft size={15}/>上一步</Button><Button variant="accent" disabled={creating || loading} onClick={() => void createObject()}><PackagePlus size={16}/>{creating ? '正在创建…' : isCountry ? '创建国家' : isSuperweapon ? '创建超级武器' : '创建单位'}</Button></div>
       </footer>
     </div>
   </Dialog>
