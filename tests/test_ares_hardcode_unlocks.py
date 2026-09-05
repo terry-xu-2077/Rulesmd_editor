@@ -2,7 +2,7 @@ from rulesmd_editor.runtime_catalog import RuntimeSchemaCatalog
 from rulesmd_editor.workspace import RulesWorkspace
 
 
-UNLOCK_MARKER = "🔓【Ares 解除原版硬编码】"
+UNLOCK_MARKER = "🔓︎【Ares 解除原版硬编码】"
 
 
 def test_ares_only_unlock_tag_is_available_with_chinese_limit_help():
@@ -10,7 +10,7 @@ def test_ares_only_unlock_tag_is_available_with_chinese_limit_help():
     meta = catalog.option("SuperWeapons")
 
     assert meta.source == "Ares"
-    assert meta.description.startswith("🔓 ")
+    assert meta.description.startswith("🔓")
     assert "原版限制：" in meta.help_text
     assert "SuperWeapon=" in meta.help_text
     assert "Ares 解锁：" in meta.help_text
@@ -29,6 +29,18 @@ def test_original_yr_tag_keeps_yr_identity_when_ares_only_extends_its_limit():
     assert "大于 10" in sight.help_text
     assert "最大有效范围约为 11" in spread.help_text
     assert "大于 11" in spread.help_text
+    assert sight.description == "🔓︎ 视野范围"
+    assert spread.description == "🔓︎ 范围扩散"
+
+
+def test_unlock_labels_stay_compact():
+    catalog = RuntimeSchemaCatalog()
+    armor = catalog.option("Armor")
+
+    assert armor.description == "🔓︎ 装甲类型"
+    assert "支持 Ares" not in armor.description
+    assert "[ArmorTypes]" in armor.help_text
+    assert "Ares 解锁：" in armor.help_text
 
 
 def test_dynamic_unlock_keys_receive_curated_help():
