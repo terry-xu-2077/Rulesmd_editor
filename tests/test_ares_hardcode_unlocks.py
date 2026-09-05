@@ -39,7 +39,8 @@ def test_unlock_labels_stay_compact():
 
     assert armor.description == "🔓︎ 装甲类型"
     assert "支持 Ares" not in armor.description
-    assert "自定义装甲" in armor.help_text
+    assert "[ArmorTypes]" in armor.help_text
+    assert "Ares 解锁：" in armor.help_text
 
 
 def test_dynamic_unlock_keys_receive_curated_help():
