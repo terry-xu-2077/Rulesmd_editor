@@ -176,6 +176,7 @@ def test_mix_workspace_creates_loose_csf_name_for_new_unit(tmp_path):
     assert saved["csf_path"] == str(tmp_path / "stringtable99.csf")
     assert "UIName=Name:MYGI" in output.read_text("utf-8")
     strings = CsfDocument.load(tmp_path / "stringtable99.csf")
+    assert strings.language == 0xFFFFFFFF
     assert strings.get("Name:MYGI") == "我的测试步兵"
 
 
@@ -209,6 +210,42 @@ def test_existing_stringtable99_entries_are_preserved(tmp_path):
     updated = CsfDocument.load(table_path)
     assert updated.get("Name:EXISTING") == "原有名称"
     assert updated.get("Name:MYGI") == "新增名称"
+
+
+def test_vanilla_mode_merges_full_ra2md_csf_from_langmd_mix(tmp_path):
+    base_strings = CsfDocument.new(language=9)
+    base_strings.set("Name:E1", "美国大兵")
+    langmd = tmp_path / "langmd.mix"
+    langmd.write_bytes(_build_encrypted_mix([("ra2md.csf", base_strings.to_bytes())]))
+
+    rules_payload = (
+        b"[InfantryTypes]\n"
+        b"0=E1\n"
+        b"[E1]\n"
+        b"UIName=Name:E1\n"
+        b"Name=GI\n"
+        b"Strength=125\n"
+    )
+    rules_mix = tmp_path / "expandmd01.mix"
+    rules_mix.write_bytes(_build_encrypted_mix([("rulesmd.ini", rules_payload)]))
+
+    workspace = MixRulesWorkspace()
+    workspace.open_file(rules_mix)
+    workspace.set_settings(ares_enabled=False)
+    workspace.create_unit(
+        template="E1",
+        section="MYGI",
+        comment="原版中文测试",
+        included_line_ids=None,
+    )
+    saved = workspace.save(tmp_path / "rulesmd.ini")
+
+    assert saved["csf_path"] == str(tmp_path / "ra2md.csf")
+    assert not (tmp_path / "stringtable99.csf").exists()
+    merged = CsfDocument.load(tmp_path / "ra2md.csf")
+    assert merged.language == 9
+    assert merged.get("Name:E1") == "美国大兵"
+    assert merged.get("Name:MYGI") == "原版中文测试"
 
 
 def test_mix_without_supported_rules_reports_one_clear_error(tmp_path):
