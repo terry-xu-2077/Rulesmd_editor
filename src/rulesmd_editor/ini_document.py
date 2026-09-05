@@ -320,6 +320,7 @@ ROOT_TYPES = {
     "AircraftTypes": "飞机",
     "BuildingTypes": "建筑",
     "SuperWeaponTypes": "超级武器",
+    "Countries": "国家",
 }
 
 

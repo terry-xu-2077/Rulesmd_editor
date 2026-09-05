@@ -12,13 +12,14 @@ from .runtime_catalog import GENERATED_ROOT, RuntimeSchemaCatalog
 
 DEFAULT_TEMPLATE = GENERATED_ROOT / "rulesmd.template.ini"
 MAP_EXTENSIONS = {".map", ".mpr", ".yrm"}
-ROOT_SECTIONS = {"InfantryTypes", "VehicleTypes", "AircraftTypes", "BuildingTypes", "SuperWeaponTypes"}
+ROOT_SECTIONS = {"InfantryTypes", "VehicleTypes", "AircraftTypes", "BuildingTypes", "SuperWeaponTypes", "Countries"}
 CATEGORY_TYPES = {
     "步兵": "InfantryType",
     "载具": "VehicleType",
     "飞机": "AircraftType",
     "建筑": "BuildingType",
     "超级武器": "SuperWeapon",
+    "国家": "Country",
     "武器": "Weapon",
     "弹头": "Warhead",
     "弹体": "Projectile",
@@ -31,6 +32,7 @@ UNIT_REGISTRATION_ROOTS = {
     "AircraftType": "AircraftTypes",
     "BuildingType": "BuildingTypes",
     "SuperWeapon": "SuperWeaponTypes",
+    "Country": "Countries",
 }
 SECTION_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
@@ -575,7 +577,7 @@ class RulesWorkspace:
         section_type = self._section_types.get(template_actual.casefold())
         root = UNIT_REGISTRATION_ROOTS.get(section_type or "")
         if not root:
-            raise ValueError("所选模板不是可注册的单位类型")
+            raise ValueError("所选模板不是可注册的对象类型")
 
         registration_id = self._next_registration_id(root)
         include_all = included_line_ids is None

@@ -35,4 +35,39 @@
 .unitTreeIcon{width:28px;height:22px;flex:0 0 28px;border-radius:3px;overflow:hidden;background-color:#182b42;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
 .unitTreeIcon.fallback{height:28px;display:grid;place-items:center;color:#8eabc4}
 .unitTreeEmpty{padding:16px 10px;color:#74889e;font-size:11.5px;text-align:center}
+
+.unitCountrySection{margin-top:4px;padding-top:3px;border-top:1px solid rgba(120,155,205,.1)}
+.unitCountrySectionLabel{height:24px;display:flex;align-items:center;padding:0 7px;color:#72879d;font-size:10px;font-weight:700;letter-spacing:.5px}
+.unitCountry+.unitCountry{margin-top:2px}
+.unitCountryHeader{min-height:38px;display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;border:1px solid transparent;border-radius:6px;color:#aebfd0;transition:background .12s ease,border-color .12s ease}
+.unitCountryHeader:hover{background:rgba(30,58,86,.46);border-color:rgba(120,155,205,.1)}
+.unitCountryHeader.selected{background:linear-gradient(90deg,rgba(44,117,187,.22),rgba(24,190,162,.05));border-color:rgba(67,147,221,.22);box-shadow:inset 3px 0 0 rgba(70,157,234,.88)}
+.unitCountryToggle,.unitCountryIdentity{border:0;background:transparent;color:inherit;cursor:pointer}
+.unitCountryToggle{width:22px;height:100%;padding:0;display:grid;place-items:center;color:#8097ad}
+.unitCountryIdentity{min-width:0;display:flex;align-items:center;gap:7px;padding:3px 2px;text-align:left}
+.unitCountryIdentity>span:last-child{min-width:0;flex:1}
+.unitCountryIdentity b,.unitCountryIdentity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unitCountryIdentity b{font-size:12px;font-weight:650;color:#cfdae5}
+.unitCountryIdentity small{margin-top:1px;font:9.5px/1.2 "Cascadia Code",Consolas,monospace;color:#70869a}
+.unitCountryHeader>em{padding-right:7px;font-size:10px;font-style:normal;color:#667c94}
+.unitCountryFlag{display:block;flex:0 0 auto;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.unitCountryFlag.fallback{width:31px;height:21px;display:grid;place-items:center;background:rgba(78,103,130,.2);color:#8fa9bf}
+.unitCountryLeaves{margin-left:22px;padding:1px 0 4px 5px;border-left:1px solid rgba(120,155,205,.12)}
+.unitCountryEmpty{padding:7px 8px 9px;color:#62788d;font-size:10px}
+
+.app[data-mode="light"] .unitTreeLevel.faction{color:#29485e;background:rgba(190,208,222,.55)}
+.app[data-mode="light"] .unitTreeLevel.faction:hover,.app[data-mode="light"] .unitTreeLevel.type:hover{background:rgba(178,201,217,.55);color:#17384e}
+.app[data-mode="light"] .unitTreeLevel.type{color:#48667d}
+.app[data-mode="light"] .unitTreeLevel em,.app[data-mode="light"] .unitCountryHeader>em{color:#71889a}
+.app[data-mode="light"] .unitTreeLeaf{color:#38576d}
+.app[data-mode="light"] .unitTreeLeaf b,.app[data-mode="light"] .unitCountryIdentity b{color:#254258}
+.app[data-mode="light"] .unitTreeLeaf small,.app[data-mode="light"] .unitCountryIdentity small{color:#70869a}
+.app[data-mode="light"] .unitTreeLeaf:hover,.app[data-mode="light"] .unitCountryHeader:hover{background:#e1ebf3;border-color:rgba(66,103,132,.12)}
+.app[data-mode="light"] .unitTreeLeaf.selected,.app[data-mode="light"] .unitCountryHeader.selected{background:linear-gradient(90deg,#d7e9f5,#e7f0f5);border-color:rgba(42,111,160,.2);box-shadow:inset 4px 0 0 #4aa9df}
+.app[data-mode="light"] .unitTreeIcon.fallback{background:#e5edf4;color:#7891a5;box-shadow:inset 0 0 0 1px rgba(54,84,108,.12)}
+.app[data-mode="light"] .unitCountryFlag.fallback{background:#e6eef4;color:#7891a5;box-shadow:inset 0 0 0 1px rgba(54,84,108,.12)}
+.app[data-mode="light"] .unitCountrySection{border-top-color:rgba(55,87,112,.1)}
+.app[data-mode="light"] .unitCountrySectionLabel,.app[data-mode="light"] .unitCountryEmpty{color:#6f8495}
+.app[data-mode="light"] .unitCountryLeaves{border-left-color:rgba(55,87,112,.12)}
+
 @media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.factionBranch{margin-left:4px;padding-left:5px}}

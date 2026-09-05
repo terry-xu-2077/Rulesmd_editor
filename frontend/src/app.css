@@ -25,13 +25,23 @@
 @import './parameter-context-menu.css';
 @import './ui-library-integration.css';
 
-body.mapDocumentMode .sideFooter > button:first-child {
+/* The footer is creation-only now. Destructive actions belong to object context menus,
+ * not as an always-visible trash icon beside the create command. */
+.sideFooter > button:first-child {
   font-size: 0;
+}
+
+.sideFooter > button:first-child::after {
+  content: '添加新对象';
+  font-size: 12px;
+}
+
+.sideFooter > button:nth-child(2) {
+  display: none !important;
 }
 
 body.mapDocumentMode .sideFooter > button:first-child::after {
   content: '添加地图规则';
-  font-size: 12px;
 }
 
 .mapRuleSetup {
