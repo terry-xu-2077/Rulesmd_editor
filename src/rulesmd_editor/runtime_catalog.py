@@ -20,6 +20,17 @@ RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 LEGACY_ROOT = RESOURCE_ROOT / "legacy"
 GENERATED_ROOT = RESOURCE_ROOT / "generated"
 
+# These are original Yuri's Revenge keys whose behavior/range is extended by Ares.
+# They must stay available when Ares assistance is disabled; only their explanatory
+# metadata is enriched with the Ares hard-code-unlock note.
+ARES_EXTENDED_YR_KEYS = frozenset({
+    "armor",
+    "cellspread",
+    "gunner",
+    "sight",
+    "turretcount",
+})
+
 
 def _has_curated_yr_semantics(key: str) -> bool:
     folded = key.casefold()
@@ -80,18 +91,25 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         if base.source != "自定义":
             # ``super().option`` can synthesize a YR row directly from HelpInfor.ini
             # when OptionsDesc omitted a legitimate engine key. Translate/correct that
-            # row on demand just like the eagerly loaded catalog rows.
-            return translate_option_meta(base)
+            # row on demand just like the eagerly loaded catalog rows. Ares may further
+            # enrich an original YR tag when it removes a vanilla hard-coded limit.
+            return self.ares.enrich(translate_option_meta(base))
 
         # Some original YR keys are absent from one or more historical metadata files.
         # Only explicit semantic corrections count as evidence that such a key is YR.
         # A generic Chinese label guess must never shadow a real Ares key.
         if _has_curated_yr_semantics(key):
-            return replace(translate_option_meta(base), source="YR")
+            return self.ares.enrich(replace(translate_option_meta(base), source="YR"))
+
+        # A handful of well-known vanilla tags are missing from the historical metadata
+        # snapshots even though the engine supports them. Ares only extends their range
+        # or removes a hard-coded identity check, so never reclassify them as Ares-only.
+        if key.casefold() in ARES_EXTENDED_YR_KEYS and self.ares.is_hardcode_unlock(key):
+            return replace(self.ares.enrich(base), source="YR")
 
         ares = self.ares.option(key)
         if ares is not None:
-            return ares
+            return self.ares.enrich(ares)
         source = "Ares/扩展" if "." in key else "自定义"
         return OptionMeta(key, source=source)
 
@@ -109,12 +127,18 @@ class RuntimeSchemaCatalog(SchemaCatalog):
             cached = self._all_options_cache
             if cached is not None:
                 return cached
-            base_rows = super().available_options()
+            base_rows = [self.ares.enrich(row) for row in super().available_options()]
             seen = {row.name.casefold() for row in base_rows}
-            merged = base_rows + [
-                row for row in self.ares.available_options()
-                if row.name.casefold() not in seen
-            ]
+            extra_rows: list[OptionMeta] = []
+            for row in self.ares.available_options():
+                folded = row.name.casefold()
+                if folded in seen:
+                    continue
+                enriched = self.ares.enrich(row)
+                if folded in ARES_EXTENDED_YR_KEYS:
+                    enriched = replace(enriched, source="YR")
+                extra_rows.append(enriched)
+            merged = base_rows + extra_rows
             cached = tuple(sorted(merged, key=lambda item: (item.category, item.description or item.name, item.name)))
             self._all_options_cache = cached
             return cached
