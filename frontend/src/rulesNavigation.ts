@@ -104,6 +104,12 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
     if (side) countrySides.set(country.toLowerCase(), side)
   }
 
+  const countriesPerSide = new Map<NavigationSide, number>()
+  for (const country of countryIds) {
+    const side = countrySides.get(country.toLowerCase())
+    if (side) countriesPerSide.set(side, (countriesPerSide.get(side) ?? 0) + 1)
+  }
+
   const knownCountry = (token: string) => {
     const folded = token.trim().toLowerCase()
     return countryCase.get(folded) ?? (countrySides.has(folded) ? token.trim() : null)
@@ -193,7 +199,13 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
         .map(knownCountry)
         .filter((value): value is string => Boolean(value))
       const unique = [...new Map(countries.map(value => [value.toLowerCase(), value])).values()]
-      if (unique.length === 1) return countryCase.get(unique[0].toLowerCase()) ?? unique[0]
+      if (unique.length === 1) {
+        const registered = countryCase.get(unique[0].toLowerCase())
+        if (!registered) return null
+        const side = countrySides.get(registered.toLowerCase())
+        if (!side || (countriesPerSide.get(side) ?? 0) <= 1) return null
+        return registered
+      }
       if (unique.length > 1) return null
     }
     return null
