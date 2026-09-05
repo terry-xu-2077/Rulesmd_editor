@@ -22,6 +22,49 @@ def test_bridge_dispatches_workspace_methods():
     assert workspace.raw_text() == "[E1]\nStrength=150\n"
 
 
+def test_bridge_general_matches_legacy_qt_global_workspace():
+    workspace = RulesWorkspace()
+    workspace.document = IniDocument.from_text(
+        "[General]\n"
+        "Paratrooper=yes\n"
+        "VeteranRatio=3.0\n"
+        "BuildSpeed=.7\n"
+        "[Easy]\n"
+        "Firepower=1.2\n"
+        "[CombatDamage]\n"
+        "MinDamage=1\n"
+        "[Colors]\n"
+        "Green=0,255,0\n"
+    )
+    bridge = Bridge(workspace)
+
+    response = bridge.dispatch({"id": 3, "method": "section", "params": {"section": "General"}})
+    assert response["ok"] is True
+    payload = response["result"]
+    assert payload["section"] == "General"
+    assert payload["description"] == "全局规则"
+
+    by_key = {row["key"]: row for row in payload["options"]}
+    assert by_key["Paratrooper"]["category"] == "伞兵设置"
+    assert by_key["VeteranRatio"]["category"] == "老兵设置"
+    assert by_key["BuildSpeed"]["category"] == "全部"
+    assert by_key["Firepower"]["category"] == "难度设置-简单"
+    assert by_key["MinDamage"]["category"] == "战斗与伤害规则"
+    assert by_key["Green"]["category"] == "颜色主题"
+    assert "[General]" in payload["raw"]
+    assert "[Easy]" in payload["raw"]
+    assert "[CombatDamage]" in payload["raw"]
+
+    changed = bridge.dispatch({
+        "id": 4,
+        "method": "set_value",
+        "params": {"line_id": by_key["Firepower"]["line_id"], "value": "1.5"},
+    })
+    assert changed["ok"] is True
+    assert changed["result"]["section"] == "General"
+    assert "Firepower=1.5" in changed["result"]["raw"]
+
+
 def test_bridge_returns_structured_errors():
     bridge = Bridge()
     response = bridge.dispatch({"id": 7, "method": "missing_method"})
