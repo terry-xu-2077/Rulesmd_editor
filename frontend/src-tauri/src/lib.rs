@@ -17,7 +17,7 @@ impl BackendProcess {
     fn spawn() -> Result<Self, String> {
         let python = env::var("RULESMD_PYTHON").unwrap_or_else(|_| "python".to_string());
         let mut child = Command::new(&python)
-            .args(["-m", "rulesmd_editor.bridge"])
+            .args(["-m", "rulesmd_editor.desktop_bridge"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -94,10 +94,11 @@ fn backend_call(method: String, params: Option<Value>, state: State<'_, BackendS
 fn pick_rules_file(window: tauri::Window) -> Result<Option<String>, String> {
     let path = rfd::FileDialog::new()
         .set_parent(&window)
-        .set_title("打开 Rules / 地图文件")
-        .add_filter("Rules / RA2-YR 地图", &["ini", "map", "mpr", "yrm"])
+        .set_title("打开 Rules / 地图 / MIX 文件")
+        .add_filter("Rules / RA2-YR 地图 / MIX", &["ini", "map", "mpr", "yrm", "mix"])
         .add_filter("Rules INI", &["ini"])
         .add_filter("RA2 / YR 地图", &["map", "mpr", "yrm"])
+        .add_filter("Westwood MIX", &["mix"])
         .pick_file();
     Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
