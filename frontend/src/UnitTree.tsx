@@ -108,38 +108,39 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
       >
         <span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span>
         <span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span>
-        <ChevronRight className="unitGlobalArrow" size={13}/>
       </button>
     </div>}
 
-    {groups.map(faction => {
-      const factionKey = `f:${faction.key}`
-      const factionCount = faction.types.reduce((sum, type) => sum + type.units.length, 0)
-      const factionHasSelected = faction.types.some(type => type.units.some(unit => unit.id === selectedId))
-      const factionOpen = isOpen(factionKey, factionHasSelected || faction.key !== 'neutral')
-      return <section className="unitFaction" key={faction.key}>
-        <button className="unitTreeLevel faction" onClick={() => toggle(factionKey, factionOpen)}>
-          {factionOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{faction.label}</strong><em>{factionCount}</em>
-        </button>
-        {factionOpen && <div className="unitTreeBranch factionBranch">
-          {faction.types.map(type => {
-            const typeKey = `${factionKey}|t:${type.name}`
-            const typeHasSelected = type.units.some(unit => unit.id === selectedId)
-            const typeOpen = isOpen(typeKey, typeHasSelected)
-            return <div className="unitType" key={type.name}>
-              <button className="unitTreeLevel type" onClick={() => toggle(typeKey, typeOpen)}>
-                {typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<span>{type.name}</span><em>{type.units.length}</em>
-              </button>
-              {typeOpen && <div className="unitLeaves">
-                {type.units.map(unit => <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}`}>
-                  <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
-                </button>)}
-              </div>}
-            </div>
-          })}
-        </div>}
-      </section>
-    })}
-    {!groups.length && <div className="unitTreeEmpty">没有匹配的对象。</div>}
+    <div className="unitTreeScroller">
+      {groups.map(faction => {
+        const factionKey = `f:${faction.key}`
+        const factionCount = faction.types.reduce((sum, type) => sum + type.units.length, 0)
+        const factionHasSelected = faction.types.some(type => type.units.some(unit => unit.id === selectedId))
+        const factionOpen = isOpen(factionKey, factionHasSelected || faction.key !== 'neutral')
+        return <section className="unitFaction" key={faction.key}>
+          <button className="unitTreeLevel faction" onClick={() => toggle(factionKey, factionOpen)}>
+            {factionOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{faction.label}</strong><em>{factionCount}</em>
+          </button>
+          {factionOpen && <div className="unitTreeBranch factionBranch">
+            {faction.types.map(type => {
+              const typeKey = `${factionKey}|t:${type.name}`
+              const typeHasSelected = type.units.some(unit => unit.id === selectedId)
+              const typeOpen = isOpen(typeKey, typeHasSelected)
+              return <div className="unitType" key={type.name}>
+                <button className="unitTreeLevel type" onClick={() => toggle(typeKey, typeOpen)}>
+                  {typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<span>{type.name}</span><em>{type.units.length}</em>
+                </button>
+                {typeOpen && <div className="unitLeaves">
+                  {type.units.map(unit => <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}`}>
+                    <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
+                  </button>)}
+                </div>}
+              </div>
+            })}
+          </div>}
+        </section>
+      })}
+      {!groups.length && <div className="unitTreeEmpty">没有匹配的对象。</div>}
+    </div>
   </div>
 }
