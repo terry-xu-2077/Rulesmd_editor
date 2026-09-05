@@ -26,6 +26,8 @@ export type SectionOption = {
   key: string
   value: string
   raw_value?: string | null
+  disabled?: boolean
+  raw_disabled?: boolean | null
   suffix: string
   label: string
   description: string
@@ -53,6 +55,11 @@ export type SetValueResult = {
   value: string
   raw_value?: string | null
   raw: string
+  dirty: boolean
+}
+
+export type LineActionResult = {
+  section: SectionData
   dirty: boolean
 }
 
@@ -197,9 +204,17 @@ export const workspaceApi = {
     await flushPendingValues()
     return call<CreateUnitResult>('create_unit', request)
   },
+  setLineDisabled: async (lineId: number, disabled: boolean) => {
+    await flushPendingValues()
+    return call<LineActionResult>('set_line_disabled', { line_id: lineId, disabled })
+  },
+  restoreLine: async (lineId: number) => {
+    await flushPendingValues()
+    return call<LineActionResult>('restore_line', { line_id: lineId })
+  },
   removeLine: async (lineId: number) => {
     await flushPendingValues()
-    return call('remove_line', { line_id: lineId })
+    return call<LineActionResult>('remove_line', { line_id: lineId })
   },
   save: async (path?: string) => {
     await flushPendingValues()
