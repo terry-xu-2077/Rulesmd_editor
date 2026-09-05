@@ -215,7 +215,7 @@ export function AddUnitDialog({ open, rows, initialCategory, onClose, onCreated 
         <div className="addUnitParameterRows">
           {loading && <div className="addUnitEmpty">正在读取模板参数…</div>}
           {!loading && visibleOptions.map(option => {
-            const display = displayedValues.get(option.line_id) ?? option.value || '空值'
+            const display = displayedValues.get(option.line_id) ?? (option.value || '空值')
             const checked = Boolean(selectedLines[option.line_id])
             return <div className={`addUnitParameterRow parameterTableRow ${checked ? 'selected' : 'excluded'}`} key={option.line_id}>
               <div className="parameterKeyCell"><code title={option.key}>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
