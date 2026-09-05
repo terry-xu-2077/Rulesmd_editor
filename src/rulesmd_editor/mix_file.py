@@ -35,13 +35,15 @@ def mix_file_id(filename: str) -> int:
 class MixArchive:
     """Reader for the unencrypted RA2/YR MIX format used by current CnCNet packages.
 
-    Filename lookup follows the Westwood CRC algorithm used by ra2-AIwidgets and by
-    CnCNet's own mix-packer. Nested MIX paths are supported for legacy localmd.mix
-    layouts as well.
+    Root archives are read lazily: only the header/index and the requested file range
+    are loaded. Nested MIX payloads can be parsed from bytes. Filename lookup follows
+    the Westwood CRC algorithm used by ra2-AIwidgets and CnCNet's own mix-packer.
     """
 
     def __init__(self, data: bytes):
-        self._data = data
+        self._data: bytes | None = data
+        self._path: Path | None = None
+        self._size = len(data)
         self.entries: dict[int, MixEntry] = {}
         self.body_offset = 0
         self.body_size = 0
@@ -49,29 +51,52 @@ class MixArchive:
 
     @classmethod
     def from_path(cls, path: str | Path) -> "MixArchive":
-        return cls(Path(path).read_bytes())
+        source = Path(path)
+        archive = cls.__new__(cls)
+        archive._data = None
+        archive._path = source
+        archive._size = source.stat().st_size
+        archive.entries = {}
+        archive.body_offset = 0
+        archive.body_size = 0
+        archive._parse_header()
+        return archive
+
+    def _read_at(self, offset: int, size: int) -> bytes:
+        if offset < 0 or size < 0 or offset + size > self._size:
+            raise MixFormatError("MIX 读取范围无效")
+        if self._data is not None:
+            return self._data[offset : offset + size]
+        assert self._path is not None
+        with self._path.open("rb") as handle:
+            handle.seek(offset)
+            result = handle.read(size)
+        if len(result) != size:
+            raise MixFormatError("MIX 文件读取不完整")
+        return result
 
     def _parse_header(self) -> None:
-        if len(self._data) < 10:
+        if self._size < 10:
             raise MixFormatError("MIX 文件头不完整")
 
-        flags = struct.unpack_from("<I", self._data, 0)[0]
+        header = self._read_at(0, 10)
+        flags, file_count, self.body_size = struct.unpack("<IHI", header)
         if flags != 0:
             raise MixFormatError("当前只支持 CnCNet 使用的未加密 MIX 格式")
 
-        file_count = struct.unpack_from("<H", self._data, 4)[0]
-        self.body_size = struct.unpack_from("<I", self._data, 6)[0]
+        index_size = file_count * 12
         index_start = 10
-        index_end = index_start + file_count * 12
-        if index_end > len(self._data):
+        index_end = index_start + index_size
+        if index_end > self._size:
             raise MixFormatError("MIX 索引不完整")
         self.body_offset = index_end
-        if self.body_offset + self.body_size > len(self._data):
+        if self.body_offset + self.body_size > self._size:
             raise MixFormatError("MIX 数据区不完整")
 
+        index_data = self._read_at(index_start, index_size)
         for index in range(file_count):
-            pos = index_start + index * 12
-            file_id, offset, size = struct.unpack_from("<III", self._data, pos)
+            pos = index * 12
+            file_id, offset, size = struct.unpack_from("<III", index_data, pos)
             if offset + size > self.body_size:
                 raise MixFormatError("MIX 文件条目范围无效")
             if file_id in self.entries:
@@ -93,8 +118,7 @@ class MixArchive:
         entry = self.entries.get(mix_file_id(normalized))
         if entry is None:
             return None
-        start = self.body_offset + entry.offset
-        return self._data[start : start + entry.size]
+        return self._read_at(self.body_offset + entry.offset, entry.size)
 
 
 def extract_rulesmd_bytes(path: str | Path) -> bytes:
