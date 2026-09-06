@@ -218,7 +218,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     }
     if (navigationHistory.current[navigationIndex.current]?.id.toLowerCase() === selectedRow.id.toLowerCase()) return
     const base = navigationHistory.current.slice(0, navigationIndex.current + 1)
-    if (base.at(-1)?.id.toLowerCase() !== selectedRow.id.toLowerCase()) base.push(selectedRow)
+    if (base[base.length - 1]?.id.toLowerCase() !== selectedRow.id.toLowerCase()) base.push(selectedRow)
     navigationHistory.current = base
     navigationIndex.current = base.length - 1
     navigationTarget.current = null
