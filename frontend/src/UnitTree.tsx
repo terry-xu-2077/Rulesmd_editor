@@ -25,18 +25,11 @@ type Props = {
 }
 
 type TypeGroup = { name: string; units: UnitTreeRow[] }
-type CountryGroup = { country: UnitTreeRow; units: UnitTreeRow[] }
-type FactionGroup = { key: Side; label: string; types: TypeGroup[]; countries: CountryGroup[] }
 
-const FACTION_LABELS: Record<Side, string> = {
-  allied: '盟军',
-  soviet: '苏军',
-  yuri: '尤里',
-  neutral: '其他',
-}
-
-const FACTION_ORDER: Side[] = ['allied', 'soviet', 'yuri', 'neutral']
-const TYPE_ORDER = ['步兵', '载具', '飞机', '建筑', '超级武器', '武器', '弹头', '弹体']
+// Keep the left navigation close to the old Qt / Web editors: object type is the
+// primary hierarchy. Faction and country ownership are attributes of a unit, not
+// extra tree levels.
+const TYPE_ORDER = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家', '武器', '弹头', '弹体']
 const COUNTRY_OWNABLE_TYPES = new Set(['步兵', '载具', '飞机', '建筑'])
 
 function normalizedType(category: string) {
@@ -49,28 +42,41 @@ function sortTypes(a: TypeGroup, b: TypeGroup) {
   return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || a.name.localeCompare(b.name, 'zh-CN')
 }
 
-function sortUnits(a: UnitTreeRow, b: UnitTreeRow) {
-  const ai = TYPE_ORDER.indexOf(normalizedType(a.category))
-  const bi = TYPE_ORDER.indexOf(normalizedType(b.category))
-  return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi)
-    || a.label.localeCompare(b.label, 'zh-CN')
-    || a.id.localeCompare(b.id)
-}
-
 function UnitIcon({ id }: { id: string }) {
-  if (hasLegacyIcon(id)) return <div className="unitTreeIcon" style={{ ...legacyIconStyle(id, 28) }}/>
-  return <div className="unitTreeIcon fallback"><Box size={14}/></div>
+  if (hasLegacyIcon(id)) return <span className="unitTreeIcon" style={{ ...legacyIconStyle(id, 28) }}/>
+  return <span className="unitTreeIcon fallback"><Box size={14}/></span>
 }
 
-function CountryFlag({ id }: { id: string }) {
-  const style = countryIconStyle(id, 31)
-  if (style) return <span className="unitCountryFlag" style={style}/>
-  return <span className="unitCountryFlag fallback"><Box size={13}/></span>
+function CountryBadge({ id }: { id: string }) {
+  const style = countryIconStyle(id, 16)
+  if (!style) return null
+  return <span className="unitCountryBadge" style={style} aria-label={`国家 ${id}`}/>
 }
 
-function UnitLeaf({ unit, selectedId, onSelect }: { unit: UnitTreeRow; selectedId?: string | null; onSelect: (row: UnitTreeRow) => void }) {
-  return <button key={unit.id} className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}`}>
-    <UnitIcon id={unit.id}/><span><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
+function UnitLeaf({
+  unit,
+  exclusiveCountry,
+  selectedId,
+  onSelect,
+}: {
+  unit: UnitTreeRow
+  exclusiveCountry?: UnitTreeRow
+  selectedId?: string | null
+  onSelect: (row: UnitTreeRow) => void
+}) {
+  const countryLabel = exclusiveCountry ? ` · 仅 ${exclusiveCountry.label}` : ''
+  return <button
+    key={unit.id}
+    className={`unitTreeLeaf ${selectedId === unit.id ? 'selected' : ''}`}
+    onClick={() => onSelect(unit)}
+    title={`${unit.label} · ${unit.id}${countryLabel}`}
+  >
+    <span className="unitTreeIconWrap">
+      <UnitIcon id={unit.id}/>
+      {exclusiveCountry && <CountryBadge id={exclusiveCountry.id}/>} 
+    </span>
+    <span className="unitTreeLeafText"><b>{unit.label}</b><small>{unit.id}</small></span>
+    <ChevronRight size={13}/>
   </button>
 }
 
@@ -103,6 +109,12 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     [rows],
   )
 
+  const countryById = useMemo(() => new Map(
+    rows
+      .filter(row => normalizedType(row.category) === '国家')
+      .map(row => [row.id.trim().toLowerCase(), row]),
+  ), [rows])
+
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const browsable = rows.filter(row => {
@@ -113,58 +125,23 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     return browsable.filter(row => `${row.label} ${row.id} ${row.type} ${row.category}`.toLowerCase().includes(q))
   }, [query, rows])
 
-  const groups = useMemo<FactionGroup[]>(() => {
-    const effective = filteredRows.map(row => {
-      const inferred = rawRules ? navigation.sideOf(row.id) : 'neutral'
-      return { ...row, side: inferred === 'neutral' ? row.side : inferred }
-    })
-    const countryRows = effective.filter(row => normalizedType(row.category) === '国家')
-    const countryById = new Map(countryRows.map(row => [row.id.toLowerCase(), row]))
-    const countryUnits = new Map<string, UnitTreeRow[]>()
-    const commonRows: UnitTreeRow[] = []
-
-    for (const row of effective) {
+  const groups = useMemo<TypeGroup[]>(() => {
+    const grouped = new Map<string, UnitTreeRow[]>()
+    // Preserve source / registration order inside each type, like the old editors.
+    for (const row of filteredRows) {
       const type = normalizedType(row.category)
-      if (type === '国家') continue
-      const exclusive = rawRules && COUNTRY_OWNABLE_TYPES.has(type) ? navigation.exclusiveCountryOf(row.id) : null
-      const country = exclusive ? countryById.get(exclusive.toLowerCase()) : undefined
-      if (country && country.side === row.side) {
-        const key = country.id.toLowerCase()
-        if (!countryUnits.has(key)) countryUnits.set(key, [])
-        countryUnits.get(key)!.push(row)
-      } else {
-        commonRows.push(row)
-      }
+      if (!grouped.has(type)) grouped.set(type, [])
+      grouped.get(type)!.push(row)
     }
+    return [...grouped.entries()].map(([name, units]) => ({ name, units })).sort(sortTypes)
+  }, [filteredRows])
 
-    return FACTION_ORDER.flatMap(faction => {
-      const factionCommon = commonRows.filter(row => row.side === faction)
-      const types = new Map<string, UnitTreeRow[]>()
-      for (const row of factionCommon) {
-        const type = normalizedType(row.category)
-        if (!types.has(type)) types.set(type, [])
-        types.get(type)!.push(row)
-      }
-      const countryGroups = countryRows
-        .filter(country => country.side === faction)
-        .map(country => ({
-          country,
-          units: [...(countryUnits.get(country.id.toLowerCase()) ?? [])].sort(sortUnits),
-        }))
-        .sort((a, b) => a.country.label.localeCompare(b.country.label, 'zh-CN') || a.country.id.localeCompare(b.country.id))
-
-      if (!types.size && !countryGroups.length) return []
-      return [{
-        key: faction,
-        label: FACTION_LABELS[faction],
-        types: [...types.entries()].map(([name, units]) => ({
-          name,
-          units: units.sort(sortUnits),
-        })).sort(sortTypes),
-        countries: countryGroups,
-      }]
-    })
-  }, [filteredRows, navigation, rawRules])
+  const exclusiveCountryOf = (unit: UnitTreeRow) => {
+    const type = normalizedType(unit.category)
+    if (!rawRules || !COUNTRY_OWNABLE_TYPES.has(type)) return undefined
+    const countryId = navigation.exclusiveCountryOf(unit.id)
+    return countryId ? countryById.get(countryId.trim().toLowerCase()) : undefined
+  }
 
   const searching = Boolean(query.trim())
   const isOpen = (key: string, defaultOpen: boolean) => searching || (key in expanded ? expanded[key] : defaultOpen)
@@ -185,56 +162,21 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     </div>}
 
     <div className="unitTreeScroller">
-      {groups.map(faction => {
-        const factionKey = `f:${faction.key}`
-        const factionCount = faction.types.reduce((sum, type) => sum + type.units.length, 0)
-          + faction.countries.reduce((sum, country) => sum + 1 + country.units.length, 0)
-        const factionHasSelected = faction.types.some(type => type.units.some(unit => unit.id === selectedId))
-          || faction.countries.some(country => country.country.id === selectedId || country.units.some(unit => unit.id === selectedId))
-        const factionOpen = isOpen(factionKey, factionHasSelected || faction.key !== 'neutral')
-        return <section className="unitFaction" key={faction.key}>
-          <button className="unitTreeLevel faction" onClick={() => toggle(factionKey, factionOpen)}>
-            {factionOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{faction.label}</strong><em>{factionCount}</em>
+      {groups.map(group => {
+        const key = `t:${group.name}`
+        const open = isOpen(key, true)
+        return <section className="unitTypeGroup" key={group.name}>
+          <button className="unitTreeLevel legacyType" onClick={() => toggle(key, open)}>
+            {open ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{group.name}</strong><em>{group.units.length}</em>
           </button>
-          {factionOpen && <div className="unitTreeBranch factionBranch">
-            {faction.types.map(type => {
-              const typeKey = `${factionKey}|t:${type.name}`
-              const typeHasSelected = type.units.some(unit => unit.id === selectedId)
-              const typeOpen = isOpen(typeKey, typeHasSelected)
-              return <div className="unitType" key={type.name}>
-                <button className="unitTreeLevel type" onClick={() => toggle(typeKey, typeOpen)}>
-                  {typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<span>{type.name}</span><em>{type.units.length}</em>
-                </button>
-                {typeOpen && <div className="unitLeaves">
-                  {type.units.map(unit => <UnitLeaf key={unit.id} unit={unit} selectedId={selectedId} onSelect={onSelect}/>) }
-                </div>}
-              </div>
-            })}
-
-            {faction.countries.length > 0 && <div className="unitCountrySection">
-              <div className="unitCountrySectionLabel">国家</div>
-              {faction.countries.map(group => {
-                const key = `${factionKey}|c:${group.country.id}`
-                const hasSelected = group.country.id === selectedId || group.units.some(unit => unit.id === selectedId)
-                const open = isOpen(key, hasSelected)
-                return <div className="unitCountry" key={group.country.id}>
-                  <div className={`unitCountryHeader ${group.country.id === selectedId ? 'selected' : ''}`}>
-                    <button className="unitCountryToggle" onClick={() => toggle(key, open)} title={open ? '收起国家独有对象' : '展开国家独有对象'}>
-                      {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>} 
-                    </button>
-                    <button className="unitCountryIdentity" onClick={() => onSelect(group.country)} title={`编辑国家 ${group.country.label} · ${group.country.id}`}>
-                      <CountryFlag id={group.country.id}/><span><b>{group.country.label}</b><small>{group.country.id}</small></span>
-                    </button>
-                    <em>{group.units.length}</em>
-                  </div>
-                  {open && <div className="unitCountryLeaves">
-                    {group.units.length
-                      ? group.units.map(unit => <UnitLeaf key={unit.id} unit={unit} selectedId={selectedId} onSelect={onSelect}/>)
-                      : <div className="unitCountryEmpty">没有仅属于此国家的对象</div>}
-                  </div>}
-                </div>
-              })}
-            </div>}
+          {open && <div className="unitLeaves legacyLeaves">
+            {group.units.map(unit => <UnitLeaf
+              key={unit.id}
+              unit={unit}
+              exclusiveCountry={exclusiveCountryOf(unit)}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />)}
           </div>}
         </section>
       })}
