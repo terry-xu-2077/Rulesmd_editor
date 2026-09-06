@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Bomb,
   Box,
@@ -178,8 +178,6 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [rawRules, setRawRules] = useState('')
   const [dockRect, setDockRect] = useState<DockRect | null>(null)
-  const selectedRef = useRef(selectedId)
-  selectedRef.current = selectedId
 
   useEffect(() => {
     setExpanded({})
@@ -233,7 +231,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(selectedId.toLowerCase()) : selectedId.toLowerCase().replace(/["\\]/g, '\\$&')
     const item = document.querySelector<HTMLElement>(`.unitTreeLeaf[data-unit-id="${escaped}"]`)
     item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedId])
+  }, [selectedId, expanded])
 
   const navigation = useMemo(() => buildRulesNavigation(rawRules), [rawRules])
   const referenceGraph = useMemo(() => parseReferenceGraph(rawRules, rows), [rawRules, rows])
@@ -320,7 +318,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
       {groups.map(group => {
         const key = `t:${group.name}`
         const selectedInGroup = group.units.some(unit => unit.id.toLowerCase() === selectedId?.toLowerCase())
-        const open = isOpen(key, true || selectedInGroup)
+        const open = selectedInGroup || isOpen(key, true)
         return <section className="unitTypeGroup" key={group.name}>
           <button className="unitTreeLevel legacyType" onClick={() => toggle(key, open)}>
             {open ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{group.name}</strong><em>{group.units.length}</em>
