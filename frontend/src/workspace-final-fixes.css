@@ -61,6 +61,8 @@
 }
 .app .entityHeaderHost>header>div:nth-child(2){width:50px!important;height:46px!important;min-width:50px!important;margin:0 8px 0 0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important}
 .app .entityHeaderHost>header>div:nth-child(3){height:46px!important;min-width:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:1px!important;margin:0!important;padding:0!important}
+.app .entityHeaderHost>header>div:nth-child(3)>strong{color:var(--theme-text)!important}
+.app .entityHeaderHost>header>div:nth-child(3)>span{color:color-mix(in oklab,var(--theme-text) 62%,var(--theme-base) 38%)!important}
 .app .entityNavigation{
   position:absolute!important;
   left:206px!important;
