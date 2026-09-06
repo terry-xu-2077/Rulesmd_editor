@@ -77,3 +77,16 @@
   --tc-tone-purple: var(--theme-yuri);
   --tc-tone-neutral: var(--theme-neutral);
 }
+
+/*
+ * The React tree already resolves "system" to an effective dark/light data-mode before
+ * rendering. Keep both default source palettes in CSS as well, so the very first paint
+ * matches the stored appearance even before the optional custom-palette script runs.
+ */
+.app.tc-theme[data-mode="light"] {
+  --theme-base: #dbe8f6;
+  --theme-accent: #159f8b;
+  --theme-effect: #16a6c7;
+  --theme-text: #343a40;
+  --theme-text-bright: #168f9f;
+}
