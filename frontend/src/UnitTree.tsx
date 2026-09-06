@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Bomb, Box, Building2, ChevronDown, ChevronRight, Crosshair, Flag, Plane, Rocket, SlidersHorizontal, Sparkles, Truck, Users } from 'lucide-react'
 import { workspaceApi } from './backend'
 import { isLegacyGlobalSubsection } from './generalGroups'
@@ -58,9 +59,9 @@ export function UnitIcon({ unit, compact = false }: { unit: UnitTreeRow; compact
   return <span className={`unitTreeIcon fallback semantic ${compact ? 'compact' : ''}`}><FallbackTypeIcon category={unit.category} size={compact ? 13 : 15}/></span>
 }
 
-function CountryBadge({ id }: { id: string }) {
+function CountryBadge({ id, className = '' }: { id: string; className?: string }) {
   const style = countryIconStyle(id, 16)
-  return style ? <span className="unitCountryBadge" style={style} aria-label={`国家 ${id}`}/> : null
+  return style ? <span className={`unitCountryBadge ${className}`} style={style} aria-label={`国家 ${id}`}/> : null
 }
 
 function UnitLeaf({ unit, exclusiveCountry, selectedId, onSelect }: { unit: UnitTreeRow; exclusiveCountry?: UnitTreeRow; selectedId?: string | null; onSelect: (row: UnitTreeRow) => void }) {
@@ -118,6 +119,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [rawRules, setRawRules] = useState('')
   const [dockRect, setDockRect] = useState<DockRect | null>(null)
+  const [headerHost, setHeaderHost] = useState<HTMLElement | null>(null)
 
   useEffect(() => setExpanded({}), [documentEpoch])
   useEffect(() => {
@@ -126,6 +128,10 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     void workspaceApi.rawText().then(raw => { if (!cancelled) setRawRules(raw) }).catch(() => { if (!cancelled) setRawRules('') })
     return () => { cancelled = true }
   }, [documentEpoch, rows.length])
+
+  useEffect(() => {
+    setHeaderHost(document.querySelector<HTMLElement>('.entityHeaderHost'))
+  }, [documentEpoch, selectedId])
 
   useEffect(() => {
     const update = () => {
@@ -165,6 +171,11 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   }, [dockRect?.tableVisible, hasReferenceChain])
 
   const countryById = useMemo(() => new Map(rows.filter(row => normalizedType(row.category) === '国家').map(row => [row.id.toLowerCase(), row])), [rows])
+  const selectedExclusiveCountry = useMemo(() => {
+    if (!selectedRow || !COUNTRY_OWNABLE_TYPES.has(normalizedType(selectedRow.category))) return undefined
+    const id = navigation.exclusiveCountryOf(selectedRow.id)
+    return id ? countryById.get(id.toLowerCase()) : undefined
+  }, [countryById, navigation, selectedRow])
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const base = rows.filter(row => row.id.toLowerCase() !== 'general' && !isLegacyGlobalSubsection(row.id))
@@ -211,6 +222,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   if (!rows.length) return <div className="unitTreeEmpty">还没有可浏览的对象。</div>
 
   return <div className="unitHierarchy">
+    {headerHost && selectedExclusiveCountry && createPortal(<CountryBadge id={selectedExclusiveCountry.id} className="entityHeaderCountryBadge"/>, headerHost)}
     {generalRow && <div className="unitGlobalBlock"><button className={`unitGlobalRule ${selectedId?.toLowerCase() === 'general' ? 'selected' : ''}`} onClick={() => onSelect(generalRow)}><span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span><span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span></button></div>}
     <div className="unitTreeScroller">
       {sideGroups.map(group => {
