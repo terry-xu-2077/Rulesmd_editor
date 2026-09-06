@@ -112,8 +112,9 @@
   --theme-text: #343a40;
   --theme-text-bright: #168f9f;
 
-  /* Editing controls read as pale inset fields instead of another blue-gray surface. */
-  --theme-control-fill: color-mix(in oklab, var(--theme-base) 66%, white 34%);
+  /* Editing fields are intentionally much lighter than the workspace. The previous
+   * 66/34 mix was technically lighter but visually too close to the page surface. */
+  --theme-control-fill: color-mix(in oklab, var(--theme-base) 24%, white 76%);
 
   /* Fold bars use a deeper chromatic blue, while ordinary rows keep the restrained ladder. */
   --theme-fold-surface: color-mix(in oklab, var(--theme-base) 88%, var(--theme-effect) 12%);
