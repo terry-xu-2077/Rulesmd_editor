@@ -101,11 +101,10 @@
 .app .entityNavigation button svg{flex:0 0 auto}
 
 /*
- * Filter is the primary control, then the compact icon-only search, then Add Parameter.
- * Flex replaces the previous fixed grid columns so the action can never be pushed into
- * the inspector simply because a preceding control reports a larger intrinsic width.
- * The left padding starts exactly 8px after the navigation group ends, preserving the
- * same spacing rhythm used by the controls themselves.
+ * Filter is the primary control, then search, then Add Parameter.
+ * The filter gives back width to the higher-utility search field, while the action keeps
+ * a fixed footprint in the shared-control integration layer so it cannot spill into the
+ * inspector. The whole row keeps the same 8px rhythm.
  */
 .app .editorControls{
   grid-column:1!important;
@@ -124,11 +123,11 @@
 }
 .app .editorFilterSelect{
   order:1!important;
-  width:170px!important;
-  min-width:170px!important;
-  max-width:170px!important;
+  width:150px!important;
+  min-width:150px!important;
+  max-width:150px!important;
   height:32px!important;
-  flex:0 0 170px!important;
+  flex:0 0 150px!important;
   display:flex!important;
   align-items:center!important;
   align-self:center!important;
@@ -136,12 +135,12 @@
 }
 .app .editorControls .editorSearch{
   order:2!important;
-  width:96px!important;
-  min-width:72px!important;
-  max-width:96px!important;
+  width:128px!important;
+  min-width:104px!important;
+  max-width:128px!important;
   height:32px!important;
   min-height:32px!important;
-  flex:0 1 96px!important;
+  flex:0 1 128px!important;
   margin:0!important;
   padding-top:0!important;
   padding-bottom:0!important;
@@ -159,8 +158,8 @@
   .app .entityNavigation{left:222px!important;width:208px!important}
   .app .entityNavigation button{width:100px!important;min-width:100px!important;padding:0 6px!important}
   .app .editorControls{padding-left:448px!important}
-  .app .editorFilterSelect{width:145px!important;min-width:145px!important;max-width:145px!important;flex-basis:145px!important}
-  .app .editorControls .editorSearch{width:84px!important;min-width:60px!important;max-width:84px!important;flex-basis:84px!important}
+  .app .editorFilterSelect{width:132px!important;min-width:132px!important;max-width:132px!important;flex-basis:132px!important}
+  .app .editorControls .editorSearch{width:112px!important;min-width:88px!important;max-width:112px!important;flex-basis:112px!important}
 }
 
 @media(max-width:1040px){
