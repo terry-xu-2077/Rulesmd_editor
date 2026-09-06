@@ -1,23 +1,10 @@
 /*
- * Custom base-color completion layer.
+ * Neutral surface application layer.
  *
- * The palette editor exposes one Base color. That color owns every large neutral
- * surface in the application. Semantic faction/accent/focus colors remain independent.
+ * No independent colors belong here. All surfaces consume derivatives from
+ * theme-contract.css; semantic faction/accent/focus states may override them.
  */
-.app {
-  --theme-surface-0: var(--bg);
-  --theme-surface-1: color-mix(in srgb, var(--bg) 92%, var(--text) 8%);
-  --theme-surface-2: color-mix(in srgb, var(--bg) 84%, var(--text) 16%);
-  --theme-surface-soft: color-mix(in srgb, var(--bg) 96%, var(--text) 4%);
-  --theme-surface-strong: color-mix(in srgb, var(--bg) 76%, var(--text) 24%);
 
-  --panel: var(--theme-surface-1);
-  --panel2: var(--theme-surface-2);
-  --control: var(--theme-surface-soft);
-  --control2: var(--theme-surface-2);
-}
-
-/* Large neutral panes. Use background shorthand so old navy gradients/images cannot leak through. */
 .app,
 .workspace,
 .sidebar,
@@ -33,7 +20,6 @@
   background: var(--theme-surface-0) !important;
 }
 
-/* Secondary bars and section headers. */
 .titlebar,
 .panelTitle,
 .sideFooter,
@@ -48,7 +34,6 @@
   background: var(--theme-surface-1) !important;
 }
 
-/* Neutral cards and idle rows. */
 .searchBox,
 .parameterTableRow,
 .helpDescriptionCard,
@@ -60,13 +45,11 @@
   background: var(--theme-surface-soft) !important;
 }
 
-/* Selected/current context keeps its semantic marker but no fixed navy fill. */
 .unitGlobalRule,
 .unitTreeLeaf.selected {
-  background-color: var(--theme-surface-2) !important;
+  background: var(--theme-surface-2) !important;
 }
 
-/* Remove old fixed-blue row/section tint images. */
 .parameterTableRow:not(.focused):not(.changed):not(.disabled),
 .fieldGroupHeader,
 .unitTreeLevel.legacyType,
