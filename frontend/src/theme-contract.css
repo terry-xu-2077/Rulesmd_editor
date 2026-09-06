@@ -8,9 +8,9 @@
  *   --theme-text
  *   --theme-text-bright
  *
- * Components may derive lightness/saturation/opacity with color-mix(), but they must
- * never own an independent palette. Legacy aliases are mapped here so old business
- * CSS and Terry_React_UI_Library resolve to the same source colors.
+ * Components may derive hue/lightness/saturation/opacity from those inputs, but they
+ * must never own an independent palette. Legacy aliases are mapped here so old
+ * business CSS and Terry_React_UI_Library resolve to the same source colors.
  */
 .app.tc-theme {
   --theme-base: #011437;
@@ -31,6 +31,12 @@
   --theme-shadow: color-mix(in srgb, var(--theme-base) 76%, transparent 24%);
   --theme-accent-soft: color-mix(in srgb, var(--theme-accent) 18%, transparent 82%);
   --theme-effect-soft: color-mix(in srgb, var(--theme-effect) 16%, transparent 84%);
+
+  /* Business semantic tones are derived from the public channels, not fixed swatches. */
+  --theme-allied: var(--theme-effect);
+  --theme-soviet: oklch(from var(--theme-accent) l c calc(h + 190));
+  --theme-yuri: oklch(from var(--theme-effect) l c calc(h + 80));
+  --theme-neutral: color-mix(in srgb, var(--theme-base) 70%, var(--theme-text) 30%);
 
   /* Business aliases. */
   --bg: var(--theme-base);
@@ -55,4 +61,8 @@
   --tc-border-color: var(--theme-border);
   --tc-line: var(--theme-line);
   --tc-shadow: var(--theme-shadow);
+  --tc-tone-blue: var(--theme-allied);
+  --tc-tone-red: var(--theme-soviet);
+  --tc-tone-purple: var(--theme-yuri);
+  --tc-tone-neutral: var(--theme-neutral);
 }
