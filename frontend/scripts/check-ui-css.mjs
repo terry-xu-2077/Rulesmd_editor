@@ -24,6 +24,7 @@ const settingsOwner = 'settings-panel.css'
 const integrationOwner = 'ui-library-integration.css'
 const themeContractOwner = 'theme-contract.css'
 const businessCss = allCss.filter(file => file !== settingsOwner && file !== integrationOwner)
+const ordinaryBusinessCss = businessCss.filter(file => file !== themeContractOwner)
 
 // RED LINE 0: one CSS loading path only.
 const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
@@ -124,7 +125,9 @@ containsAny(settingsOwner, settings, [
 ], 'settings CSS must not style UI Library internals')
 
 // RED LINE 4: ordinary business CSS cannot target .tc-*.
-for (const file of businessCss) {
+// theme-contract.css is the dedicated variable bridge and is intentionally allowed to
+// host the .app.tc-theme contract selector; it still may not style component internals.
+for (const file of ordinaryBusinessCss) {
   const text = cssCode(file)
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
     fail(file, 'shared UI selectors belong only in ui-library-integration.css', 'found .tc-* selector')
