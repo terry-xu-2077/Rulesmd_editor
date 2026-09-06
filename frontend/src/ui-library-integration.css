@@ -54,15 +54,20 @@
   margin:0!important;
 }
 
-/* Frequent add-parameter action. */
+/* Frequent add-parameter action. Its footprint is fixed so intrinsic Button sizing can
+ * never push the right edge into the inspector. */
 .editorControls>.tc-button{
   order:3;
   align-self:center;
+  width:92px!important;
+  min-width:92px!important;
+  max-width:92px!important;
   height:32px!important;
-  min-width:92px;
   margin:0;
+  padding-left:10px!important;
+  padding-right:10px!important;
   border-radius:7px;
-  flex:0 0 auto;
+  flex:0 0 92px!important;
   gap:7px;
   white-space:nowrap;
   color:var(--theme-text);
