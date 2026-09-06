@@ -86,7 +86,6 @@ function applyPalette() {
     style.setProperty('--tc-text-bright', palette.textBright)
   }
 
-  // 业务界面的主色变量也跟随同一套五通道主题，避免只有 UI 库控件改变颜色。
   app.style.setProperty('--bg', palette.base)
   app.style.setProperty('--text', palette.textMain)
   app.style.setProperty('--accent', palette.effect)
@@ -210,26 +209,33 @@ function attachCustomizer() {
   })
 }
 
-function refresh() {
-  applyPalette()
-  attachCustomizer()
+function refreshAfterUiEvent() {
+  requestAnimationFrame(() => {
+    applyPalette()
+    attachCustomizer()
+  })
 }
 
-const observer = new MutationObserver(mutations => {
-  let shouldRefresh = false
-  for (const mutation of mutations) {
-    if (mutation.type === 'childList' && mutation.addedNodes.length) shouldRefresh = true
-    if (mutation.type === 'attributes' && mutation.attributeName === 'data-mode') shouldRefresh = true
-  }
-  if (shouldRefresh) refresh()
-})
+// Event-driven only. Settings opening and appearance changes are finite user actions,
+// so there is no reason to observe the entire document tree.
+document.addEventListener('click', event => {
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const button = target.closest<HTMLButtonElement>('button')
+  if (button?.title === '设置' || target.closest('.settingsDialogBody')) refreshAfterUiEvent()
+}, true)
 
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['data-mode'],
-})
+document.addEventListener('change', event => {
+  const target = event.target as HTMLElement | null
+  if (target?.closest('.settingsDialogBody')) refreshAfterUiEvent()
+}, true)
 
-queueMicrotask(refresh)
-window.addEventListener('storage', refresh)
+queueMicrotask(() => {
+  applyPalette()
+  attachCustomizer()
+})
+window.addEventListener('storage', () => {
+  palettes.dark = loadPalette('dark')
+  palettes.light = loadPalette('light')
+  applyPalette()
+})
