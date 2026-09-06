@@ -22,12 +22,11 @@ function containsAny(file, text, tokens, rule) {
 const allCss = fs.readdirSync(src).filter(file => file.endsWith('.css')).sort()
 const settingsOwner = 'settings-panel.css'
 const integrationOwner = 'ui-library-integration.css'
+const themeContractOwner = 'theme-contract.css'
 const businessCss = allCss.filter(file => file !== settingsOwner && file !== integrationOwner)
+const ordinaryBusinessCss = businessCss.filter(file => file !== themeContractOwner)
 
 // RED LINE 0: one CSS loading path only.
-// The regression seen in the editor header/select popup came from mixing index.html <link>
-// styles with Vite module CSS: main.tsx styles were injected later and defeated the intended
-// "final" layers. Global late layers now enter through polish.css -> app.css only.
 const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 if (/<link\b[^>]*rel=["']stylesheet["'][^>]*\/src\//i.test(indexHtml) || /<link\b[^>]*\/src\/[^>]*\.css/i.test(indexHtml)) {
   fail('index.html', 'do not load /src/*.css with HTML link tags', 'global CSS must use the module cascade')
@@ -38,10 +37,6 @@ if (!/^\s*@import\s+["']\.\/app\.css["']\s*;/i.test(polishRaw)) {
   fail('polish.css', 'polish.css must import app.css first', 'missing leading @import ./app.css')
 }
 
-// app.css is the single source of truth for the late-layer manifest. Do not duplicate
-// the entire manifest in this checker: doing so makes a legitimate new CSS layer fail
-// startup merely because this file was not updated in lockstep. The checker instead
-// enforces the architectural invariants that actually matter.
 const appImports = [...read('app.css').matchAll(/@import\s+["']\.\/([^"']+\.css)["']\s*;/g)].map(match => match[1])
 
 for (const file of appImports) {
@@ -65,6 +60,8 @@ const requiredLateLayers = [
   'editor-control-grid.css',
   'workspace-final-fixes.css',
   'theme-final.css',
+  'theme-contract.css',
+  'theme-surface-overrides.css',
   'ui-library-integration.css',
 ]
 
@@ -90,7 +87,6 @@ if (appImports.at(-1) !== integrationOwner) {
 }
 
 // RED LINE 1: settings layout has one owner only.
-// The historical .settingRow span leak lived in styles.css; new CSS files are scanned automatically too.
 for (const file of [...businessCss, integrationOwner]) {
   const text = cssCode(file)
   containsAny(file, text, [
@@ -105,7 +101,6 @@ for (const file of [...businessCss, integrationOwner]) {
 const settings = cssCode(settingsOwner)
 
 // RED LINE 2: never use broad descendant tag selectors inside settings rows.
-// This exact class of selector caused the BoolSwitch / Select vertical drift incident.
 const broadDescendant = /(?:\.settingRow|\.settingsDialogBody)[^,{]*\s+(span|button|input|select|textarea|div|svg|strong|small|em)\b/g
 for (const match of settings.matchAll(broadDescendant)) {
   const selector = match[0].replace(/\s+/g, ' ').trim()
@@ -114,8 +109,7 @@ for (const match of settings.matchAll(broadDescendant)) {
   }
 }
 
-// RED LINE 3: settings CSS may place shared-control roots, but must never reach into
-// their internal DOM / geometry.
+// RED LINE 3: settings CSS may place shared-control roots, but must never reach into internals.
 containsAny(settingsOwner, settings, [
   '.tc-legacy-switch',
   '.tc-legacy-switch-knob',
@@ -130,17 +124,17 @@ containsAny(settingsOwner, settings, [
   '.tc-picker',
 ], 'settings CSS must not style UI Library internals')
 
-// RED LINE 4: every ordinary business CSS file is forbidden from targeting .tc-*.
-// All contextual shared-control integration belongs in ui-library-integration.css.
-for (const file of businessCss) {
+// RED LINE 4: ordinary business CSS cannot target .tc-*.
+// theme-contract.css is the dedicated variable bridge and is intentionally allowed to
+// host the .app.tc-theme contract selector; it still may not style component internals.
+for (const file of ordinaryBusinessCss) {
   const text = cssCode(file)
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
     fail(file, 'shared UI selectors belong only in ui-library-integration.css', 'found .tc-* selector')
   }
 }
 
-// RED LINE 5: the integration layer may target shared-control roots/context, but must not
-// take ownership of known implementation details that caused the previous cascade incident.
+// RED LINE 5: integration layer may target roots/context, but not component implementation details.
 const integration = cssCode(integrationOwner)
 containsAny(integrationOwner, integration, [
   '.tc-legacy-switch',
@@ -149,6 +143,54 @@ containsAny(integrationOwner, integration, [
   '.tc-option-icon',
   '.tc-range::-',
 ], 'integration CSS must not own shared component internals')
+
+// RED LINE 6: color ownership is centralized. Components receive semantic colors and derive
+// local shades; they do not carry independent palettes.
+const themeContract = cssCode(themeContractOwner)
+for (const token of ['--theme-base', '--theme-accent', '--theme-effect', '--theme-text', '--theme-text-bright']) {
+  if (!themeContract.includes(`${token}:`)) {
+    fail(themeContractOwner, 'theme contract must define all five source channels', token)
+  }
+}
+
+const contractManagedCss = [
+  'theme-surface-overrides.css',
+  'ui-library-integration.css',
+  'entity-header-country-badge.css',
+]
+const hardColor = /#[0-9a-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/ig
+for (const file of contractManagedCss) {
+  const text = cssCode(file)
+  for (const match of text.matchAll(hardColor)) {
+    fail(file, 'contract-managed component CSS must not own hard-coded colors', match[0])
+  }
+}
+
+const customizer = read('theme-customizer.ts')
+const allowedPublished = new Set([
+  '--theme-base',
+  '--theme-accent',
+  '--theme-effect',
+  '--theme-text',
+  '--theme-text-bright',
+])
+for (const match of customizer.matchAll(/style\.setProperty\(\s*['"](--[^'"]+)['"]/g)) {
+  if (!allowedPublished.has(match[1])) {
+    fail('theme-customizer.ts', 'theme customizer may publish only the five source color channels', match[1])
+  }
+}
+
+containsAny(integrationOwner, integration, [
+  '--tc-base:',
+  '--tc-accent:',
+  '--tc-effect:',
+  '--tc-text-main:',
+  '--tc-text-bright:',
+  '--tc-panel:',
+  '--tc-panel-2:',
+  '--tc-panel-focus:',
+  '--tc-row-hover:',
+], 'UI Library integration must consume the theme contract, not define its own palette')
 
 if (violations.length) {
   console.error('\n[UI CSS RED LINE] Boundary violations found:\n')

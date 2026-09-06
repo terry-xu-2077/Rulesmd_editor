@@ -23,6 +23,7 @@
 @import './table-alignment.css';
 @import './add-unit-dialog.css';
 @import './parameter-context-menu.css';
+@import './theme-contract.css';
 @import './theme-surface-overrides.css';
 @import './entity-header-country-badge.css';
 @import './ui-library-integration.css';
@@ -71,9 +72,9 @@ body.mapDocumentMode .sideFooter > button:first-child::after {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
-  border: 1px solid var(--border, rgba(255,255,255,.11));
+  border: 1px solid var(--theme-border);
   border-radius: 6px;
-  background: rgba(0,0,0,.14);
+  background: color-mix(in srgb, var(--theme-base) 86%, transparent 14%);
 }
 
 .mapRuleSearchBox input {
