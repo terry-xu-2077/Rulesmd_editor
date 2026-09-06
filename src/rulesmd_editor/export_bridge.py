@@ -40,41 +40,20 @@ class ExportBridge(Bridge):
 
     def _fragment_text(self) -> str:
         doc = self.workspace._doc()
-        current_states = {
-            state.line_id: state
-            for line in doc.lines
-            if (state := option_line_state(line)) is not None
-        }
 
-        # A delta INI can safely express additions and value overrides, but it cannot
-        # express removing a key from the baseline. Refuse instead of producing a file
-        # that looks correct while silently leaving the old rule active at runtime.
-        removed = [
-            state
-            for line_id, state in self._baseline_lines.items()
-            if line_id not in current_states
-        ]
-        if removed:
-            first = removed[0]
-            raise ValueError(
-                "仅修改规则片段无法安全表达删除参数："
-                f"[{first.section}] {first.key}。请还原删除项，或选择“全部规则”。"
-            )
-
+        # "删除参数"和"禁用参数"是编辑器内部调试操作，不代表需要在游戏侧
+        # 删除/禁用基础 Rules。覆盖型 INI 本来也无法可靠表达“移除基础 Key”。
+        # 因此规则片段导出时只输出当前仍启用的新增/修改项；被删除或禁用的
+        # 基础参数直接忽略，不阻止用户导出其它有效改动。
         changed_by_section: dict[str, list[OptionLineState]] = {}
         section_order: list[str] = []
         for line in doc.lines:
             state = option_line_state(line)
-            if state is None:
+            if state is None or state.disabled:
                 continue
             baseline = self._baseline_lines.get(state.line_id)
             if not self._state_changed(state, baseline):
                 continue
-            if state.disabled:
-                raise ValueError(
-                    "仅修改规则片段无法安全表达禁用参数："
-                    f"[{state.section}] {state.key}。请启用该参数，或选择“全部规则”。"
-                )
             actual = state.section
             folded = actual.casefold()
             existing = next((name for name in section_order if name.casefold() == folded), None)
