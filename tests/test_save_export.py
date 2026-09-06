@@ -68,7 +68,7 @@ def test_fragment_ignores_deleted_baseline_key_and_keeps_other_changes(tmp_path:
     assert "Strength" not in text
 
 
-def test_fragment_ignores_disabled_baseline_key_and_keeps_other_changes(tmp_path: Path):
+def test_fragment_preserves_stopped_baseline_key_as_editor_comment(tmp_path: Path):
     bridge, _ = _bridge(tmp_path)
     doc = bridge.workspace._doc()
     strength_line = next(
@@ -87,7 +87,7 @@ def test_fragment_ignores_disabled_baseline_key_and_keeps_other_changes(tmp_path
     text = target.read_text(encoding="utf-8")
 
     assert "Cost=1" in text
-    assert "Strength" not in text
+    assert ";@rulesmd-disabled Strength=125" in text
 
 
 def test_fragment_export_does_not_rebind_full_document_path(tmp_path: Path):
