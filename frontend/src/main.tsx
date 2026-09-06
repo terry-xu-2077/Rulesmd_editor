@@ -41,8 +41,9 @@ import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterContextMenu, type ParameterContextMenuState } from './ParameterContextMenu'
 import { ParameterPicker } from './ParameterPicker'
 import { localizedReferenceLabel } from './referenceLabels'
+import { buildRulesNavigation } from './rulesNavigation'
 import { sliderRangeFor } from './sliderRanges'
-import { UnitTree } from './UnitTree'
+import { UnitIcon, UnitTree } from './UnitTree'
 import './styles.css'
 import './polish.css'
 
@@ -64,6 +65,7 @@ const WEAPON_REFERENCE_KEYS = new Set([
   'primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon',
   'eliteoccupyweapon', 'deathweapon',
 ])
+const COUNTRY_OWNABLE_CATEGORIES = new Set(['步兵', '载具', '战车', '飞机', '建筑'])
 
 function storedPaneWidth(key: string, fallback: number) {
   const value = Number.parseInt(localStorage.getItem(key) || '', 10)
@@ -128,30 +130,6 @@ function rowsFromSnapshot(snapshot: WorkspaceSnapshot | null): SectionRow[] {
     category: category.name,
     side: item.side ?? sideForId(item.section),
   })))
-}
-
-function firstUsefulRow(snapshot: WorkspaceSnapshot): SectionRow | null {
-  const preferred = ['步兵', '载具', '战车', '飞机', '建筑', '武器', '弹头', '弹体']
-  for (const categoryName of preferred) {
-    const category = snapshot.categories.find(item => item.name === categoryName && item.items.length)
-    const first = category?.items[0]
-    if (category && first) return {
-      id: first.section,
-      label: resolvedRowLabel(first.section, first.label, category.name),
-      type: category.name,
-      category: category.name,
-      side: first.side ?? sideForId(first.section),
-    }
-  }
-  const category = snapshot.categories.find(item => item.items.length)
-  const first = category?.items[0]
-  return category && first ? {
-    id: first.section,
-    label: resolvedRowLabel(first.section, first.label, category.name),
-    type: category.name,
-    category: category.name,
-    side: first.side ?? sideForId(first.section),
-  } : null
 }
 
 function isAudioKey(key: string) {
@@ -359,12 +337,19 @@ function App() {
     appearance: storedAppearance(),
   }))
   const [observedValues, setObservedValues] = useState<ObservedValueIndex>(EMPTY_OBSERVED_VALUES)
+  const [rawRules, setRawRules] = useState('')
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
   const allowWindowClose = useRef(false)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
   const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
+  const rulesNavigation = useMemo(() => buildRulesNavigation(rawRules), [rawRules])
+  const countryExclusiveRows = useMemo(() => {
+    if (!selected || selected.category !== '国家') return []
+    const country = selected.id.toLowerCase()
+    return rows.filter(row => COUNTRY_OWNABLE_CATEGORIES.has(row.category) && rulesNavigation.exclusiveCountryOf(row.id)?.toLowerCase() === country)
+  }, [rows, rulesNavigation, selected])
   const groups = useMemo(() => {
     const categoryNames = sectionData.options.map(option => optionDisplayGroup(sectionData.section, option))
     const categories = sectionData.section.trim().toLowerCase() === 'general'
@@ -439,8 +424,10 @@ function App() {
   async function refreshObservedValues() {
     try {
       const raw = await workspaceApi.rawText()
+      setRawRules(raw)
       setObservedValues(parseObservedValueIndex(raw))
     } catch {
+      setRawRules('')
       setObservedValues(EMPTY_OBSERVED_VALUES)
     }
   }
@@ -549,24 +536,15 @@ function App() {
     setSnapshot(next)
     setUnitSearch('')
     setFieldSearch('')
+    setActiveGroup('全部')
     setParameterMenu(null)
     setPendingDeleteLineId(null)
+    setNavigation({ items: [], index: -1 })
+    setSelected(null)
+    setSectionData(EMPTY_SECTION)
+    setSelectedOptionId(null)
     setDocumentEpoch(value => value + 1)
     await refreshObservedValues()
-    const first = firstUsefulRow(next)
-    if (first) {
-      setNavigation({ items: [first], index: 0 })
-      setSelected(first)
-      const data = await workspaceApi.section(first.id)
-      sectionCache.current.set(first.id, data)
-      setSectionData(data)
-      setSelectedOptionId(data.options[0]?.line_id ?? null)
-    } else {
-      setNavigation({ items: [], index: -1 })
-      setSelected(null)
-      setSectionData(EMPTY_SECTION)
-      setSelectedOptionId(null)
-    }
     setStatus(message)
   }
 
@@ -808,12 +786,12 @@ function App() {
           </div>
           <section className="editorControls">
             <label className="searchBox editorSearch"><Search size={16}/><input value={fieldSearch} onChange={event => setFieldSearch(event.target.value)} placeholder="搜索 Key、参数名或值"/></label>
-            <div className="segmented">{groups.map(group => <button key={group} className={activeGroup === group ? 'active' : ''} onClick={() => setActiveGroup(group)}>{group}</button>)}</div>
+            <div className="editorFilterSelect"><Select value={activeGroup} options={groups.map(group => ({ value: group, label: group }))} onChange={setActiveGroup}/></div>
             <Button variant="accent" onClick={() => void openOptionPicker()}><ListPlus size={16}/> 参数</Button>
           </section>
           {viewMode === 'table' ? <section className="fieldsPane parameterTablePane" onContextMenu={event => { if (!(event.target as HTMLElement).closest('.parameterTableRow')) event.preventDefault() }}>
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
-            {groupedFields.length === 0 && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“参数”添加参数。</span></div>}
+            {groupedFields.length === 0 && (activeGroup !== '全部' || countryExclusiveRows.length === 0) && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
               <button className="fieldGroupHeader" onClick={() => { if (activeGroup === '全部') setCollapsed(value => ({ ...value, [group]: !value[group] })) }}>{activeGroup === '全部' && collapsed[group] ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}<span>{group}</span><em>{list.length}</em></button>
               {(activeGroup !== '全部' || !collapsed[group]) && list.map(option => {
@@ -841,8 +819,16 @@ function App() {
                 </div>
               })}
             </div>)}
+            {activeGroup === '全部' && countryExclusiveRows.length > 0 && <div className="fieldGroup countryExclusiveGroup">
+              <div className="fieldGroupHeader countryExclusiveHeader"><span>国家独有单位</span><em>{countryExclusiveRows.length}</em></div>
+              <div className="countryExclusiveList">{countryExclusiveRows.map(row => <button key={row.id} className="countryExclusiveRow" onClick={() => void jumpToReference(row)} title={`跳转到 ${row.label} [${row.id}]`}>
+                <span className="countryExclusiveIdentity"><UnitIcon unit={row} compact/><span><b>{row.label}</b><small>{row.id}</small></span></span>
+                <span className="countryExclusiveType">{row.category.replace('战车', '载具')}</span>
+                <ArrowRight size={15}/>
+              </button>)}</div>
+            </div>}
           </section> : <section className="rawEditorPane"><pre>{sectionData.raw}</pre></section>}
-        </> : <div className="emptyPane"><strong>Rulesmd Editor</strong><span>使用“新建”创建完整原版 rulesmd.ini，或打开已有文件。</span></div>}
+        </> : <div className="emptyPane"><strong>Rulesmd Editor</strong><span>{snapshot ? '从左侧选择一个对象开始编辑。' : '使用“新建”创建完整原版 rulesmd.ini，或打开已有文件。'}</span></div>}
       </main>
 
       <div className="paneSplitter" role="separator" aria-label="调整帮助栏宽度" onPointerDown={event => beginResize('right', event)}/>
