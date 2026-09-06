@@ -1,1 +1,1 @@
-Rulesmd Editor application icon source is frontend/src-tauri/app-icon.png. Keep this PNG as the canonical source; Tauri generates platform-specific icons from it during development startup.
+Rulesmd Editor application icon source is frontend/src-tauri/app-icon.png. It is the same artwork used by the page header logo (RulesmdEditorWeb img/appIcon/资源 1@64x-8.png). Keep this PNG as the canonical source; Tauri generates platform-specific icons from it during development startup.
