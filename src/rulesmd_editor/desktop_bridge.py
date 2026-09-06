@@ -4,12 +4,11 @@ import json
 import sys
 from typing import TextIO
 
-from .bridge import Bridge
-from .mix_workspace import MixRulesWorkspace
+from .export_bridge import ExportBridge, ExportMixRulesWorkspace
 
 
 def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
-    bridge = Bridge(MixRulesWorkspace())
+    bridge = ExportBridge(ExportMixRulesWorkspace())
     for raw in stdin:
         raw = raw.strip()
         if not raw:

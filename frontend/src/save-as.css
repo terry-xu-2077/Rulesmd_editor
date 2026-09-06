@@ -1,0 +1,98 @@
+.saveModeOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(2px);
+}
+
+.saveModeDialog {
+  width: min(560px, calc(100vw - 40px));
+  border: 1px solid var(--tc-border, #4a4f58);
+  border-radius: 10px;
+  background: var(--tc-panel, #20242a);
+  color: var(--tc-text, #e8ebef);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+
+.saveModeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tc-border, #40454d);
+}
+
+.saveModeHeader strong { font-size: 15px; }
+
+.saveModeClose {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.saveModeClose:hover { background: rgba(255, 255, 255, 0.08); }
+
+.saveModeBody {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.saveModeChoice {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--tc-border, #454b54);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  color: inherit;
+  cursor: pointer;
+}
+
+.saveModeChoice:hover {
+  border-color: var(--tc-accent, #43a7c8);
+  background: rgba(67, 167, 200, 0.08);
+}
+
+.saveModeChoiceTitle {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.saveModeChoice > span:last-child {
+  color: var(--tc-text-muted, #aab1bb);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.saveModeFooter {
+  padding: 10px 16px 14px;
+  color: var(--tc-text-muted, #9299a4);
+  font-size: 11px;
+}
+
+[data-mode="light"] .saveModeDialog {
+  background: #f7f8fa;
+  color: #24272c;
+}
+
+[data-mode="light"] .saveModeChoice {
+  background: #fff;
+  border-color: #cfd4db;
+}
+
+[data-mode="light"] .saveModeChoice > span:last-child,
+[data-mode="light"] .saveModeFooter {
+  color: #656d78;
+}
