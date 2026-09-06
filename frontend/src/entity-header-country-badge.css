@@ -1,0 +1,9 @@
+.entityHeaderHost > .entityHeaderCountryBadge {
+  left: 31px;
+  top: 31px;
+  right: auto;
+  bottom: auto;
+  width: 16px;
+  height: 11px;
+  z-index: 12;
+}
