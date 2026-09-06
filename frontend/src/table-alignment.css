@@ -2,3 +2,7 @@
 .parameterTableHeader>span:nth-child(2){justify-content:flex-end;text-align:right}
 .parameterLabelCell{justify-content:flex-end;text-align:right}
 .parameterLabelCell strong{display:block;width:100%;text-align:right}
+
+/* In light mode the English Key is normal working text, not low-priority metadata.
+ * Keep it close to the Chinese parameter label contrast while retaining a small hierarchy. */
+.app[data-mode="light"] .parameterKeyCell code{color:var(--theme-default-text)!important}
