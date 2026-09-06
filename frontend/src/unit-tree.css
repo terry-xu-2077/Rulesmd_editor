@@ -30,7 +30,6 @@
 /* Header object icon is literally the same icon+country-badge group as the left tree, enlarged as one unit. */
 .headerUnitComposite{position:absolute;left:11px;top:50%;width:50px;height:46px;transform:translateY(-50%);display:grid;place-items:center;z-index:15;pointer-events:none}
 .headerUnitComposite>.unitTreeIconWrap{transform:scale(1.56);transform-origin:center center}
-.entityHeaderHost .tc-entity-icon>.legacyUnitIcon{visibility:hidden!important}
 
 /* Object-level relationship summary lives under parameter help. The old bottom reference-chain UI is intentionally gone. */
 .relationshipPanel{margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--theme-line)}
