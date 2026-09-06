@@ -17,11 +17,19 @@ const DEFAULTS: Record<ThemeMode, ThemePalette> = {
   },
   light: {
     base: '#dbe8f6',
-    accent: '#159f8b',
+    accent: '#41e1c9',
     effect: '#16a6c7',
     textMain: '#343a40',
     textBright: '#168f9f',
   },
+}
+
+const LEGACY_LIGHT_DEFAULT: ThemePalette = {
+  base: '#dbe8f6',
+  accent: '#159f8b',
+  effect: '#16a6c7',
+  textMain: '#343a40',
+  textBright: '#168f9f',
 }
 
 const FIELD_META: Array<{ key: keyof ThemePalette; label: string }> = [
@@ -40,19 +48,33 @@ function storageKey(mode: ThemeMode) {
   return `rulesmd.palette.${mode}`
 }
 
+function samePalette(left: ThemePalette, right: ThemePalette) {
+  return (Object.keys(left) as Array<keyof ThemePalette>).every(key => left[key].toLowerCase() === right[key].toLowerCase())
+}
+
 function loadPalette(mode: ThemeMode): ThemePalette {
   const fallback = DEFAULTS[mode]
   try {
     const raw = localStorage.getItem(storageKey(mode))
     if (!raw) return { ...fallback }
     const parsed = JSON.parse(raw) as Partial<ThemePalette>
-    return {
+    const palette: ThemePalette = {
       base: isHexColor(parsed.base) ? parsed.base : fallback.base,
       accent: isHexColor(parsed.accent) ? parsed.accent : fallback.accent,
       effect: isHexColor(parsed.effect) ? parsed.effect : fallback.effect,
       textMain: isHexColor(parsed.textMain) ? parsed.textMain : fallback.textMain,
       textBright: isHexColor(parsed.textBright) ? parsed.textBright : fallback.textBright,
     }
+
+    // Existing installs may have persisted the former untouched light defaults. Treat
+    // that exact palette as a default, not as a user customization, so the new Accent
+    // takes effect immediately without forcing the user to press Reset.
+    if (mode === 'light' && samePalette(palette, LEGACY_LIGHT_DEFAULT)) {
+      const migrated = { ...DEFAULTS.light }
+      localStorage.setItem(storageKey(mode), JSON.stringify(migrated))
+      return migrated
+    }
+    return palette
   } catch {
     return { ...fallback }
   }
