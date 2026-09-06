@@ -58,8 +58,8 @@ export function ParameterContextMenu({ state, option, onClose, onToggleDisabled,
       <code>{option.key}</code>
     </div>
     <button type="button" role="menuitem" onClick={() => { onToggleDisabled(option); onClose() }}>
-      {disabled ? <CheckCircle2 size={15}/> : <Ban size={15}/>}<span>{disabled ? '启用参数' : '禁用参数'}</span>
-      <small>{disabled ? '恢复参与游戏规则' : '保留为注释，不参与游戏规则'}</small>
+      {disabled ? <CheckCircle2 size={15}/> : <Ban size={15}/>}<span>{disabled ? '启用参数' : '停用参数'}</span>
+      <small>{disabled ? '恢复为活动参数' : '转为编辑器注释，便于调试与后续恢复'}</small>
     </button>
     <button type="button" role="menuitem" onClick={() => { onRestore(option); onClose() }}>
       <RotateCcw size={15}/><span>还原参数</span><small>恢复到打开文件时的状态</small>
