@@ -33,18 +33,38 @@
   gap:5px;
 }
 
+/* Top-row Select occupies exactly the same 32px visual slot as search/navigation/action. */
+.editorFilterSelect>.tc-control-wrap{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:32px!important;
+  flex:1 1 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  margin:0!important;
+  padding:0!important;
+}
+.editorFilterSelect>.tc-control-wrap>.tc-control{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:32px!important;
+  flex:1 1 auto!important;
+  margin:0!important;
+}
+
 /* Frequent add-parameter action. */
 .editorControls>.tc-button{
-  grid-column:3;
-  grid-row:1;
-  justify-self:start;
+  order:3;
   align-self:center;
   height:32px!important;
   min-width:92px;
-  margin-left:0;
+  margin:0;
   border-radius:7px;
   flex:0 0 auto;
   gap:7px;
+  white-space:nowrap;
   color:var(--theme-text);
   border-color:color-mix(in srgb,var(--theme-accent) 76%,white 24%);
   background:linear-gradient(180deg,color-mix(in srgb,var(--theme-accent) 88%,white 12%),color-mix(in srgb,var(--theme-accent) 76%,black 24%));
