@@ -35,9 +35,9 @@
 
 /* Frequent add-parameter action. */
 .editorControls>.tc-button{
-  grid-column:4;
+  grid-column:3;
   grid-row:1;
-  justify-self:end;
+  justify-self:start;
   align-self:center;
   height:32px!important;
   min-width:92px;
