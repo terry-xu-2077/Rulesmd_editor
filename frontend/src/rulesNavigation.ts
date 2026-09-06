@@ -78,10 +78,11 @@ export type RulesNavigation = {
 /**
  * Builds the navigation ownership model used by the left tree.
  *
- * The important bit mirrors the old Qt editor: if a Techno has no useful direct
- * Owner/RequiredHouses, its Prerequisite chain is followed until a faction-owned
- * building is found. This is why buildings such as GACSPH and YAGRND no longer fall
- * into the neutral bucket just because the final section omits Owner=.
+ * Classification follows actual build access rather than section-name guesses:
+ * RequiredHouses/Owner establish candidates, ForbiddenHouses removes countries,
+ * and Prerequisite ownership is used as the next discriminator.  This mirrors the
+ * old editor behaviour for shared definitions such as ENGINEER: its Owner list is
+ * broad, but ForbiddenHouses removes Soviet countries, so it belongs to Allies.
  */
 export function buildRulesNavigation(raw: string): RulesNavigation {
   const ini = parseIni(raw)
@@ -115,6 +116,31 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
     return countryCase.get(folded) ?? (countrySides.has(folded) ? token.trim() : null)
   }
 
+  const effectiveCountries = (data: IniSection | undefined): string[] => {
+    if (!data) return []
+    const required = splitValue(data.get('requiredhouses') ?? '').map(knownCountry).filter((value): value is string => Boolean(value))
+    const owner = splitValue(data.get('owner') ?? '').map(knownCountry).filter((value): value is string => Boolean(value))
+    const forbidden = new Set(
+      splitValue(data.get('forbiddenhouses') ?? '')
+        .map(knownCountry)
+        .filter((value): value is string => Boolean(value))
+        .map(value => value.toLowerCase()),
+    )
+    // RequiredHouses is the strongest explicit build restriction.  Owner is only
+    // a fallback because in RA2/YR it also describes ownership/start availability.
+    const base = required.length ? required : owner.length ? owner : countryIds
+    return [...new Map(base.filter(country => !forbidden.has(country.toLowerCase())).map(country => [country.toLowerCase(), country])).values()]
+  }
+
+  const sidesOfCountries = (countries: string[]) => {
+    const result = new Set<NavigationSide>()
+    for (const country of countries) {
+      const side = countrySides.get(country.toLowerCase())
+      if (side) result.add(side)
+    }
+    return result
+  }
+
   const sideMemo = new Map<string, NavigationSide>()
   const resolving = new Set<string>()
 
@@ -133,24 +159,12 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
 
     const data = ini.get(folded)
     if (data) {
-      for (const key of ['requiredhouses', 'owner']) {
-        const rawValue = data.get(key) ?? ''
-        const sidesFound = new Set<NavigationSide>()
-        for (const token of splitValue(rawValue)) {
-          const side = countrySides.get(token.toLowerCase())
-          if (side) sidesFound.add(side)
-        }
-        if (sidesFound.size === 1) {
-          const side = [...sidesFound][0]
-          resolving.delete(folded)
-          sideMemo.set(folded, side)
-          return side
-        }
-        if (sidesFound.size > 1) {
-          resolving.delete(folded)
-          sideMemo.set(folded, 'neutral')
-          return 'neutral'
-        }
+      const directSides = sidesOfCountries(effectiveCountries(data))
+      if (directSides.size === 1) {
+        const side = [...directSides][0]
+        resolving.delete(folded)
+        sideMemo.set(folded, side)
+        return side
       }
 
       const prerequisiteValues: string[] = []
@@ -167,9 +181,14 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
       }
       if (inherited.size === 1) {
         const side = [...inherited][0]
-        resolving.delete(folded)
-        sideMemo.set(folded, side)
-        return side
+        // If direct access spans multiple sides, a faction-specific prerequisite is
+        // the useful discriminator.  If direct access was empty, inheritance also
+        // supplies the faction as in the legacy Qt/Web trees.
+        if (directSides.size === 0 || directSides.has(side)) {
+          resolving.delete(folded)
+          sideMemo.set(folded, side)
+          return side
+        }
       }
     }
 
@@ -194,21 +213,13 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
   const exclusiveCountryOf = (section: string): string | null => {
     const data = ini.get(section.trim().toLowerCase())
     if (!data) return null
-    for (const key of ['requiredhouses', 'owner']) {
-      const countries = splitValue(data.get(key) ?? '')
-        .map(knownCountry)
-        .filter((value): value is string => Boolean(value))
-      const unique = [...new Map(countries.map(value => [value.toLowerCase(), value])).values()]
-      if (unique.length === 1) {
-        const registered = countryCase.get(unique[0].toLowerCase())
-        if (!registered) return null
-        const side = countrySides.get(registered.toLowerCase())
-        if (!side || (countriesPerSide.get(side) ?? 0) <= 1) return null
-        return registered
-      }
-      if (unique.length > 1) return null
-    }
-    return null
+    const countries = effectiveCountries(data)
+    if (countries.length !== 1) return null
+    const registered = countryCase.get(countries[0].toLowerCase())
+    if (!registered) return null
+    const side = countrySides.get(registered.toLowerCase())
+    if (!side || (countriesPerSide.get(side) ?? 0) <= 1) return null
+    return registered
   }
 
   return { sideOf, exclusiveCountryOf, countryIds }
