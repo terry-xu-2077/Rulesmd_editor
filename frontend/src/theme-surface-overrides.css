@@ -26,12 +26,17 @@
 .editorControls,
 .parameterTableHeader,
 .inspectorHeading,
-.fieldGroupHeader,
 .unitGlobalBlock,
 .unitTreeLevel.legacyType,
 .unitTreeLevel.sideLevel,
 .referenceChainDock {
   background: var(--theme-surface-1) !important;
+}
+
+/* Parameter fold bars need a clearer layer boundary in light mode without widening the
+ * whole surface brightness ladder. The semantic token stays neutral in dark mode. */
+.fieldGroupHeader {
+  background: var(--theme-fold-surface) !important;
 }
 
 .searchBox,
