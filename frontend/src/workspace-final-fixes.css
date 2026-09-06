@@ -27,7 +27,7 @@
 .app .toolbar .divider{flex:0 0 1px!important}
 .app .titleViewSwitch{margin-left:auto!important;flex:0 0 auto!important;justify-self:auto!important}
 
-/* Editor top row uses one 8px rhythm from object identity through navigation/search/filter/action. */
+/* Editor top row uses one 8px rhythm and one 32px control height on the same center line. */
 .app .editor{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:54px minmax(0,1fr)!important}
 .app .entityHeaderHost{
   position:absolute!important;
@@ -100,43 +100,52 @@
 .app .entityNavigation button span{display:block!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:10.5px!important}
 .app .entityNavigation button svg{flex:0 0 auto}
 
+/*
+ * Filter is the primary control, then the compact icon-only search, then Add Parameter.
+ * Flex replaces the previous fixed grid columns so the action can never be pushed into
+ * the inspector simply because a preceding control reports a larger intrinsic width.
+ */
 .app .editorControls{
   grid-column:1!important;
   grid-row:1!important;
   width:100%!important;
   height:54px!important;
   min-height:54px!important;
-  padding:0 12px 0 496px!important;
-  display:grid!important;
-  grid-template-columns:124px 170px auto minmax(0,1fr)!important;
+  padding:0 12px 0 486px!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
   align-items:center!important;
-  align-content:center!important;
+  align-content:normal!important;
+  justify-content:flex-start!important;
   gap:8px!important;
   overflow:visible!important;
 }
-.app .editorControls .editorSearch{
-  grid-column:1!important;
-  grid-row:1!important;
-  width:124px!important;
-  min-width:124px!important;
-  max-width:124px!important;
-  height:32px!important;
-  min-height:32px!important;
-  margin:0!important;
-  align-self:center!important;
-  justify-self:start!important;
-}
-.app .editorControls .editorSearch input::placeholder{color:transparent!important}
 .app .editorFilterSelect{
-  grid-column:2!important;
-  grid-row:1!important;
+  order:1!important;
   width:170px!important;
+  min-width:170px!important;
+  max-width:170px!important;
   height:32px!important;
+  flex:0 0 170px!important;
   display:flex!important;
   align-items:center!important;
   align-self:center!important;
-  --tc-control-w:170px;
+  margin:0!important;
 }
+.app .editorControls .editorSearch{
+  order:2!important;
+  width:96px!important;
+  min-width:72px!important;
+  max-width:96px!important;
+  height:32px!important;
+  min-height:32px!important;
+  flex:0 1 96px!important;
+  margin:0!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  align-self:center!important;
+}
+.app .editorControls .editorSearch input::placeholder{color:transparent!important}
 
 .app .editor>.fieldsPane,.app .editor>.rawEditorPane{grid-column:1!important;grid-row:2!important;min-width:0!important}
 
@@ -147,9 +156,9 @@
   .app .entityHeaderHost{width:214px!important}
   .app .entityNavigation{left:222px!important;width:208px!important}
   .app .entityNavigation button{width:100px!important;min-width:100px!important;padding:0 6px!important}
-  .app .editorControls{padding-left:448px!important;grid-template-columns:108px 145px auto minmax(0,1fr)!important}
-  .app .editorControls .editorSearch{width:108px!important;min-width:108px!important;max-width:108px!important}
-  .app .editorFilterSelect{width:145px!important;--tc-control-w:145px}
+  .app .editorControls{padding-left:438px!important}
+  .app .editorFilterSelect{width:145px!important;min-width:145px!important;max-width:145px!important;flex-basis:145px!important}
+  .app .editorControls .editorSearch{width:84px!important;min-width:60px!important;max-width:84px!important;flex-basis:84px!important}
 }
 
 @media(max-width:1040px){
