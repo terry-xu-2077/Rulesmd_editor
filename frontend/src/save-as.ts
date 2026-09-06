@@ -7,6 +7,7 @@ type Snapshot = { document: { path: string | null; dirty: boolean } }
 
 let binding: SaveBinding | null = null
 let cachedDocumentPath: string | null = null
+let installed = false
 
 async function backendCall<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>('backend_call', { method, params })
@@ -117,9 +118,6 @@ async function handleSaveClick(event: MouseEvent) {
   event.preventDefault()
   event.stopImmediatePropagation()
 
-  // The document may have finished opening after our cached path was refreshed.
-  // Re-check synchronously through the backend before deciding that it is a new/MIX
-  // document that needs a mode choice.
   try {
     const snapshot = await backendCall<Snapshot>('snapshot')
     cachedDocumentPath = snapshot.document.path
@@ -151,35 +149,41 @@ function saveAsButton() {
 }
 
 function install() {
+  if (installed) return true
   const toolbar = document.querySelector('.toolbar')
-  if (!toolbar) return
+  if (!toolbar) return false
   const buttons = [...toolbar.querySelectorAll<HTMLButtonElement>('.iconButton')]
   const save = buttons.find(button => button.title === '保存')
-  if (!save) return
+  if (!save) return false
 
-  if (!save.dataset.saveModeHooked) {
-    save.dataset.saveModeHooked = '1'
-    save.addEventListener('click', event => { void handleSaveClick(event) }, true)
-  }
-
-  if (!toolbar.querySelector('.saveAsInjected')) {
-    save.insertAdjacentElement('afterend', saveAsButton())
-  }
-
-  for (const button of buttons) {
-    if (button.title !== '新建' && button.title !== '打开') continue
-    if (button.dataset.saveModeResetHooked) continue
-    button.dataset.saveModeResetHooked = '1'
-    button.addEventListener('click', () => {
-      binding = null
-      cachedDocumentPath = null
-      window.setTimeout(() => { void refreshDocumentPath() }, 350)
-      window.setTimeout(() => { void refreshDocumentPath() }, 1000)
-    }, true)
-  }
+  save.addEventListener('click', event => { void handleSaveClick(event) }, true)
+  if (!toolbar.querySelector('.saveAsInjected')) save.insertAdjacentElement('afterend', saveAsButton())
+  installed = true
+  return true
 }
 
-const observer = new MutationObserver(() => install())
-observer.observe(document.documentElement, { childList: true, subtree: true })
-install()
+function resetBindingForDocumentChange() {
+  binding = null
+  cachedDocumentPath = null
+  queueMicrotask(() => { void refreshDocumentPath() })
+}
+
+// Event-driven hooks only: no MutationObserver and no continuous DOM polling.
+document.addEventListener('click', event => {
+  const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>('.toolbar .iconButton')
+  if (!button) return
+  if (button.title === '新建' || button.title === '打开') resetBindingForDocumentChange()
+}, true)
+
+function start() {
+  if (install()) return
+  // React commits the toolbar immediately after root render; one next-frame retry is enough.
+  requestAnimationFrame(() => { install() })
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', start, { once: true })
+} else {
+  start()
+}
 void refreshDocumentPath()
