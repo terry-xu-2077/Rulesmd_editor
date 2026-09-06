@@ -44,9 +44,10 @@
   --theme-accent-soft: color-mix(in srgb, var(--theme-accent-shift) 18%, transparent 82%);
   --theme-effect-soft: color-mix(in srgb, var(--theme-effect-shift) 16%, transparent 84%);
 
-  /* Semantic roles let light mode tune hierarchy without introducing extra source colors. */
+  /* Semantic roles let each mode express hierarchy without introducing extra source colors. */
   --theme-control-fill: var(--theme-surface-2);
   --theme-fold-surface: var(--theme-surface-1);
+  --theme-selection-surface: var(--theme-surface-2);
   --theme-default-text: color-mix(in oklab, var(--theme-text) 72%, var(--theme-base-cool) 28%);
 
   /* Business semantic tones are derived from the public channels, not fixed swatches. */
@@ -113,12 +114,19 @@
   --theme-text: #343a40;
   --theme-text-bright: #168f9f;
 
+  /* Custom light bases need chromatic separation, not just tiny white/black steps. */
+  --theme-base-cool: color-mix(in oklab, var(--theme-base) 82%, var(--theme-effect) 18%);
+  --theme-base-accent: color-mix(in oklab, var(--theme-base) 82%, var(--theme-accent) 18%);
+  --theme-surface-hover: color-mix(in oklab, var(--theme-base-accent) 82%, var(--theme-accent-shift) 18%);
+  --theme-surface-focus: color-mix(in oklab, var(--theme-base-accent) 72%, var(--theme-accent-shift) 28%);
+
   /* Legacy/business fields may still consume this semantic role. Shared Terry UI
    * controls derive their own light fill in the library itself. */
   --theme-control-fill: color-mix(in oklab, var(--theme-base) 24%, white 76%);
 
-  /* Fold bars use a deeper chromatic blue, while ordinary rows keep the restrained ladder. */
-  --theme-fold-surface: color-mix(in oklab, var(--theme-base) 88%, var(--theme-effect) 12%);
+  /* Fold bars are deeper and cooler; selected items shift clearly toward Accent. */
+  --theme-fold-surface: color-mix(in oklab, var(--theme-base-cool) 90%, var(--theme-text) 10%);
+  --theme-selection-surface: color-mix(in oklab, var(--theme-base-accent) 62%, var(--theme-accent) 38%);
 
   /* Default/secondary copy moves much closer to the primary Chinese parameter labels. */
   --theme-default-text: color-mix(in oklab, var(--theme-text) 90%, var(--theme-base) 10%);
