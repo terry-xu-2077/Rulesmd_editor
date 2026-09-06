@@ -17,20 +17,29 @@ const DEFAULTS: Record<ThemeMode, ThemePalette> = {
   },
   light: {
     base: '#dbe8f6',
-    accent: '#41e1c9',
+    accent: '#2acfb7',
     effect: '#16a6c7',
     textMain: '#343a40',
     textBright: '#168f9f',
   },
 }
 
-const LEGACY_LIGHT_DEFAULT: ThemePalette = {
-  base: '#dbe8f6',
-  accent: '#159f8b',
-  effect: '#16a6c7',
-  textMain: '#343a40',
-  textBright: '#168f9f',
-}
+const LEGACY_LIGHT_DEFAULTS: ThemePalette[] = [
+  {
+    base: '#dbe8f6',
+    accent: '#159f8b',
+    effect: '#16a6c7',
+    textMain: '#343a40',
+    textBright: '#168f9f',
+  },
+  {
+    base: '#dbe8f6',
+    accent: '#41e1c9',
+    effect: '#16a6c7',
+    textMain: '#343a40',
+    textBright: '#168f9f',
+  },
+]
 
 const FIELD_META: Array<{ key: keyof ThemePalette; label: string }> = [
   { key: 'base', label: '底色 Base' },
@@ -66,10 +75,10 @@ function loadPalette(mode: ThemeMode): ThemePalette {
       textBright: isHexColor(parsed.textBright) ? parsed.textBright : fallback.textBright,
     }
 
-    // Existing installs may have persisted the former untouched light defaults. Treat
-    // that exact palette as a default, not as a user customization, so the new Accent
-    // takes effect immediately without forcing the user to press Reset.
-    if (mode === 'light' && samePalette(palette, LEGACY_LIGHT_DEFAULT)) {
+    // Existing installs may have persisted one of the former untouched light defaults.
+    // Treat those exact palettes as defaults, not user customizations, so the requested
+    // Accent update takes effect without forcing a manual Reset.
+    if (mode === 'light' && LEGACY_LIGHT_DEFAULTS.some(legacy => samePalette(palette, legacy))) {
       const migrated = { ...DEFAULTS.light }
       localStorage.setItem(storageKey(mode), JSON.stringify(migrated))
       return migrated
