@@ -53,7 +53,9 @@
   background: var(--theme-surface-2) !important;
 }
 
-/* Selected objects need a semantic chroma shift instead of another near-base surface. */
+/* Every persistent selection uses a chroma-shifted semantic surface rather than another
+ * near-base panel, so custom light Base colors cannot wash selection away. */
+.parameterTableRow.focused,
 .unitGlobalRule.selected,
 .unitTreeLeaf.selected {
   background: var(--theme-selection-surface) !important;
