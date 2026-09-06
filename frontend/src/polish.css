@@ -6,70 +6,22 @@
 .titlebar{display:grid!important;grid-template-columns:minmax(240px,1fr) auto minmax(240px,1fr)!important;align-items:center!important;gap:16px!important}
 .brand{justify-self:start;min-width:0!important}
 .toolbar{justify-self:center;flex:none!important}
-.titleViewSwitch{justify-self:end;display:flex;align-items:center;border:1px solid var(--line2);border-radius:14px;padding:2px;background:color-mix(in srgb,var(--panel) 88%,transparent)}
-.titleViewSwitch button{height:24px;min-width:46px;padding:0 10px;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px}
-.titleViewSwitch button.active{background:color-mix(in srgb,var(--accent) 26%,var(--panel));color:var(--text)}
+.titleViewSwitch{justify-self:end;display:flex;align-items:center;border:1px solid var(--theme-border);border-radius:14px;padding:2px;background:color-mix(in srgb,var(--theme-surface-1) 88%,transparent)}
+.titleViewSwitch button{height:24px;min-width:46px;padding:0 10px;border:0;border-radius:11px;background:transparent;color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base));cursor:pointer;font-size:11px}
+.titleViewSwitch button.active{background:color-mix(in srgb,var(--theme-effect) 26%,var(--theme-surface-1));color:var(--theme-text)}
 .titleViewSwitch button:disabled{opacity:.35;cursor:default}
 .titleMeta{display:none!important}
-
 .iconButton:focus:not(:focus-visible){outline:none!important;box-shadow:none!important}
 .iconButtonLabel{display:flex!important;align-items:center;gap:5px}
-.saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#70eeff;box-shadow:0 0 7px rgba(112,238,255,.72);flex:0 0 auto}
-
-/* Business slot only. Shared-control integration for this slot lives in ui-library-integration.css. */
+.saveDirtyDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--theme-effect);box-shadow:0 0 7px color-mix(in srgb,var(--theme-effect) 72%,transparent);flex:0 0 auto}
 .rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
 .referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
-
-/* Stronger table hierarchy: section headers are distinctly deeper than data rows. */
-.parameterTableGroup>.fieldGroupHeader,
-.fieldGroupHeader{
-  background:linear-gradient(180deg,#0a1522 0%,#07111c 58%,#050d16 100%)!important;
-  border-top:1px solid rgba(103,150,196,.12)!important;
-  border-bottom:1px solid rgba(80,130,180,.28)!important;
-  color:#b7c8d9!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.018),0 2px 5px rgba(0,0,0,.22)!important;
-}
-.parameterTableRow.focused{
-  background:linear-gradient(90deg,rgba(34,111,177,.29),rgba(29,88,140,.16) 58%,rgba(18,190,162,.07))!important;
-  box-shadow:inset 4px 0 0 #46c9ee,0 4px 13px rgba(0,0,0,.2)!important;
-  position:relative;
-  z-index:1;
-}
-.parameterTableRow.focused .parameterLabelCell strong,.parameterTableRow.focused .parameterKeyCell code{color:#f3fbff!important}
-
-/* Inspector hierarchy. */
+.parameterTableGroup>.fieldGroupHeader,.fieldGroupHeader{background:linear-gradient(180deg,var(--theme-surface-2) 0%,var(--theme-surface-1) 58%,var(--theme-surface-soft) 100%)!important;border-top:1px solid var(--theme-line)!important;border-bottom:1px solid var(--theme-border)!important;color:color-mix(in srgb,var(--theme-text) 74%,var(--theme-base))!important;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--theme-text) 2%,transparent),0 2px 5px var(--theme-shadow)!important}
+.parameterTableRow.focused{background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 24%,var(--theme-surface-1)),color-mix(in srgb,var(--theme-effect) 12%,var(--theme-surface-1)) 58%,var(--theme-accent-soft))!important;box-shadow:inset 4px 0 0 var(--theme-effect),0 4px 13px var(--theme-shadow)!important;position:relative;z-index:1}
+.parameterTableRow.focused .parameterLabelCell strong,.parameterTableRow.focused .parameterKeyCell code{color:var(--theme-text)!important}
 .inspectorHeading{height:40px!important}
-.helpDescriptionCard{border-radius:10px!important;border:1px solid color-mix(in srgb,var(--accent) 36%,var(--line2))!important;background:linear-gradient(145deg,color-mix(in srgb,var(--panel2) 91%,var(--accent) 9%),var(--panel))!important;box-shadow:0 7px 18px rgba(0,0,0,.12)!important}
-.helpDescriptionCard h3{color:var(--text)!important}
-.helpDescriptionCard p{color:color-mix(in srgb,var(--text) 86%,var(--muted) 14%)!important}
-.helpMeta{border:0!important;background:transparent!important;box-shadow:none!important;opacity:.68}
-.helpMeta span,.helpMeta b{border:0!important;background:transparent!important}
-.inspectorScroll{scrollbar-width:none!important}
-.inspectorScroll::-webkit-scrollbar{display:none!important}
-
-.closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--tc-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions>button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:var(--tc-text-muted)!important}
-
-/* Light mode styles business surfaces only. Shared controls use Terry_React_UI_Library light mode. */
-.app[data-mode="light"]{--bg:#e8f0f7;--panel:#f6f9fc;--panel2:#dce7f1;--line:rgba(53,82,110,.17);--line2:rgba(39,75,105,.32);--text:#172a3a;--muted:#586e82;--muted2:#708496;--control:#dbe4ec;--control2:#cdd9e4;background:#e8f0f7!important;color:var(--text)!important}
-.app[data-mode="light"] .titlebar,.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector,.app[data-mode="light"] .editor,.app[data-mode="light"] .editorControls,.app[data-mode="light"] .fieldsPane,.app[data-mode="light"] .parameterTableRow{color:var(--text)!important}
-.app[data-mode="light"] .titlebar{background:#f5f8fb!important}
-.app[data-mode="light"] .sidebar,.app[data-mode="light"] .inspector{background:#edf3f8!important}
-.app[data-mode="light"] .editor{background:#eef4f8!important}
-.app[data-mode="light"] .editorControls{background:#e9f0f6!important}
-.app[data-mode="light"] .searchBox{background:#f8fafc!important;color:#496174!important;border-color:#b8c8d6!important}
-.app[data-mode="light"] .searchBox input,.app[data-mode="light"] .parameterKeyCell code,.app[data-mode="light"] .parameterLabelCell strong,.app[data-mode="light"] .unitText b,.app[data-mode="light"] .panelTitle,.app[data-mode="light"] .inspectorHeading,.app[data-mode="light"] .helpHeader strong{color:#172a3a!important}
-.app[data-mode="light"] .unitText small,.app[data-mode="light"] .treeGroupTitle,.app[data-mode="light"] .helpHeader small,.app[data-mode="light"] .helpMeta,.app[data-mode="light"] .docSource{color:#61788c!important}
-.app[data-mode="light"] .parameterTableHeader{background:#d7e3ed!important;color:#36536a!important}
-.app[data-mode="light"] .fieldGroupHeader{background:linear-gradient(180deg,#bdccd8,#acbecd)!important;color:#213f55!important;border-top-color:#dbe6ed!important;border-bottom-color:#8fa7ba!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 2px 5px rgba(34,76,101,.13)!important}
-.app[data-mode="light"] .parameterTableRow{background:#eef4f8!important;border-bottom-color:#cad7e1!important}
-.app[data-mode="light"] .parameterTableRow:nth-child(even){background:#f4f8fb!important}
-.app[data-mode="light"] .parameterTableRow.focused{background:linear-gradient(90deg,#d4edf2,#e5f3f5 58%,rgba(237,246,247,1))!important;box-shadow:inset 4px 0 0 #159f8b,0 4px 12px rgba(34,76,101,.14)!important}
-.app[data-mode="light"] .parameterTableRow.focused .parameterLabelCell strong,.app[data-mode="light"] .parameterTableRow.focused .parameterKeyCell code{color:#12364a!important}
-.app[data-mode="light"] .segmented button{color:#36536a!important;border-color:#b9cbd8!important;background:#f5f8fb!important}
-.app[data-mode="light"] .segmented button.active{color:#0f635b!important;background:#d9f0eb!important;border-color:#58b7a7!important}
-.app[data-mode="light"] .helpDescriptionCard{background:linear-gradient(145deg,#f8fbfd,#e7f2f4)!important;border-color:#75b9c0!important;box-shadow:0 7px 18px rgba(34,76,101,.09)!important}
-.app[data-mode="light"] .helpDescriptionCard h3,.app[data-mode="light"] .helpDescriptionCard p{color:#20394b!important}
-
-/* Settings styles are intentionally absent here. settings-panel.css is the sole owner. */
-
+.helpDescriptionCard{border-radius:10px!important;border:1px solid color-mix(in srgb,var(--theme-effect) 36%,var(--theme-border))!important;background:linear-gradient(145deg,color-mix(in srgb,var(--theme-surface-2) 91%,var(--theme-effect) 9%),var(--theme-surface-1))!important;box-shadow:0 7px 18px var(--theme-shadow)!important}
+.helpDescriptionCard h3{color:var(--theme-text)!important}.helpDescriptionCard p{color:color-mix(in srgb,var(--theme-text) 86%,var(--theme-base))!important}.helpMeta{border:0!important;background:transparent!important;box-shadow:none!important;opacity:.68}.helpMeta span,.helpMeta b{border:0!important;background:transparent!important}.inspectorScroll{scrollbar-width:none!important}.inspectorScroll::-webkit-scrollbar{display:none!important}
+.closePrompt{min-width:420px;padding:6px 4px 2px}.closePrompt p{margin:4px 0 18px;color:var(--theme-text);font-size:13px}.closePromptActions{display:flex;justify-content:flex-end;gap:8px}.closePromptActions>button{min-width:92px}.closePromptActions .quietButton,.closePromptActions .quietDanger{background:transparent!important;box-shadow:none!important;filter:none!important}.closePromptActions .quietDanger{color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base))!important}
+/* Light/dark modes do not own separate colors. They differ only through the five theme source channels. */
 @media(max-width:980px){.titlebar{grid-template-columns:auto 1fr auto!important}.brand span{display:none}.iconButtonLabel{display:none!important}}

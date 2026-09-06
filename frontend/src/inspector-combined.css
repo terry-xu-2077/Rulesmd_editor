@@ -1,79 +1,17 @@
 /* Right inspector keeps parameter help permanently visible. Raw Section text is a
    secondary collapsible reference below it, never a mutually exclusive tab. */
-.inspectorCombined{
-  display:grid;
-  grid-template-rows:38px minmax(0,1fr);
-  overflow:hidden;
-}
-.inspectorHeading{
-  height:38px;
-  padding:0 13px;
-  display:flex;
-  align-items:center;
-  gap:7px;
-  border-bottom:1px solid var(--line);
-  color:#c8d6e5;
-  background:rgba(13,24,38,.96);
-  font-size:11.5px;
-}
-.inspectorHeading svg{color:var(--tc-effect)}
-.inspectorScroll{
-  min-height:0;
-  overflow:auto;
-  scrollbar-gutter:stable;
-}
-.inspectorCombined .helpContent{
-  overflow:visible!important;
-  min-height:0!important;
-  max-height:none!important;
-}
-/* Curated Ares hard-code-unlock help is intentionally multi-line:
-   marker -> vanilla limitation -> Ares unlock -> optional caution. */
-.inspectorCombined .helpDescriptionCard p{
-  white-space:pre-line;
-}
-.rawInspector{
-  margin:2px 12px 16px;
-  border:1px solid rgba(120,155,205,.2);
-  border-radius:7px;
-  overflow:hidden;
-  background:#091421;
-}
-.rawInspector>summary{
-  min-height:34px;
-  padding:0 10px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  cursor:pointer;
-  list-style:none;
-  color:#9eb2c6;
-  background:#101e30;
-  border-bottom:1px solid transparent;
-  user-select:none;
-}
-.rawInspector[open]>summary{border-bottom-color:rgba(120,155,205,.17)}
+.inspectorCombined{display:grid;grid-template-rows:38px minmax(0,1fr);overflow:hidden}
+.inspectorHeading{height:38px;padding:0 13px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--theme-line);color:var(--theme-text);background:var(--theme-surface-1);font-size:11.5px}
+.inspectorHeading svg{color:var(--theme-effect)}
+.inspectorScroll{min-height:0;overflow:auto;scrollbar-gutter:stable}
+.inspectorCombined .helpContent{overflow:visible!important;min-height:0!important;max-height:none!important}
+.inspectorCombined .helpDescriptionCard p{white-space:pre-line}
+.rawInspector{margin:2px 12px 16px;border:1px solid var(--theme-border);border-radius:7px;overflow:hidden;background:var(--theme-surface-0)}
+.rawInspector>summary{min-height:34px;padding:0 10px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;color:color-mix(in srgb,var(--theme-text) 70%,var(--theme-base));background:var(--theme-surface-1);border-bottom:1px solid transparent;user-select:none}
+.rawInspector[open]>summary{border-bottom-color:var(--theme-line)}
 .rawInspector>summary::-webkit-details-marker{display:none}
 .rawInspector>summary::before{content:'›';font-size:17px;line-height:1;transition:transform .12s ease}
 .rawInspector[open]>summary::before{transform:rotate(90deg)}
 .rawInspector>summary span{font-size:11.5px;font-weight:700}
-.rawInspector>summary small{
-  min-width:0;
-  margin-left:auto;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  color:#71879c;
-  font:10px/1.2 "Cascadia Code",Consolas,monospace;
-}
-.rawInspector .rawInline{
-  margin:0!important;
-  padding:10px!important;
-  max-height:320px;
-  overflow:auto!important;
-  white-space:pre!important;
-  background:#08111c!important;
-  border:0!important;
-  font-size:10.5px!important;
-  line-height:1.55!important;
-}
+.rawInspector>summary small{min-width:0;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb,var(--theme-text) 48%,var(--theme-base));font:10px/1.2 "Cascadia Code",Consolas,monospace}
+.rawInspector .rawInline{margin:0!important;padding:10px!important;max-height:320px;overflow:auto!important;white-space:pre!important;background:var(--theme-surface-soft)!important;border:0!important;font-size:10.5px!important;line-height:1.55!important}

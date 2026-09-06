@@ -1,9 +1,8 @@
 /*
  * Settings layout owner.
  *
- * Important integration rule: this file may style the settings page's own semantic
- * children and the OUTER root of shared controls, but it must not reach into UI
- * Library internals with selectors such as `.settingRow span` / `button` / `input`.
+ * Color ownership rule: this file may consume semantic theme variables only. It must
+ * never define a control-specific palette or branch into light/dark color swatches.
  */
 
 .tc-dialog-body .settingsDialogBody.settingsGrid{
@@ -22,13 +21,13 @@
 .settingsDialogBody.settingsGrid .settingsSectionTitle{
   margin:0!important;
   padding:12px 8px 7px!important;
-  color:#7fe8d8!important;
+  color:var(--theme-text-bright)!important;
   font-size:11px!important;
   font-weight:800!important;
   letter-spacing:.08em!important;
   text-transform:uppercase;
   border:0!important;
-  border-bottom:1px solid rgba(112,238,255,.12)!important;
+  border-bottom:1px solid var(--theme-effect-soft)!important;
 }
 
 .settingsDialogBody.settingsGrid .settingRow{
@@ -40,18 +39,17 @@
   min-height:62px!important;
   margin:0 0 8px!important;
   padding:10px 14px!important;
-  border:1px solid rgba(112,148,188,.14)!important;
+  border:1px solid var(--theme-border)!important;
   border-radius:9px!important;
-  background:linear-gradient(180deg,rgba(24,38,58,.72),rgba(16,28,44,.58))!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  background:linear-gradient(180deg,var(--theme-surface-1),var(--theme-surface-soft))!important;
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--theme-text) 3%,transparent)!important;
 }
 
 .settingsDialogBody.settingsGrid .settingRow:hover{
-  border-color:rgba(76,155,214,.26)!important;
-  background:linear-gradient(180deg,rgba(27,44,67,.82),rgba(18,31,49,.68))!important;
+  border-color:color-mix(in srgb,var(--theme-accent) 42%,var(--theme-border))!important;
+  background:linear-gradient(180deg,var(--theme-surface-hover),var(--theme-surface-1))!important;
 }
 
-/* Only the first direct child is business copy. Never style arbitrary descendant spans. */
 .settingsDialogBody.settingsGrid .settingRow>div:first-child{
   min-width:0!important;
   display:flex!important;
@@ -60,18 +58,17 @@
 }
 .settingsDialogBody.settingsGrid .settingRow>div:first-child>strong{
   margin:0!important;
-  color:#e7eef7!important;
+  color:var(--theme-text)!important;
   font-size:13px!important;
   font-weight:650!important;
 }
 .settingsDialogBody.settingsGrid .settingRow>div:first-child>span{
   margin:0!important;
-  color:#8196aa!important;
+  color:color-mix(in srgb,var(--theme-text) 58%,var(--theme-base))!important;
   font-size:11px!important;
   line-height:1.5!important;
 }
 
-/* Shared controls own their internals and intrinsic geometry. Settings only places the outer host. */
 .settingsDialogBody.settingsGrid .settingRow>.tc-control-wrap{
   justify-self:end!important;
   align-self:center!important;
@@ -85,7 +82,6 @@
   max-width:160px!important;
 }
 
-/* Game path is one business control group: flexible text field + standard action button. */
 .settingsDialogBody.settingsGrid .settingPathControl{
   width:100%;
   min-width:0;
@@ -110,7 +106,6 @@
   flex:none;
 }
 
-/* Appearance row owns a compact expandable custom palette editor. */
 .settingsDialogBody.settingsGrid .settingAppearanceRow{
   grid-template-columns:minmax(0,1fr) auto auto!important;
   column-gap:10px!important;
@@ -120,60 +115,49 @@
   justify-self:end;
   height:30px;
   padding:0 10px;
-  border:1px solid rgba(90,148,194,.28);
+  border:1px solid var(--theme-border);
   border-radius:7px;
-  background:rgba(18,31,48,.72);
-  color:#9fc3dc;
+  background:var(--theme-surface-soft);
+  color:color-mix(in srgb,var(--theme-text) 66%,var(--theme-base));
   cursor:pointer;
   font-size:11px;
   white-space:nowrap;
 }
-.themeCustomizerToggle:hover{border-color:rgba(42,213,184,.46);color:#d9fff8;background:rgba(23,48,65,.82)}
+.themeCustomizerToggle:hover{
+  border-color:color-mix(in srgb,var(--theme-accent) 56%,var(--theme-border));
+  color:var(--theme-text);
+  background:var(--theme-surface-hover);
+}
 .themeCustomizerPanel{
   grid-column:1/-1;
   width:100%;
   padding:10px;
-  border-top:1px solid rgba(112,148,188,.14);
+  border-top:1px solid var(--theme-line);
 }
 .themeCustomizerPanel[hidden]{display:none!important}
 .themePaletteToolbar{display:flex;align-items:center;gap:6px;margin-bottom:10px}
 .themePaletteModeButton,.themePaletteReset{
   height:27px;
   padding:0 9px;
-  border:1px solid rgba(94,132,169,.28);
+  border:1px solid var(--theme-border);
   border-radius:6px;
-  background:rgba(10,21,34,.7);
-  color:#91a8bb;
+  background:var(--theme-surface-soft);
+  color:color-mix(in srgb,var(--theme-text) 62%,var(--theme-base));
   cursor:pointer;
   font-size:10.5px;
 }
-.themePaletteModeButton.active{border-color:rgba(42,213,184,.5);background:rgba(42,213,184,.13);color:#9bf0df}
-.themePaletteModeHint{margin-left:auto;color:#6f879b;font-size:10px}
+.themePaletteModeButton.active{
+  border-color:color-mix(in srgb,var(--theme-accent) 60%,var(--theme-border));
+  background:var(--theme-accent-soft);
+  color:var(--theme-text-bright);
+}
+.themePaletteModeHint{margin-left:auto;color:color-mix(in srgb,var(--theme-text) 48%,var(--theme-base));font-size:10px}
 .themePaletteGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.themePaletteField{min-width:0;display:flex;flex-direction:column;gap:6px;color:#8399ad;font-size:9.5px}
-.themePaletteField input[type="color"]{width:100%;height:30px;padding:2px;border:1px solid rgba(97,132,164,.28);border-radius:6px;background:rgba(8,17,29,.7);cursor:pointer}
+.themePaletteField{min-width:0;display:flex;flex-direction:column;gap:6px;color:color-mix(in srgb,var(--theme-text) 55%,var(--theme-base));font-size:9.5px}
+.themePaletteField input[type="color"]{width:100%;height:30px;padding:2px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-surface-soft);cursor:pointer}
 .themePaletteFooter{display:flex;justify-content:flex-end;margin-top:10px}
-.themePaletteReset{color:#a8bbc9}
-.themePaletteReset:hover{color:#fff;border-color:rgba(112,238,255,.38)}
-
-.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow{
-  background:#f4f8fb!important;
-  border-color:#c9d7e2!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important;
-}
-.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow:hover{
-  background:#eef5f9!important;
-  border-color:#9fc1d1!important;
-}
-.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>strong{color:#173044!important}
-.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>span{color:#61788c!important}
-.app[data-mode="light"] .settingsDialogBody.settingsGrid .settingsSectionTitle{color:#168c7d!important}
-.app[data-mode="light"] .themeCustomizerToggle,.app[data-mode="light"] .themePaletteModeButton,.app[data-mode="light"] .themePaletteReset{background:#f5f9fc;color:#4d6679;border-color:#b9ccd9}
-.app[data-mode="light"] .themeCustomizerToggle:hover{background:#e9f3f6;color:#155f59;border-color:#72b8ae}
-.app[data-mode="light"] .themePaletteModeButton.active{background:#dcefeb;color:#0e675d;border-color:#70b9ad}
-.app[data-mode="light"] .themePaletteField{color:#61788c}
-.app[data-mode="light"] .themePaletteField input[type="color"]{background:#f8fbfd;border-color:#c2d2de}
-.app[data-mode="light"] .themePaletteModeHint{color:#71869a}
+.themePaletteReset{color:color-mix(in srgb,var(--theme-text) 70%,var(--theme-base))}
+.themePaletteReset:hover{color:var(--theme-text);border-color:color-mix(in srgb,var(--theme-effect) 48%,var(--theme-border))}
 
 @media(max-width:760px){
   .tc-dialog-body .settingsDialogBody.settingsGrid{
