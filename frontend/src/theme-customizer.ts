@@ -205,10 +205,55 @@ document.addEventListener('change', event => {
   if (target?.closest('.settingsDialogBody')) refreshAfterUiEvent()
 }, true)
 
-queueMicrotask(() => {
+/*
+ * main.tsx and this helper are separate module entry points. React 18 can commit the
+ * application after this module has already executed, so a one-shot queueMicrotask may
+ * run before `.app.tc-theme` exists. That left the CSS fallback dark while the Settings
+ * Select correctly showed the stored light preference. Bind explicitly to the React
+ * mount and then observe data-mode, making initial startup and later mode changes use the
+ * same palette path.
+ */
+let observedApp: HTMLElement | null = null
+let modeObserver: MutationObserver | null = null
+
+function bindThemeToMountedApp() {
+  const app = document.querySelector<HTMLElement>('.app.tc-theme')
+  if (!app) return false
+
+  if (observedApp !== app) {
+    modeObserver?.disconnect()
+    observedApp = app
+    modeObserver = new MutationObserver(mutations => {
+      if (mutations.some(mutation => mutation.type === 'attributes' && mutation.attributeName === 'data-mode')) {
+        refreshAfterUiEvent()
+      }
+    })
+    modeObserver.observe(app, { attributes: true, attributeFilter: ['data-mode'] })
+  }
+
   applyPalette()
   attachCustomizer()
-})
+  return true
+}
+
+function startThemeSync() {
+  if (bindThemeToMountedApp()) return
+
+  const root = document.getElementById('root')
+  if (!root) return
+  const mountObserver = new MutationObserver(() => {
+    if (bindThemeToMountedApp()) mountObserver.disconnect()
+  })
+  mountObserver.observe(root, { childList: true })
+
+  // Also cover a commit that lands between the first query and observer registration.
+  requestAnimationFrame(() => {
+    if (bindThemeToMountedApp()) mountObserver.disconnect()
+  })
+}
+
+startThemeSync()
+
 window.addEventListener('storage', () => {
   palettes.dark = loadPalette('dark')
   palettes.light = loadPalette('light')
