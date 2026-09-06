@@ -27,6 +27,11 @@
 .app .toolbar .divider{flex:0 0 1px!important}
 .app .titleViewSwitch{margin-left:auto!important;flex:0 0 auto!important;justify-self:auto!important}
 
+/* The standalone “对象” heading is redundant with the tree itself. Remove the row and
+ * let search become the first sidebar element without leaving an empty grid track. */
+.app .sidebar>.panelTitle{display:none!important}
+.app .sidebar{grid-template-rows:auto minmax(0,1fr) 46px!important}
+
 /* Editor top row uses one 8px rhythm and one 32px control height on the same center line. */
 .app .editor{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:54px minmax(0,1fr)!important}
 .app .entityHeaderHost{
