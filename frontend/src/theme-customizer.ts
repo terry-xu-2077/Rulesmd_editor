@@ -71,10 +71,6 @@ function effectiveMode(app: HTMLElement): ThemeMode {
   return app.dataset.mode === 'light' ? 'light' : 'dark'
 }
 
-function mix(base: string, other: string, basePercent: number) {
-  return `color-mix(in srgb, ${base} ${basePercent}%, ${other} ${100 - basePercent}%)`
-}
-
 function applyPalette() {
   const app = document.querySelector<HTMLElement>('.app.tc-theme')
   if (!app) return
@@ -82,28 +78,15 @@ function applyPalette() {
   const palette = palettes[mode]
   const targets = [document.documentElement.style, app.style]
 
+  // Theme customizer owns only the five semantic source colors. Every component and
+  // compatibility alias derives its shades from these inputs in theme-contract.css.
   for (const style of targets) {
-    style.setProperty('--tc-base', palette.base)
-    style.setProperty('--tc-accent', palette.accent)
-    style.setProperty('--tc-effect', palette.effect)
-    style.setProperty('--tc-text-main', palette.textMain)
-    style.setProperty('--tc-text-bright', palette.textBright)
-
-    // Terry UI Library surfaces must derive from the same Base value too. Otherwise
-    // EntityHeader/select/dialog surfaces keep the library's default navy palette.
-    style.setProperty('--tc-panel', mix(palette.base, palette.textMain, 90))
-    style.setProperty('--tc-panel-2', mix(palette.base, palette.textMain, 84))
-    style.setProperty('--tc-panel-focus', mix(palette.base, palette.accent, 82))
-    style.setProperty('--tc-row-hover', mix(palette.base, palette.textMain, 80))
-    style.setProperty('--tc-border-color', mix(palette.base, palette.textMain, 68))
-    style.setProperty('--tc-line', mix(palette.base, palette.textMain, 76))
-    style.setProperty('--tc-shadow', 'rgba(0,0,0,.24)')
+    style.setProperty('--theme-base', palette.base)
+    style.setProperty('--theme-accent', palette.accent)
+    style.setProperty('--theme-effect', palette.effect)
+    style.setProperty('--theme-text', palette.textMain)
+    style.setProperty('--theme-text-bright', palette.textBright)
   }
-
-  app.style.setProperty('--bg', palette.base)
-  app.style.setProperty('--text', palette.textMain)
-  app.style.setProperty('--accent', palette.effect)
-  app.style.setProperty('--teal', palette.accent)
 }
 
 let editingMode: ThemeMode = 'dark'
