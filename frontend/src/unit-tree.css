@@ -31,8 +31,9 @@
 .headerUnitComposite{position:absolute;left:11px;top:50%;width:50px;height:46px;transform:translateY(-50%);display:grid;place-items:center;z-index:15;pointer-events:none}
 .headerUnitComposite>.unitTreeIconWrap{transform:scale(1.56);transform-origin:center center}
 
-/* Object-level relationship summary lives under parameter help. The old bottom reference-chain UI is intentionally gone. */
-.relationshipPanel{margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--theme-line)}
+/* Object-level relationship summary is always the final block under parameter help. */
+.inspectorCombined .helpContent{display:flex!important;flex-direction:column!important}
+.relationshipPanel{order:99;flex:0 0 auto;margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--theme-line)}
 .relationshipPanelToggle{width:100%;height:34px;padding:0 7px;border:1px solid transparent;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-base));display:flex;align-items:center;gap:6px;text-align:left;cursor:pointer}
 .relationshipPanelToggle:hover{background:var(--theme-surface-hover);border-color:var(--theme-border);color:var(--theme-text)}
 .relationshipPanelToggle strong{font-size:11.5px;font-weight:700}.relationshipPanelToggle em{margin-left:auto;min-width:22px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--theme-surface-strong);color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base));font-size:9.5px;font-style:normal}
