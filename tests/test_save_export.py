@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from rulesmd_editor.export_bridge import ExportBridge
 from rulesmd_editor.workspace import RulesWorkspace
 
@@ -48,17 +46,48 @@ def test_fragment_contains_only_changed_and_added_rules(tmp_path: Path):
     assert "[MYE1]\nUIName=Name:MYE1\nCost=50\n" in text
 
 
-def test_fragment_refuses_deleted_baseline_key(tmp_path: Path):
+def test_fragment_ignores_deleted_baseline_key_and_keeps_other_changes(tmp_path: Path):
     bridge, _ = _bridge(tmp_path)
     doc = bridge.workspace._doc()
     strength_line = next(
         line for line in doc.section_lines("E1", keys_only=True)
         if (line.key or "").casefold() == "strength"
     )
+    cost_line = next(
+        line for line in doc.section_lines("E1", keys_only=True)
+        if (line.key or "").casefold() == "cost"
+    )
     bridge.rpc_remove_line(strength_line.line_id)
+    bridge.rpc_set_value(cost_line.line_id, "1")
 
-    with pytest.raises(ValueError, match="无法安全表达删除参数"):
-        bridge.rpc_save_fragment(str(tmp_path / "GlobalCode.ini"))
+    target = tmp_path / "GlobalCode.ini"
+    bridge.rpc_save_fragment(str(target))
+    text = target.read_text(encoding="utf-8")
+
+    assert "Cost=1" in text
+    assert "Strength" not in text
+
+
+def test_fragment_ignores_disabled_baseline_key_and_keeps_other_changes(tmp_path: Path):
+    bridge, _ = _bridge(tmp_path)
+    doc = bridge.workspace._doc()
+    strength_line = next(
+        line for line in doc.section_lines("E1", keys_only=True)
+        if (line.key or "").casefold() == "strength"
+    )
+    cost_line = next(
+        line for line in doc.section_lines("E1", keys_only=True)
+        if (line.key or "").casefold() == "cost"
+    )
+    bridge.rpc_set_line_disabled(strength_line.line_id, True)
+    bridge.rpc_set_value(cost_line.line_id, "1")
+
+    target = tmp_path / "GlobalCode.ini"
+    bridge.rpc_save_fragment(str(target))
+    text = target.read_text(encoding="utf-8")
+
+    assert "Cost=1" in text
+    assert "Strength" not in text
 
 
 def test_fragment_export_does_not_rebind_full_document_path(tmp_path: Path):
