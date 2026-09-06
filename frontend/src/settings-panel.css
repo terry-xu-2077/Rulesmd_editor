@@ -110,6 +110,52 @@
   flex:none;
 }
 
+/* Appearance row owns a compact expandable custom palette editor. */
+.settingsDialogBody.settingsGrid .settingAppearanceRow{
+  grid-template-columns:minmax(0,1fr) auto auto!important;
+  column-gap:10px!important;
+  row-gap:10px!important;
+}
+.themeCustomizerToggle{
+  justify-self:end;
+  height:30px;
+  padding:0 10px;
+  border:1px solid rgba(90,148,194,.28);
+  border-radius:7px;
+  background:rgba(18,31,48,.72);
+  color:#9fc3dc;
+  cursor:pointer;
+  font-size:11px;
+  white-space:nowrap;
+}
+.themeCustomizerToggle:hover{border-color:rgba(42,213,184,.46);color:#d9fff8;background:rgba(23,48,65,.82)}
+.themeCustomizerPanel{
+  grid-column:1/-1;
+  width:100%;
+  padding:10px;
+  border-top:1px solid rgba(112,148,188,.14);
+}
+.themeCustomizerPanel[hidden]{display:none!important}
+.themePaletteToolbar{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.themePaletteModeButton,.themePaletteReset{
+  height:27px;
+  padding:0 9px;
+  border:1px solid rgba(94,132,169,.28);
+  border-radius:6px;
+  background:rgba(10,21,34,.7);
+  color:#91a8bb;
+  cursor:pointer;
+  font-size:10.5px;
+}
+.themePaletteModeButton.active{border-color:rgba(42,213,184,.5);background:rgba(42,213,184,.13);color:#9bf0df}
+.themePaletteModeHint{margin-left:auto;color:#6f879b;font-size:10px}
+.themePaletteGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.themePaletteField{min-width:0;display:flex;flex-direction:column;gap:6px;color:#8399ad;font-size:9.5px}
+.themePaletteField input[type="color"]{width:100%;height:30px;padding:2px;border:1px solid rgba(97,132,164,.28);border-radius:6px;background:rgba(8,17,29,.7);cursor:pointer}
+.themePaletteFooter{display:flex;justify-content:flex-end;margin-top:10px}
+.themePaletteReset{color:#a8bbc9}
+.themePaletteReset:hover{color:#fff;border-color:rgba(112,238,255,.38)}
+
 .app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow{
   background:#f4f8fb!important;
   border-color:#c9d7e2!important;
@@ -122,6 +168,12 @@
 .app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>strong{color:#173044!important}
 .app[data-mode="light"] .settingsDialogBody.settingsGrid .settingRow>div:first-child>span{color:#61788c!important}
 .app[data-mode="light"] .settingsDialogBody.settingsGrid .settingsSectionTitle{color:#168c7d!important}
+.app[data-mode="light"] .themeCustomizerToggle,.app[data-mode="light"] .themePaletteModeButton,.app[data-mode="light"] .themePaletteReset{background:#f5f9fc;color:#4d6679;border-color:#b9ccd9}
+.app[data-mode="light"] .themeCustomizerToggle:hover{background:#e9f3f6;color:#155f59;border-color:#72b8ae}
+.app[data-mode="light"] .themePaletteModeButton.active{background:#dcefeb;color:#0e675d;border-color:#70b9ad}
+.app[data-mode="light"] .themePaletteField{color:#61788c}
+.app[data-mode="light"] .themePaletteField input[type="color"]{background:#f8fbfd;border-color:#c2d2de}
+.app[data-mode="light"] .themePaletteModeHint{color:#71869a}
 
 @media(max-width:760px){
   .tc-dialog-body .settingsDialogBody.settingsGrid{
@@ -129,7 +181,8 @@
     max-width:100%!important;
   }
   .settingsDialogBody.settingsGrid .settingRow,
-  .settingsDialogBody.settingsGrid .settingPathRow{
+  .settingsDialogBody.settingsGrid .settingPathRow,
+  .settingsDialogBody.settingsGrid .settingAppearanceRow{
     grid-template-columns:1fr!important;
     gap:9px!important;
   }
@@ -139,4 +192,7 @@
   .settingsDialogBody.settingsGrid .settingPathControl{
     justify-self:stretch;
   }
+  .themeCustomizerToggle{justify-self:start}
+  .themeCustomizerPanel{grid-column:1}
+  .themePaletteGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
