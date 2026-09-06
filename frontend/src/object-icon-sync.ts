@@ -10,16 +10,11 @@ function cloneSelectedTreeIcon() {
   if (target.className !== nextClass) target.className = nextClass
   if (target.innerHTML !== source.innerHTML) target.innerHTML = source.innerHTML
 
-  const stylePairs: Array<[keyof CSSStyleDeclaration, string]> = [
-    ['backgroundImage', source.style.backgroundImage],
-    ['backgroundPosition', source.style.backgroundPosition],
-    ['backgroundSize', source.style.backgroundSize],
-    ['backgroundRepeat', source.style.backgroundRepeat],
-    ['backgroundColor', source.style.backgroundColor],
-  ]
-  for (const [key, value] of stylePairs) {
-    if (target.style[key] !== value) target.style[key] = value as never
-  }
+  if (target.style.backgroundImage !== source.style.backgroundImage) target.style.backgroundImage = source.style.backgroundImage
+  if (target.style.backgroundPosition !== source.style.backgroundPosition) target.style.backgroundPosition = source.style.backgroundPosition
+  if (target.style.backgroundSize !== source.style.backgroundSize) target.style.backgroundSize = source.style.backgroundSize
+  if (target.style.backgroundRepeat !== source.style.backgroundRepeat) target.style.backgroundRepeat = source.style.backgroundRepeat
+  if (target.style.backgroundColor !== source.style.backgroundColor) target.style.backgroundColor = source.style.backgroundColor
 }
 
 function scheduleClone() {
