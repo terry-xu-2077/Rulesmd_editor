@@ -125,8 +125,6 @@ containsAny(settingsOwner, settings, [
 ], 'settings CSS must not style UI Library internals')
 
 // RED LINE 4: ordinary business CSS cannot target .tc-*.
-// theme-contract.css is the dedicated variable bridge and is intentionally allowed to
-// host the .app.tc-theme contract selector; it still may not style component internals.
 for (const file of ordinaryBusinessCss) {
   const text = cssCode(file)
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
@@ -144,8 +142,7 @@ containsAny(integrationOwner, integration, [
   '.tc-range::-',
 ], 'integration CSS must not own shared component internals')
 
-// RED LINE 6: color ownership is centralized. Components receive semantic colors and derive
-// local shades; they do not carry independent palettes.
+// RED LINE 6: color ownership is centralized. The editor has exactly five source colors.
 const themeContract = cssCode(themeContractOwner)
 for (const token of ['--theme-base', '--theme-accent', '--theme-effect', '--theme-text', '--theme-text-bright']) {
   if (!themeContract.includes(`${token}:`)) {
@@ -153,16 +150,17 @@ for (const token of ['--theme-base', '--theme-accent', '--theme-effect', '--them
   }
 }
 
-const contractManagedCss = [
-  'theme-surface-overrides.css',
-  'ui-library-integration.css',
-  'entity-header-country-badge.css',
-]
+// Every editor CSS file except the single theme contract is forbidden from owning literal
+// hex/rgb/hsl colors. Components may only consume semantic variables and derive local
+// hue/lightness/saturation/opacity with CSS functions.
 const hardColor = /#[0-9a-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/ig
-for (const file of contractManagedCss) {
+for (const file of allCss) {
+  if (file === themeContractOwner) continue
   const text = cssCode(file)
-  for (const match of text.matchAll(hardColor)) {
-    fail(file, 'contract-managed component CSS must not own hard-coded colors', match[0])
+  const matches = [...text.matchAll(hardColor)]
+  if (matches.length) {
+    const unique = [...new Set(matches.map(match => match[0]))]
+    fail(file, 'editor CSS must not own hard-coded colors', unique.join(', '))
   }
 }
 
