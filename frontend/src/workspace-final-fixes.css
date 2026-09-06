@@ -27,7 +27,7 @@
 .app .toolbar .divider{flex:0 0 1px!important}
 .app .titleViewSwitch{margin-left:auto!important;flex:0 0 auto!important;justify-self:auto!important}
 
-/* Editor top row: exact vertical centering, compact search, and restored back/forward navigation. */
+/* Editor top row uses one 8px rhythm from object identity through navigation/search/filter/action. */
 .app .editor{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:54px minmax(0,1fr)!important}
 .app .entityHeaderHost{
   position:absolute!important;
@@ -58,19 +58,19 @@
 .app .entityHeaderHost>header>div:nth-child(3){height:46px!important;min-width:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:1px!important;margin:0!important;padding:0!important}
 .app .entityNavigation{
   position:absolute!important;
-  left:240px!important;
+  left:246px!important;
   right:auto!important;
   top:50%!important;
   transform:translateY(-50%)!important;
   z-index:30!important;
-  width:72px!important;
+  width:232px!important;
   max-width:none!important;
   height:32px!important;
   padding:0!important;
   display:flex!important;
   align-items:center!important;
-  justify-content:space-between!important;
-  gap:4px!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
   border:0!important;
   border-radius:0!important;
   background:transparent!important;
@@ -81,12 +81,14 @@
 .app .entityNavigation::after{display:none!important}
 .app .entityNavigation>button:not(.objectNavButton){display:none!important}
 .app .entityNavigation button{
-  width:32px!important;
-  min-width:32px!important;
+  width:112px!important;
+  min-width:112px!important;
   height:32px!important;
-  padding:0!important;
-  display:grid!important;
-  place-items:center!important;
+  padding:0 8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
   border:1px solid var(--theme-border)!important;
   border-radius:7px!important;
   background:var(--theme-surface-soft)!important;
@@ -95,7 +97,8 @@
 }
 .app .entityNavigation button:hover:not(:disabled){background:var(--theme-surface-hover)!important;color:var(--theme-text)!important;border-color:color-mix(in srgb,var(--theme-effect) 44%,var(--theme-border))!important}
 .app .entityNavigation button:disabled{opacity:.28!important}
-.app .entityNavigation button span{display:none!important}
+.app .entityNavigation button span{display:block!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:10.5px!important}
+.app .entityNavigation button svg{flex:0 0 auto}
 
 .app .editorControls{
   grid-column:1!important;
@@ -103,9 +106,9 @@
   width:100%!important;
   height:54px!important;
   min-height:54px!important;
-  padding:0 12px 0 330px!important;
+  padding:0 12px 0 496px!important;
   display:grid!important;
-  grid-template-columns:200px minmax(130px,170px) minmax(0,1fr) auto!important;
+  grid-template-columns:124px 170px auto minmax(0,1fr)!important;
   align-items:center!important;
   align-content:center!important;
   gap:8px!important;
@@ -114,16 +117,26 @@
 .app .editorControls .editorSearch{
   grid-column:1!important;
   grid-row:1!important;
-  width:200px!important;
-  min-width:200px!important;
-  max-width:200px!important;
+  width:124px!important;
+  min-width:124px!important;
+  max-width:124px!important;
   height:32px!important;
   min-height:32px!important;
   margin:0!important;
   align-self:center!important;
   justify-self:start!important;
 }
-.app .editorFilterSelect{grid-column:2!important;grid-row:1!important;height:54px!important;display:flex!important;align-items:center!important;align-self:center!important}
+.app .editorControls .editorSearch input::placeholder{color:transparent!important}
+.app .editorFilterSelect{
+  grid-column:2!important;
+  grid-row:1!important;
+  width:170px!important;
+  height:32px!important;
+  display:flex!important;
+  align-items:center!important;
+  align-self:center!important;
+  --tc-control-w:170px;
+}
 
 .app .editor>.fieldsPane,.app .editor>.rawEditorPane{grid-column:1!important;grid-row:2!important;min-width:0!important}
 
@@ -132,9 +145,11 @@
 
 @media(max-width:1180px){
   .app .entityHeaderHost{width:214px!important}
-  .app .entityNavigation{left:216px!important}
-  .app .editorControls{padding-left:300px!important;grid-template-columns:170px minmax(120px,145px) minmax(0,1fr) auto!important}
-  .app .editorControls .editorSearch{width:170px!important;min-width:170px!important;max-width:170px!important}
+  .app .entityNavigation{left:222px!important;width:208px!important}
+  .app .entityNavigation button{width:100px!important;min-width:100px!important;padding:0 6px!important}
+  .app .editorControls{padding-left:448px!important;grid-template-columns:108px 145px auto minmax(0,1fr)!important}
+  .app .editorControls .editorSearch{width:108px!important;min-width:108px!important;max-width:108px!important}
+  .app .editorFilterSelect{width:145px!important;--tc-control-w:145px}
 }
 
 @media(max-width:1040px){
