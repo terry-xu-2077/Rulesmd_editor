@@ -12,8 +12,8 @@ export type UnitTreeRow = { id: string; label: string; type: string; category: s
 type Props = { rows: UnitTreeRow[]; selectedId?: string | null; query: string; documentEpoch: number; onSelect: (row: UnitTreeRow) => void }
 type TypeGroup = { name: string; units: UnitTreeRow[] }
 type SideGroup = { side: Side; label: string; types: TypeGroup[] }
-type ReferenceEdge = { row: UnitTreeRow; key: string }
-type DockRect = { left: number; width: number; bottom: number; tableVisible: boolean }
+type RelationGroup = { row: UnitTreeRow; keys: string[] }
+type RelationshipModel = { outgoing: RelationGroup[]; incoming: RelationGroup[] }
 
 const SIDE_ORDER: Array<{ side: Side; label: string }> = [
   { side: 'allied', label: '盟军' },
@@ -25,8 +25,6 @@ const UNIT_TYPE_ORDER = ['步兵', '载具', '飞机', '建筑', '超级武器',
 const WEAPON_TYPE_ORDER = ['武器', '弹头', '弹体']
 const WEAPON_TYPES = new Set(WEAPON_TYPE_ORDER)
 const COUNTRY_OWNABLE_TYPES = new Set(['步兵', '载具', '飞机', '建筑'])
-const BUILDABLE_TYPES = new Set(['步兵', '载具', '飞机', '建筑'])
-const DIRECT_REFERENCE_KEYS = new Set(['primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon', 'eliteoccupyweapon', 'deathweapon', 'deploysinto', 'undeploysinto', 'spawns', 'enslaves'])
 
 function normalizedType(category: string) {
   if (category === '战车') return '载具'
@@ -64,62 +62,114 @@ function CountryBadge({ id, className = '' }: { id: string; className?: string }
   return style ? <span className={`unitCountryBadge ${className}`} style={style} aria-label={`国家 ${id}`}/> : null
 }
 
+function UnitCompositeIcon({ unit, exclusiveCountry, className = '' }: { unit: UnitTreeRow; exclusiveCountry?: UnitTreeRow; className?: string }) {
+  return <span className={`unitTreeIconWrap ${className}`}><UnitIcon unit={unit}/>{exclusiveCountry && <CountryBadge id={exclusiveCountry.id}/>}</span>
+}
+
 function UnitLeaf({ unit, exclusiveCountry, selectedId, onSelect }: { unit: UnitTreeRow; exclusiveCountry?: UnitTreeRow; selectedId?: string | null; onSelect: (row: UnitTreeRow) => void }) {
   return <button data-unit-id={unit.id.toLowerCase()} className={`unitTreeLeaf ${selectedId?.toLowerCase() === unit.id.toLowerCase() ? 'selected' : ''}`} onClick={() => onSelect(unit)} title={`${unit.label} · ${unit.id}${exclusiveCountry ? ` · 仅 ${exclusiveCountry.label}` : ''}`}>
-    <span className="unitTreeIconWrap"><UnitIcon unit={unit}/>{exclusiveCountry && <CountryBadge id={exclusiveCountry.id}/>}</span>
+    <UnitCompositeIcon unit={unit} exclusiveCountry={exclusiveCountry}/>
     <span className="unitTreeLeafText"><b>{unit.label}</b><small>{unit.id}</small></span><ChevronRight size={13}/>
   </button>
 }
 
-function parseDirectReferencesFor(raw: string, selected: UnitTreeRow | null, rows: UnitTreeRow[]): ReferenceEdge[] {
-  if (!selected || !BUILDABLE_TYPES.has(normalizedType(selected.category)) || !raw) return []
-  const selectedId = selected.id.toLowerCase()
-  const rowById = new Map(rows.map(row => [row.id.toLowerCase(), row]))
-  const result: ReferenceEdge[] = []
-  let inSelectedSection = false
-
-  for (const rawLine of raw.split(/\r?\n/)) {
-    const header = rawLine.match(/^\s*\[([^\]]+)]/)
-    if (header) {
-      inSelectedSection = header[1].trim().toLowerCase() === selectedId
-      continue
-    }
-    if (!inSelectedSection || /^\s*[;#]/.test(rawLine)) continue
-    const match = rawLine.match(/^\s*([^=;#]+?)\s*=\s*(.*)$/)
-    if (!match) continue
-    const key = match[1].trim()
-    if (!DIRECT_REFERENCE_KEYS.has(key.toLowerCase())) continue
-    for (const token of match[2].split(';', 1)[0].split(',').map(value => value.trim()).filter(Boolean)) {
-      const target = rowById.get(token.toLowerCase())
-      if (!target || target.id.toLowerCase() === selectedId) continue
-      if (!result.some(edge => edge.row.id.toLowerCase() === target.id.toLowerCase() && edge.key.toLowerCase() === key.toLowerCase())) result.push({ row: target, key })
-    }
+function stripInlineComment(raw: string) {
+  let quote = ''
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index]
+    if ((char === '"' || char === "'") && (!quote || quote === char)) quote = quote === char ? '' : char
+    if (char === ';' && !quote) return raw.slice(0, index).trim()
   }
-  return result
+  return raw.trim()
+}
+
+function pushRelation(target: Map<string, { row: UnitTreeRow; keys: Set<string> }>, row: UnitTreeRow, key: string) {
+  const folded = row.id.toLowerCase()
+  const existing = target.get(folded) ?? { row, keys: new Set<string>() }
+  existing.keys.add(key)
+  target.set(folded, existing)
 }
 
 function relationLabel(key: string) {
   const labels: Record<string, string> = {
     primary: '主武器', secondary: '副武器', eliteprimary: '精英主武器', elitesecondary: '精英副武器',
     occupyweapon: '驻军武器', eliteoccupyweapon: '精英驻军武器', deathweapon: '死亡武器',
+    warhead: '弹头', projectile: '弹体', weapon: '武器',
     deploysinto: '部署建筑', undeploysinto: '反部署', spawns: '生成单位', enslaves: '奴隶单位',
+    superweapon: '超级武器', superweapon2: '超级武器 2', prerequisite: '前置需求',
   }
   return labels[key.toLowerCase()] ?? key
 }
 
-function ReferenceNode({ edge, onSelect }: { edge: ReferenceEdge; onSelect: (row: UnitTreeRow) => void }) {
-  return <button className="referenceChainNode" onClick={() => onSelect(edge.row)} title={`${edge.key} → ${edge.row.id}`}><UnitIcon unit={edge.row} compact/><span><b>{edge.row.label}</b><small>{edge.row.id}</small></span><em>{relationLabel(edge.key)}</em></button>
+function buildRelationships(raw: string, selected: UnitTreeRow | null, rows: UnitTreeRow[]): RelationshipModel {
+  if (!raw || !selected) return { outgoing: [], incoming: [] }
+  const selectedId = selected.id.toLowerCase()
+  const rowById = new Map(rows.map(row => [row.id.toLowerCase(), row]))
+  const outgoing = new Map<string, { row: UnitTreeRow; keys: Set<string> }>()
+  const incoming = new Map<string, { row: UnitTreeRow; keys: Set<string> }>()
+  let sourceId = ''
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const sectionMatch = rawLine.match(/^\s*\[([^\]]+)]/)
+    if (sectionMatch) {
+      sourceId = sectionMatch[1].trim().toLowerCase()
+      continue
+    }
+    if (!sourceId || /^\s*[;#]/.test(rawLine)) continue
+    const match = rawLine.match(/^\s*([^=;#]+?)\s*=\s*(.*)$/)
+    if (!match) continue
+    const key = match[1].trim()
+    const source = rowById.get(sourceId)
+    const values = stripInlineComment(match[2]).split(',').map(value => value.trim()).filter(Boolean)
+    for (const token of values) {
+      const target = rowById.get(token.toLowerCase())
+      if (!target || target.id.toLowerCase() === sourceId) continue
+      if (sourceId === selectedId) pushRelation(outgoing, target, key)
+      if (target.id.toLowerCase() === selectedId && source) pushRelation(incoming, source, key)
+    }
+  }
+
+  const normalize = (source: Map<string, { row: UnitTreeRow; keys: Set<string> }>) => [...source.values()]
+    .map(item => ({ row: item.row, keys: [...item.keys].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) }))
+    .sort((a, b) => a.row.category.localeCompare(b.row.category, 'zh-CN') || a.row.label.localeCompare(b.row.label, 'zh-CN'))
+
+  return { outgoing: normalize(outgoing), incoming: normalize(incoming) }
 }
 
-function sameDockRect(a: DockRect | null, b: DockRect | null) {
-  return a?.left === b?.left && a?.width === b?.width && a?.bottom === b?.bottom && a?.tableVisible === b?.tableVisible
+function RelationshipRow({ relation, onSelect }: { relation: RelationGroup; onSelect: (row: UnitTreeRow) => void }) {
+  return <button className="relationshipRow" onClick={() => onSelect(relation.row)} title={`跳转到 ${relation.row.label} [${relation.row.id}]`}>
+    <UnitIcon unit={relation.row} compact/>
+    <span className="relationshipIdentity"><b>{relation.row.label}</b><small>{relation.row.id} · {normalizedType(relation.row.category)}</small></span>
+    <span className="relationshipKeys">{relation.keys.slice(0, 4).map(key => <em key={key} title={key}>{relationLabel(key)}</em>)}{relation.keys.length > 4 && <em>+{relation.keys.length - 4}</em>}</span>
+    <ChevronRight size={13}/>
+  </button>
+}
+
+function RelationshipPanel({ selected, model, open, onToggle, onSelect }: { selected: UnitTreeRow; model: RelationshipModel; open: boolean; onToggle: () => void; onSelect: (row: UnitTreeRow) => void }) {
+  const total = model.outgoing.length + model.incoming.length
+  return <section className={`relationshipPanel ${open ? 'open' : ''}`}>
+    <button className="relationshipPanelToggle" onClick={onToggle} aria-expanded={open}>
+      {open ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>引用与被引用关系</strong><em>{total}</em>
+    </button>
+    {open && <div className="relationshipPanelBody">
+      <div className="relationshipSection">
+        <div className="relationshipSectionTitle"><span>引用</span><em>{model.outgoing.length}</em></div>
+        {model.outgoing.length ? model.outgoing.map(relation => <RelationshipRow key={`out:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">[{selected.id}] 没有引用其他已识别对象。</div>}
+      </div>
+      <div className="relationshipSection">
+        <div className="relationshipSectionTitle"><span>被引用</span><em>{model.incoming.length}</em></div>
+        {model.incoming.length ? model.incoming.map(relation => <RelationshipRow key={`in:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">没有其他已识别对象引用 [{selected.id}]。</div>}
+      </div>
+    </div>}
+  </section>
 }
 
 export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [rawRules, setRawRules] = useState('')
-  const [dockRect, setDockRect] = useState<DockRect | null>(null)
   const [headerHost, setHeaderHost] = useState<HTMLElement | null>(null)
+  const [inspectorHost, setInspectorHost] = useState<HTMLElement | null>(null)
+  const [relationshipsOpen, setRelationshipsOpen] = useState(false)
 
   useEffect(() => setExpanded({}), [documentEpoch])
   useEffect(() => {
@@ -127,55 +177,23 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     if (!rows.length) { setRawRules(''); return () => { cancelled = true } }
     void workspaceApi.rawText().then(raw => { if (!cancelled) setRawRules(raw) }).catch(() => { if (!cancelled) setRawRules('') })
     return () => { cancelled = true }
-  }, [documentEpoch, rows.length])
+  }, [documentEpoch, rows.length, selectedId])
 
   useEffect(() => {
     setHeaderHost(document.querySelector<HTMLElement>('.entityHeaderHost'))
+    setInspectorHost(document.querySelector<HTMLElement>('.inspector .helpContent'))
   }, [documentEpoch, selectedId])
-
-  useEffect(() => {
-    const update = () => {
-      const editor = document.querySelector<HTMLElement>('.editor')
-      const workspace = document.querySelector<HTMLElement>('.workspace')
-      if (!editor || !workspace) {
-        setDockRect(current => current === null ? current : null)
-        return
-      }
-      const editorRect = editor.getBoundingClientRect()
-      const workspaceRect = workspace.getBoundingClientRect()
-      const next: DockRect = {
-        left: editorRect.left,
-        width: Math.max(0, workspaceRect.right - editorRect.left),
-        bottom: Math.max(0, innerHeight - workspaceRect.bottom),
-        tableVisible: Boolean(editor.querySelector('.parameterTablePane')),
-      }
-      setDockRect(current => sameDockRect(current, next) ? current : next)
-    }
-    update()
-    const workspace = document.querySelector<HTMLElement>('.workspace')
-    const observer = typeof ResizeObserver !== 'undefined' && workspace ? new ResizeObserver(update) : null
-    observer?.observe(workspace!)
-    addEventListener('resize', update)
-    return () => { observer?.disconnect(); removeEventListener('resize', update) }
-  }, [documentEpoch])
 
   const navigation = useMemo(() => buildRulesNavigation(rawRules), [rawRules])
   const generalRow = useMemo(() => rows.find(row => row.id.toLowerCase() === 'general') ?? null, [rows])
   const selectedRow = useMemo(() => rows.find(row => row.id.toLowerCase() === selectedId?.toLowerCase()) ?? null, [rows, selectedId])
-  const branches = useMemo(() => parseDirectReferencesFor(rawRules, selectedRow, rows), [rawRules, rows, selectedRow])
-  const hasReferenceChain = branches.length > 0
-
-  useEffect(() => {
-    document.body.classList.toggle('has-reference-chain', hasReferenceChain && Boolean(dockRect?.tableVisible))
-    return () => document.body.classList.remove('has-reference-chain')
-  }, [dockRect?.tableVisible, hasReferenceChain])
-
   const countryById = useMemo(() => new Map(rows.filter(row => normalizedType(row.category) === '国家').map(row => [row.id.toLowerCase(), row])), [rows])
   const selectedExclusiveCountry = useMemo(() => {
     if (!selectedRow || !COUNTRY_OWNABLE_TYPES.has(normalizedType(selectedRow.category))) return undefined
     const id = navigation.exclusiveCountryOf(selectedRow.id)
     return id ? countryById.get(id.toLowerCase()) : undefined
   }, [countryById, navigation, selectedRow])
+  const relationships = useMemo(() => buildRelationships(rawRules, selectedRow, rows), [rawRules, rows, selectedRow])
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const base = rows.filter(row => row.id.toLowerCase() !== 'general' && !isLegacyGlobalSubsection(row.id))
@@ -210,7 +228,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     const side = navigation.sideOf(row.id)
     setExpanded(value => ({ ...value, [`side:${side}`]: true, [`side:${side}:${type}`]: true }))
   }
-  const selectReference = (row: UnitTreeRow) => { expandFor(row); onSelect(row) }
+  const selectRelated = (row: UnitTreeRow) => { expandFor(row); onSelect(row) }
 
   useEffect(() => {
     if (!selectedId || selectedId.toLowerCase() === 'general') return
@@ -222,7 +240,8 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   if (!rows.length) return <div className="unitTreeEmpty">还没有可浏览的对象。</div>
 
   return <div className="unitHierarchy">
-    {headerHost && selectedExclusiveCountry && createPortal(<CountryBadge id={selectedExclusiveCountry.id} className="entityHeaderCountryBadge"/>, headerHost)}
+    {headerHost && selectedRow && createPortal(<span className="headerUnitComposite"><UnitCompositeIcon unit={selectedRow} exclusiveCountry={selectedExclusiveCountry}/></span>, headerHost)}
+    {inspectorHost && selectedRow && createPortal(<RelationshipPanel selected={selectedRow} model={relationships} open={relationshipsOpen} onToggle={() => setRelationshipsOpen(value => !value)} onSelect={selectRelated}/>, inspectorHost)}
     {generalRow && <div className="unitGlobalBlock"><button className={`unitGlobalRule ${selectedId?.toLowerCase() === 'general' ? 'selected' : ''}`} onClick={() => onSelect(generalRow)}><span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span><span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span></button></div>}
     <div className="unitTreeScroller">
       {sideGroups.map(group => {
@@ -256,11 +275,5 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
         </section>
       })()}
     </div>
-
-    {hasReferenceChain && selectedRow && dockRect?.tableVisible && <div className="referenceChainDock referenceBranchDock" style={{ left: dockRect.left, width: dockRect.width, bottom: dockRect.bottom }}>
-      <span className="referenceChainLabel">引用链</span>
-      <div className="referenceBranchRoot"><div className="referenceChainCurrent"><UnitIcon unit={selectedRow} compact/><span><b>{selectedRow.label}</b><small>{selectedRow.id}</small></span></div><div className="referenceBranchStem"/></div>
-      <div className={`referenceBranchList ${branches.length > 1 ? 'branched' : ''}`}>{branches.map(edge => <div className="referenceBranch" key={`${edge.key}:${edge.row.id}`}><span className="referenceBranchLine"/><ReferenceNode edge={edge} onSelect={selectReference}/></div>)}</div>
-    </div>}
   </div>
 }
