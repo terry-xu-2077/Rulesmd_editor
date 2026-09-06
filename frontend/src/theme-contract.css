@@ -76,7 +76,10 @@
   --control: var(--theme-surface-soft);
   --control2: var(--theme-control-fill);
 
-  /* Terry UI Library aliases. */
+  /* Terry UI Library receives only the five public source channels plus broad host
+   * surface aliases. Component-internal light/dark roles such as control fill/focus are
+   * intentionally left to Terry_React_UI_Library so its own theme cascade cannot be
+   * silently overridden by the host. */
   --tc-base: var(--theme-base);
   --tc-accent: var(--theme-accent);
   --tc-effect: var(--theme-effect);
@@ -85,10 +88,8 @@
   --tc-bg: var(--theme-surface-0);
   --tc-surface: var(--theme-surface-1);
   --tc-surface-2: var(--theme-surface-2);
-  --tc-control-fill: var(--theme-control-fill);
   --tc-panel: var(--theme-surface-1);
   --tc-panel-2: var(--theme-surface-2);
-  --tc-panel-focus: var(--theme-surface-focus);
   --tc-row-hover: var(--theme-surface-hover);
   --tc-border-color: var(--theme-border);
   --tc-line: var(--theme-line);
@@ -112,8 +113,8 @@
   --theme-text: #343a40;
   --theme-text-bright: #168f9f;
 
-  /* Editing fields are intentionally much lighter than the workspace. The previous
-   * 66/34 mix was technically lighter but visually too close to the page surface. */
+  /* Legacy/business fields may still consume this semantic role. Shared Terry UI
+   * controls derive their own light fill in the library itself. */
   --theme-control-fill: color-mix(in oklab, var(--theme-base) 24%, white 76%);
 
   /* Fold bars use a deeper chromatic blue, while ordinary rows keep the restrained ladder. */
