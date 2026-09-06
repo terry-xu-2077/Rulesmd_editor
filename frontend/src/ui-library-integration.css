@@ -105,13 +105,18 @@
   overflow:hidden;
   max-height:none;
 }
-.tc-dialog:has(.addUnitDialog){
+
+/* Every page of the new-object wizard uses the final parameter-page envelope. Choice
+ * pages do not render .addUnitDialog, so they must be included explicitly here. */
+.tc-dialog:has(.addUnitDialog),
+.tc-dialog:has(.objectWizardChoice){
   width:min(940px,calc(100vw - 56px));
   max-width:min(940px,calc(100vw - 56px));
   height:min(720px,calc(100vh - 54px));
   max-height:min(720px,calc(100vh - 54px));
 }
-.tc-dialog:has(.addUnitDialog)>.tc-dialog-body{
+.tc-dialog:has(.addUnitDialog)>.tc-dialog-body,
+.tc-dialog:has(.objectWizardChoice)>.tc-dialog-body{
   height:calc(100% - 38px);
   padding:0;
   overflow:hidden;
