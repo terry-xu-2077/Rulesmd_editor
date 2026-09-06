@@ -24,6 +24,7 @@
 @import './add-unit-dialog.css';
 @import './parameter-context-menu.css';
 @import './ui-library-integration.css';
+@import './theme-surface-overrides.css';
 
 /* The footer is creation-only now. Destructive actions belong to object context menus,
  * not as an always-visible trash icon beside the create command. */
