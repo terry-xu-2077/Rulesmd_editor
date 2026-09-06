@@ -1,10 +1,8 @@
 /*
  * Custom base-color completion layer.
  *
- * The palette editor exposes one Base color. That color must own every large neutral
- * surface in the application. Older CSS used fixed navy RGB values on individual
- * panes, so changing --bg alone still left a blue shell behind. Keep semantic accent
- * colors, but derive neutral surfaces from the configured base instead of fixed navy.
+ * The palette editor exposes one Base color. That color owns every large neutral
+ * surface in the application. Semantic faction/accent/focus colors remain independent.
  */
 .app {
   --theme-surface-0: var(--bg);
@@ -13,14 +11,13 @@
   --theme-surface-soft: color-mix(in srgb, var(--bg) 96%, var(--text) 4%);
   --theme-surface-strong: color-mix(in srgb, var(--bg) 76%, var(--text) 24%);
 
-  /* Backward-compatible business-theme variables. */
   --panel: var(--theme-surface-1);
   --panel2: var(--theme-surface-2);
   --control: var(--theme-surface-soft);
   --control2: var(--theme-surface-2);
 }
 
-/* Application shell and all large neutral panes. */
+/* Large neutral panes. Use background shorthand so old navy gradients/images cannot leak through. */
 .app,
 .workspace,
 .sidebar,
@@ -33,10 +30,10 @@
 .unitTreeScroller,
 .inspectorScroll,
 .helpContent {
-  background-color: var(--theme-surface-0) !important;
+  background: var(--theme-surface-0) !important;
 }
 
-/* Secondary bars/panels should be visibly related to Base, not hard-coded navy. */
+/* Secondary bars and section headers. */
 .titlebar,
 .panelTitle,
 .sideFooter,
@@ -44,27 +41,39 @@
 .parameterTableHeader,
 .inspectorHeading,
 .fieldGroupHeader,
-.unitGlobalBlock {
-  background-color: var(--theme-surface-1) !important;
+.unitGlobalBlock,
+.unitTreeLevel.legacyType,
+.unitTreeLevel.sideLevel,
+.referenceChainDock {
+  background: var(--theme-surface-1) !important;
 }
 
-/* Neutral cards/rows. Focus, selected and faction/accent states remain free to override. */
+/* Neutral cards and idle rows. */
 .searchBox,
 .parameterTableRow,
 .helpDescriptionCard,
 .helpMeta,
 .rawEditorPane,
-.unitTreeLevel,
-.unitTreeLeaf:not(.selected):not(:hover) {
-  background-color: var(--theme-surface-soft) !important;
+.unitTreeLeaf:not(.selected):not(:hover),
+.referenceChainNode:not(:hover),
+.referenceChainCurrent {
+  background: var(--theme-surface-soft) !important;
 }
 
-/* Avoid the old fixed-blue row tint leaking through transparent backgrounds. */
-.parameterTableRow:not(.focused):not(.changed):not(.disabled) {
+/* Selected/current context keeps its semantic marker but no fixed navy fill. */
+.unitGlobalRule,
+.unitTreeLeaf.selected {
+  background-color: var(--theme-surface-2) !important;
+}
+
+/* Remove old fixed-blue row/section tint images. */
+.parameterTableRow:not(.focused):not(.changed):not(.disabled),
+.fieldGroupHeader,
+.unitTreeLevel.legacyType,
+.unitTreeLevel.sideLevel {
   background-image: none !important;
 }
 
-/* Scrollbar tracks are also part of the surface system. */
 .app ::-webkit-scrollbar-track {
   background: var(--theme-surface-0);
 }
