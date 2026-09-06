@@ -19,23 +19,28 @@
   --theme-text: #ffffff;
   --theme-text-bright: #7fe8d8;
 
-  /* Chromatic companions deliberately shift hue/saturation, not only brightness. */
-  --theme-base-cool: color-mix(in oklab, var(--theme-base) 88%, var(--theme-effect) 12%);
-  --theme-base-accent: color-mix(in oklab, var(--theme-base) 88%, var(--theme-accent) 12%);
-  --theme-accent-shift: color-mix(in oklab, var(--theme-accent) 82%, var(--theme-effect) 18%);
-  --theme-effect-shift: color-mix(in oklab, var(--theme-effect) 84%, var(--theme-text-bright) 16%);
-  --theme-text-shift: color-mix(in oklab, var(--theme-text) 82%, var(--theme-base-cool) 18%);
-  --theme-text-bright-shift: color-mix(in oklab, var(--theme-text-bright) 86%, var(--theme-accent) 14%);
+  /*
+   * Chromatic companions still move hue/saturation, but only gently. The previous
+   * revision combined fairly large chroma shifts with a large lightness ladder, which
+   * made neutral UI layers jump too far apart. Keep chroma variation while compressing
+   * the perceived brightness span between adjacent surfaces.
+   */
+  --theme-base-cool: color-mix(in oklab, var(--theme-base) 92%, var(--theme-effect) 8%);
+  --theme-base-accent: color-mix(in oklab, var(--theme-base) 92%, var(--theme-accent) 8%);
+  --theme-accent-shift: color-mix(in oklab, var(--theme-accent) 88%, var(--theme-effect) 12%);
+  --theme-effect-shift: color-mix(in oklab, var(--theme-effect) 90%, var(--theme-text-bright) 10%);
+  --theme-text-shift: color-mix(in oklab, var(--theme-text) 90%, var(--theme-base-cool) 10%);
+  --theme-text-bright-shift: color-mix(in oklab, var(--theme-text-bright) 90%, var(--theme-accent) 10%);
 
   --theme-surface-0: var(--theme-base);
-  --theme-surface-1: color-mix(in oklab, var(--theme-base-cool) 92%, var(--theme-text) 8%);
-  --theme-surface-2: color-mix(in oklab, var(--theme-base-accent) 84%, var(--theme-text) 16%);
-  --theme-surface-soft: color-mix(in oklab, var(--theme-base-cool) 96%, var(--theme-text) 4%);
-  --theme-surface-strong: color-mix(in oklab, var(--theme-base-accent) 76%, var(--theme-text) 24%);
-  --theme-surface-hover: color-mix(in oklab, var(--theme-base-accent) 80%, var(--theme-text-bright-shift) 20%);
-  --theme-surface-focus: color-mix(in oklab, var(--theme-base-accent) 82%, var(--theme-accent-shift) 18%);
-  --theme-border: color-mix(in oklab, var(--theme-base-accent) 68%, var(--theme-text-shift) 32%);
-  --theme-line: color-mix(in oklab, var(--theme-base-cool) 76%, var(--theme-text-shift) 24%);
+  --theme-surface-1: color-mix(in oklab, var(--theme-base-cool) 95%, var(--theme-text) 5%);
+  --theme-surface-2: color-mix(in oklab, var(--theme-base-accent) 90%, var(--theme-text) 10%);
+  --theme-surface-soft: color-mix(in oklab, var(--theme-base-cool) 97%, var(--theme-text) 3%);
+  --theme-surface-strong: color-mix(in oklab, var(--theme-base-accent) 86%, var(--theme-text) 14%);
+  --theme-surface-hover: color-mix(in oklab, var(--theme-base-accent) 88%, var(--theme-text-bright-shift) 12%);
+  --theme-surface-focus: color-mix(in oklab, var(--theme-base-accent) 88%, var(--theme-accent-shift) 12%);
+  --theme-border: color-mix(in oklab, var(--theme-base-accent) 78%, var(--theme-text-shift) 22%);
+  --theme-line: color-mix(in oklab, var(--theme-base-cool) 84%, var(--theme-text-shift) 16%);
   --theme-shadow: color-mix(in srgb, var(--theme-base) 76%, transparent 24%);
   --theme-accent-soft: color-mix(in srgb, var(--theme-accent-shift) 18%, transparent 82%);
   --theme-effect-soft: color-mix(in srgb, var(--theme-effect-shift) 16%, transparent 84%);
@@ -44,7 +49,7 @@
   --theme-allied: var(--theme-effect);
   --theme-soviet: oklch(from var(--theme-accent) l c calc(h + 190));
   --theme-yuri: oklch(from var(--theme-effect) l c calc(h + 80));
-  --theme-neutral: color-mix(in oklab, var(--theme-base-accent) 70%, var(--theme-text-shift) 30%);
+  --theme-neutral: color-mix(in oklab, var(--theme-base-accent) 74%, var(--theme-text-shift) 26%);
   --theme-number: oklch(from var(--theme-accent) l c calc(h + 35));
   --theme-boolean: oklch(from var(--theme-effect) l c calc(h + 105));
   --theme-ares: oklch(from var(--theme-accent) l c calc(h + 90));
@@ -73,6 +78,10 @@
   --tc-effect: var(--theme-effect);
   --tc-text-main: var(--theme-text);
   --tc-text-bright: var(--theme-text-bright);
+  --tc-bg: var(--theme-surface-0);
+  --tc-surface: var(--theme-surface-1);
+  --tc-surface-2: var(--theme-surface-2);
+  --tc-control-fill: var(--theme-surface-2);
   --tc-panel: var(--theme-surface-1);
   --tc-panel-2: var(--theme-surface-2);
   --tc-panel-focus: var(--theme-surface-focus);
