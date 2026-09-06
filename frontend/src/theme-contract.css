@@ -44,6 +44,11 @@
   --theme-accent-soft: color-mix(in srgb, var(--theme-accent-shift) 18%, transparent 82%);
   --theme-effect-soft: color-mix(in srgb, var(--theme-effect-shift) 16%, transparent 84%);
 
+  /* Semantic roles let light mode tune hierarchy without introducing extra source colors. */
+  --theme-control-fill: var(--theme-surface-2);
+  --theme-fold-surface: var(--theme-surface-1);
+  --theme-default-text: color-mix(in oklab, var(--theme-text) 72%, var(--theme-base-cool) 28%);
+
   /* Business semantic tones are derived from the public channels, not fixed swatches. */
   --theme-allied: var(--theme-effect);
   --theme-soviet: oklch(from var(--theme-accent) l c calc(h + 190));
@@ -69,7 +74,7 @@
   --panel: var(--theme-surface-1);
   --panel2: var(--theme-surface-2);
   --control: var(--theme-surface-soft);
-  --control2: var(--theme-surface-2);
+  --control2: var(--theme-control-fill);
 
   /* Terry UI Library aliases. */
   --tc-base: var(--theme-base);
@@ -80,7 +85,7 @@
   --tc-bg: var(--theme-surface-0);
   --tc-surface: var(--theme-surface-1);
   --tc-surface-2: var(--theme-surface-2);
-  --tc-control-fill: var(--theme-surface-2);
+  --tc-control-fill: var(--theme-control-fill);
   --tc-panel: var(--theme-surface-1);
   --tc-panel-2: var(--theme-surface-2);
   --tc-panel-focus: var(--theme-surface-focus);
@@ -100,9 +105,21 @@
  * matches the stored appearance even before the optional custom-palette script runs.
  */
 .app.tc-theme[data-mode="light"] {
-  --theme-base: #dbe8f6;
+  /* Cleaner and slightly more saturated than the previous gray-blue default. */
+  --theme-base: #d8ebf6;
   --theme-accent: #2acfb7;
   --theme-effect: #16a6c7;
   --theme-text: #343a40;
   --theme-text-bright: #168f9f;
+
+  /* Editing controls read as pale inset fields instead of another blue-gray surface. */
+  --theme-control-fill: color-mix(in oklab, var(--theme-base) 66%, white 34%);
+
+  /* Fold bars use a deeper chromatic blue, while ordinary rows keep the restrained ladder. */
+  --theme-fold-surface: color-mix(in oklab, var(--theme-base) 88%, var(--theme-effect) 12%);
+
+  /* Default/secondary copy moves much closer to the primary Chinese parameter labels. */
+  --theme-default-text: color-mix(in oklab, var(--theme-text) 90%, var(--theme-base) 10%);
+  --muted: color-mix(in oklab, var(--theme-text) 82%, var(--theme-base) 18%);
+  --muted2: color-mix(in oklab, var(--theme-text) 70%, var(--theme-base) 30%);
 }
