@@ -25,11 +25,27 @@ const UNIT_TYPE_ORDER = ['步兵', '载具', '飞机', '建筑', '超级武器',
 const WEAPON_TYPE_ORDER = ['武器', '弹头', '弹体']
 const WEAPON_TYPES = new Set(WEAPON_TYPE_ORDER)
 const COUNTRY_OWNABLE_TYPES = new Set(['步兵', '载具', '飞机', '建筑'])
+const WEAPON_REFERENCE_KEYS = new Set([
+  'primary', 'secondary', 'eliteprimary', 'elitesecondary', 'occupyweapon',
+  'eliteoccupyweapon', 'deathweapon', 'weapon',
+])
 
 function normalizedType(category: string) {
   if (category === '战车') return '载具'
   if (/弹体|抛射/i.test(category)) return '弹体'
   return category
+}
+
+function jumpReferenceCategory(key: string): string | null {
+  const normalized = key.trim().toLowerCase()
+  if (WEAPON_REFERENCE_KEYS.has(normalized)) return '武器'
+  if (normalized.includes('warhead')) return '弹头'
+  if (normalized.includes('projectile')) return '弹体'
+  if (normalized === 'deploysinto') return '建筑'
+  if (normalized === 'undeploysinto') return '载具'
+  if (normalized === 'enslaves') return '步兵'
+  if (normalized === 'spawns') return '飞机'
+  return null
 }
 
 export function FallbackTypeIcon({ category, size = 15 }: { category: string; size?: number }) {
@@ -94,13 +110,19 @@ function relationLabel(key: string) {
   const labels: Record<string, string> = {
     primary: '主武器', secondary: '副武器', eliteprimary: '精英主武器', elitesecondary: '精英副武器',
     occupyweapon: '驻军武器', eliteoccupyweapon: '精英驻军武器', deathweapon: '死亡武器',
-    warhead: '弹头', projectile: '弹体', weapon: '武器',
+    weapon: '武器', warhead: '弹头', projectile: '弹体',
     deploysinto: '部署建筑', undeploysinto: '反部署', spawns: '生成单位', enslaves: '奴隶单位',
-    superweapon: '超级武器', superweapon2: '超级武器 2', prerequisite: '前置需求',
   }
   return labels[key.toLowerCase()] ?? key
 }
 
+/**
+ * Relationship panel intentionally follows the same narrow semantic references that
+ * receive the jump arrow in the parameter table. Generic INI references such as Owner,
+ * ForbiddenHouses, Image, Prerequisite and General registry keys are not relationships
+ * here. Multi-value references are also ignored because the table jump action is a
+ * single-target action.
+ */
 function buildRelationships(raw: string, selected: UnitTreeRow | null, rows: UnitTreeRow[]): RelationshipModel {
   if (!raw || !selected) return { outgoing: [], incoming: [] }
   const selectedId = selected.id.toLowerCase()
@@ -118,15 +140,21 @@ function buildRelationships(raw: string, selected: UnitTreeRow | null, rows: Uni
     if (!sourceId || /^\s*[;#]/.test(rawLine)) continue
     const match = rawLine.match(/^\s*([^=;#]+?)\s*=\s*(.*)$/)
     if (!match) continue
+
     const key = match[1].trim()
+    const expectedCategory = jumpReferenceCategory(key)
+    if (!expectedCategory) continue
+
+    const value = stripInlineComment(match[2])
+    if (!value || value.includes(',')) continue
+
     const source = rowById.get(sourceId)
-    const values = stripInlineComment(match[2]).split(',').map(value => value.trim()).filter(Boolean)
-    for (const token of values) {
-      const target = rowById.get(token.toLowerCase())
-      if (!target || target.id.toLowerCase() === sourceId) continue
-      if (sourceId === selectedId) pushRelation(outgoing, target, key)
-      if (target.id.toLowerCase() === selectedId && source) pushRelation(incoming, source, key)
-    }
+    const target = rowById.get(value.toLowerCase())
+    if (!source || !target || target.id.toLowerCase() === sourceId) continue
+    if (normalizedType(target.category) !== expectedCategory) continue
+
+    if (sourceId === selectedId) pushRelation(outgoing, target, key)
+    if (target.id.toLowerCase() === selectedId) pushRelation(incoming, source, key)
   }
 
   const normalize = (source: Map<string, { row: UnitTreeRow; keys: Set<string> }>) => [...source.values()]
@@ -154,11 +182,11 @@ function RelationshipPanel({ selected, model, open, onToggle, onSelect }: { sele
     {open && <div className="relationshipPanelBody">
       <div className="relationshipSection">
         <div className="relationshipSectionTitle"><span>引用</span><em>{model.outgoing.length}</em></div>
-        {model.outgoing.length ? model.outgoing.map(relation => <RelationshipRow key={`out:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">[{selected.id}] 没有引用其他已识别对象。</div>}
+        {model.outgoing.length ? model.outgoing.map(relation => <RelationshipRow key={`out:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">[{selected.id}] 没有可跳转的对象引用。</div>}
       </div>
       <div className="relationshipSection">
         <div className="relationshipSectionTitle"><span>被引用</span><em>{model.incoming.length}</em></div>
-        {model.incoming.length ? model.incoming.map(relation => <RelationshipRow key={`in:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">没有其他已识别对象引用 [{selected.id}]。</div>}
+        {model.incoming.length ? model.incoming.map(relation => <RelationshipRow key={`in:${relation.row.id}`} relation={relation} onSelect={onSelect}/>) : <div className="relationshipEmpty">没有其他对象通过可跳转参数引用 [{selected.id}]。</div>}
       </div>
     </div>}
   </section>
@@ -282,7 +310,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   return <div className="unitHierarchy">
     {headerHost && selectedRow && createPortal(<span className="headerUnitComposite"><UnitCompositeIcon unit={selectedRow} exclusiveCountry={selectedExclusiveCountry}/></span>, headerHost)}
     {inspectorHost && selectedRow && createPortal(<RelationshipPanel selected={selectedRow} model={relationships} open={relationshipsOpen} onToggle={() => setRelationshipsOpen(value => !value)} onSelect={selectRelated}/>, inspectorHost)}
-    {navigationHost && createPortal(<><button className="objectNavButton" disabled={!previousObject} title={previousObject ? `后退到 ${previousObject.label} [${previousObject.id}]` : '没有上一项'} onClick={() => navigateObjectHistory(-1)}><ArrowLeft size={15}/></button><button className="objectNavButton" disabled={!nextObject} title={nextObject ? `前进到 ${nextObject.label} [${nextObject.id}]` : '没有下一项'} onClick={() => navigateObjectHistory(1)}><ArrowRight size={15}/></button></>, navigationHost)}
+    {navigationHost && createPortal(<><button className="objectNavButton" disabled={!previousObject} title={previousObject ? `后退到 ${previousObject.label} [${previousObject.id}]` : '没有上一项'} onClick={() => navigateObjectHistory(-1)}><ArrowLeft size={15}/><span>{previousObject?.label || '上一项'}</span></button><button className="objectNavButton" disabled={!nextObject} title={nextObject ? `前进到 ${nextObject.label} [${nextObject.id}]` : '没有下一项'} onClick={() => navigateObjectHistory(1)}><span>{nextObject?.label || '下一项'}</span><ArrowRight size={15}/></button></>, navigationHost)}
     {generalRow && <div className="unitGlobalBlock"><button className={`unitGlobalRule ${selectedId?.toLowerCase() === 'general' ? 'selected' : ''}`} onClick={() => onSelect(generalRow)}><span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span><span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span></button></div>}
     <div className="unitTreeScroller">
       {sideGroups.map(group => {
