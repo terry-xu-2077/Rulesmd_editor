@@ -16,7 +16,7 @@ const DEFAULTS: Record<ThemeMode, ThemePalette> = {
     textBright: '#7fe8d8',
   },
   light: {
-    base: '#dbe8f6',
+    base: '#d8ebf6',
     accent: '#2acfb7',
     effect: '#16a6c7',
     textMain: '#343a40',
@@ -35,6 +35,13 @@ const LEGACY_LIGHT_DEFAULTS: ThemePalette[] = [
   {
     base: '#dbe8f6',
     accent: '#41e1c9',
+    effect: '#16a6c7',
+    textMain: '#343a40',
+    textBright: '#168f9f',
+  },
+  {
+    base: '#dbe8f6',
+    accent: '#2acfb7',
     effect: '#16a6c7',
     textMain: '#343a40',
     textBright: '#168f9f',
@@ -76,8 +83,8 @@ function loadPalette(mode: ThemeMode): ThemePalette {
     }
 
     // Existing installs may have persisted one of the former untouched light defaults.
-    // Treat those exact palettes as defaults, not user customizations, so the requested
-    // Accent update takes effect without forcing a manual Reset.
+    // Treat those exact palettes as defaults, not user customizations, so refreshed
+    // Accent/Base defaults take effect without forcing a manual Reset.
     if (mode === 'light' && LEGACY_LIGHT_DEFAULTS.some(legacy => samePalette(palette, legacy))) {
       const migrated = { ...DEFAULTS.light }
       localStorage.setItem(storageKey(mode), JSON.stringify(migrated))
