@@ -1,0 +1,107 @@
+/* Final layout corrections for the compact editor/tree/reference design. */
+.editor{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:260px minmax(0,1fr)!important;
+  grid-template-rows:58px minmax(0,1fr)!important;
+}
+.entityHeaderHost{
+  position:relative!important;
+  inset:auto!important;
+  grid-column:1!important;
+  grid-row:1!important;
+  width:auto!important;
+  height:58px!important;
+  min-height:58px!important;
+  padding:6px 8px 6px 12px!important;
+  overflow:hidden!important;
+  border:0!important;
+  border-bottom:1px solid var(--line)!important;
+  background:rgba(16,27,43,.74)!important;
+}
+.entityHeaderHost>header{
+  width:100%!important;
+  height:46px!important;
+  min-height:46px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.entityHeaderHost>header>div:nth-child(1){display:none!important}
+.entityHeaderHost>header>div:nth-child(2){width:46px!important;height:46px!important;min-width:46px!important;margin-right:9px!important;padding:0!important;border:0!important;background:transparent!important}
+.entityHeaderHost>header>div:nth-child(3){min-width:0!important}
+.entityHeaderHost>header>div:nth-child(3)>strong{font-size:14px!important;line-height:18px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.entityHeaderHost>header>div:nth-child(3)>span{font-size:9.5px!important;line-height:13px!important;color:#758ba1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+.editorControls{
+  grid-column:2!important;
+  grid-row:1!important;
+  width:auto!important;
+  height:58px!important;
+  min-height:58px!important;
+  padding:0 12px!important;
+  display:grid!important;
+  grid-template-columns:minmax(180px,1fr) 158px auto!important;
+  align-items:center!important;
+  gap:8px!important;
+  overflow:visible!important;
+}
+.editorControls .editorSearch{grid-column:1!important;grid-row:1!important;width:100%!important;min-width:0!important;max-width:none!important;margin:0!important}
+.editorControls .segmented{
+  grid-column:2!important;grid-row:1!important;
+  position:relative!important;
+  width:158px!important;height:32px!important;
+  margin:0!important;overflow:visible!important;z-index:90!important;
+  border:1px solid var(--line2)!important;border-radius:7px!important;background:#0c1624!important;
+}
+.editorControls .segmented::before{content:"筛选";position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6f8398;font-size:10px;pointer-events:none}
+.editorControls .segmented button{display:none!important;width:100%!important;height:30px!important;padding:0 28px 0 42px!important;text-align:left!important;border:0!important;border-radius:6px!important;background:transparent!important;color:#b8cad9!important}
+.editorControls .segmented button.active{display:block!important;position:relative!important;z-index:2!important;color:#e4edf7!important}
+.editorControls .segmented button.active::after{content:"⌄";position:absolute;right:10px;top:50%;transform:translateY(-55%);color:#6f8aa3;font-size:14px}
+.editorControls .segmented:hover,.editorControls .segmented:focus-within{height:auto!important;background:#0b1522!important;box-shadow:0 10px 24px rgba(0,0,0,.34)!important}
+.editorControls .segmented:hover::before,.editorControls .segmented:focus-within::before{display:none!important}
+.editorControls .segmented:hover button,.editorControls .segmented:focus-within button{display:block!important;position:relative!important;padding-left:12px!important;border-radius:0!important;background:#0b1522!important}
+.editorControls .segmented:hover button:hover,.editorControls .segmented:focus-within button:hover{background:#17263a!important;color:#fff!important}
+.editorControls .segmented:hover button.active,.editorControls .segmented:focus-within button.active{background:rgba(24,190,162,.12)!important;color:#8ee7d7!important}
+.editorControls>button{grid-column:3!important;grid-row:1!important;justify-self:end!important}
+.editor>.fieldsPane,.editor>.rawEditorPane{grid-column:1/-1!important;grid-row:2!important;min-width:0!important}
+
+/* Tree: faction is the primary hierarchy; weapon-related sections live in one independent root. */
+.unitSideGroup{margin:0 0 5px}
+.unitTreeLevel.sideLevel{min-height:33px;padding:0 8px;font-size:12px;font-weight:800;border:1px solid rgba(120,155,205,.1);background:linear-gradient(90deg,rgba(32,50,75,.92),rgba(18,33,52,.68))}
+.unitTreeLevel.sideLevel.side-allied{box-shadow:inset 3px 0 0 rgba(63,143,226,.75)}
+.unitTreeLevel.sideLevel.side-soviet{box-shadow:inset 3px 0 0 rgba(202,76,84,.72)}
+.unitTreeLevel.sideLevel.side-yuri{box-shadow:inset 3px 0 0 rgba(142,95,216,.72)}
+.unitTreeLevel.sideLevel.side-neutral{box-shadow:inset 3px 0 0 rgba(125,143,160,.55)}
+.unitTreeLevel.weaponLevel{box-shadow:inset 3px 0 0 rgba(226,167,67,.78)}
+.unitSideChildren{padding:3px 0 4px 8px;margin-left:7px;border-left:1px solid rgba(120,155,205,.13)}
+.unitSideChildren .legacyLeaves{margin-left:7px;padding-left:7px}
+
+/* Direct reference branches only. The dock spans editor + help inspector. */
+body.has-reference-chain .fieldsPane{padding-bottom:104px!important}
+.referenceChainDock.referenceBranchDock{min-height:80px!important;padding:8px 12px!important;display:grid!important;grid-template-columns:auto 190px minmax(0,1fr)!important;align-items:center!important;gap:10px!important}
+.referenceBranchRoot{display:flex;align-items:center;min-width:0;height:100%;position:relative}
+.referenceBranchRoot .referenceChainCurrent{width:170px;min-width:170px;max-width:170px}
+.referenceBranchStem{height:2px;flex:1;min-width:16px;background:linear-gradient(90deg,rgba(70,157,234,.7),rgba(70,157,234,.24))}
+.referenceBranchList{min-width:0;display:flex;align-items:center;gap:8px;overflow-x:auto;padding:2px 3px}
+.referenceBranchList.branched{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,43px);grid-auto-columns:max-content;align-content:center;column-gap:10px;row-gap:5px}
+.referenceBranch{display:flex;align-items:center;min-width:max-content}
+.referenceBranchLine{width:20px;height:2px;background:rgba(70,157,234,.42)}
+.referenceBranchList.branched .referenceBranch:nth-child(odd) .referenceBranchLine{transform:skewY(-18deg)}
+.referenceBranchList.branched .referenceBranch:nth-child(even) .referenceBranchLine{transform:skewY(18deg)}
+.referenceChainNode{min-width:148px!important;max-width:210px!important}
+
+.headerSyncedObjectIcon{display:grid!important;place-items:center!important;overflow:hidden!important;border-radius:6px!important}
+.headerSyncedObjectIcon.fallback{background:linear-gradient(145deg,rgba(46,76,108,.9),rgba(24,43,65,.96))!important;color:#9ed6ff!important}
+
+.app[data-mode="light"] .entityHeaderHost,.app[data-mode="light"] .editorControls{background:#e9f0f6!important}
+.app[data-mode="light"] .editorControls .segmented{background:#f8fafc!important;border-color:#b8c8d6!important}
+.app[data-mode="light"] .editorControls .segmented:hover,.app[data-mode="light"] .editorControls .segmented:focus-within,.app[data-mode="light"] .editorControls .segmented:hover button,.app[data-mode="light"] .editorControls .segmented:focus-within button{background:#f8fafc!important}
+.app[data-mode="light"] .unitTreeLevel.sideLevel{background:linear-gradient(90deg,#d7e3ed,#e8f0f5);color:#29485e;border-color:rgba(66,103,132,.12)}
+
+@media(max-width:1100px){
+  .editor{grid-template-columns:220px minmax(0,1fr)!important}
+  .editorControls{grid-template-columns:minmax(150px,1fr) 132px auto!important}
+  .editorControls .segmented{width:132px!important}
+}
