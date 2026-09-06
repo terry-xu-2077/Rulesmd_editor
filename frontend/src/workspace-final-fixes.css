@@ -79,6 +79,7 @@
   backdrop-filter:none!important;
 }
 .app .entityNavigation::after{display:none!important}
+.app .entityNavigation>button:not(.objectNavButton){display:none!important}
 .app .entityNavigation button{
   width:32px!important;
   min-width:32px!important;
