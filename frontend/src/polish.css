@@ -1,4 +1,5 @@
 @import './app.css';
+@import './layout-v2.css';
 
 /* Final workspace refinements. Keep business layout fixes here rather than patching shared controls. */
 .app{grid-template-rows:60px minmax(0,1fr)!important}

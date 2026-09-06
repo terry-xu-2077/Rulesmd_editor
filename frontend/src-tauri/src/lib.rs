@@ -124,29 +124,75 @@ fn pick_game_executable(window: tauri::Window) -> Result<Option<String>, String>
     Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
 
+fn normalize_executable_path(path: &str) -> String {
+    let trimmed = path.trim();
+    if trimmed.len() >= 2 {
+        let bytes = trimmed.as_bytes();
+        let wrapped_in_double_quotes = bytes.first() == Some(&b'"') && bytes.last() == Some(&b'"');
+        let wrapped_in_single_quotes = bytes.first() == Some(&b'\'') && bytes.last() == Some(&b'\'');
+        if wrapped_in_double_quotes || wrapped_in_single_quotes {
+            return trimmed[1..trimmed.len() - 1].trim().to_string();
+        }
+    }
+    trimmed.to_string()
+}
+
 #[tauri::command]
 fn launch_game(path: String) -> Result<(), String> {
-    let trimmed = path.trim();
-    if trimmed.is_empty() {
+    let normalized = normalize_executable_path(&path);
+    if normalized.is_empty() {
         return Err("请先在设置中选择游戏启动程序。".to_string());
     }
 
-    let executable = PathBuf::from(trimmed);
+    let executable = PathBuf::from(&normalized);
     if !executable.is_file() {
         return Err(format!("游戏启动程序不存在：{}", executable.display()));
     }
 
-    let mut command = Command::new(&executable);
-    if let Some(parent) = executable.parent() {
-        command.current_dir(parent);
-    }
-    command
+    let parent = executable
+        .parent()
+        .ok_or_else(|| format!("无法确定游戏启动目录：{}", executable.display()))?;
+
+    let direct = Command::new(&executable)
+        .current_dir(parent)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn()
-        .map_err(|err| format!("启动游戏失败：{err}"))?;
-    Ok(())
+        .spawn();
+
+    if direct.is_ok() {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // 部分 CnCNet / 整合包启动器需要由 Windows Shell 间接启动。
+        // PowerShell Start-Process 只接收环境变量里的路径，避免路径空格或特殊字符被再次解析。
+        let fallback = Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Start-Process -FilePath $env:RULESMD_GAME_EXE -WorkingDirectory $env:RULESMD_GAME_DIR",
+            ])
+            .env("RULESMD_GAME_EXE", &executable)
+            .env("RULESMD_GAME_DIR", parent)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+
+        if let Ok(status) = fallback {
+            if status.success() {
+                return Ok(());
+            }
+        }
+    }
+
+    let direct_error = direct.err().map(|err| err.to_string()).unwrap_or_else(|| "未知错误".to_string());
+    Err(format!(
+        "启动游戏失败：{direct_error}。已确认路径存在，但系统未能启动该程序。"
+    ))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
