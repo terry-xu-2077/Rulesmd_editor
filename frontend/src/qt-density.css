@@ -1,121 +1,33 @@
 /* Desktop-editor density pass inspired by the old Qt workflow: narrow navigation,
    dominant parameter workspace, wider contextual help, and more rows visible per screen. */
-.workspace{
-  grid-template-columns:var(--left-pane,230px) 5px minmax(560px,1fr) 5px var(--right-pane,390px)!important;
-}
+.workspace{grid-template-columns:var(--left-pane,230px) 5px minmax(560px,1fr) 5px var(--right-pane,390px)!important}
 .sidebar,.inspector{min-width:0}
-.paneSplitter{position:relative;z-index:40;cursor:col-resize;background:rgba(112,238,255,.035);border-left:1px solid rgba(112,238,255,.08);border-right:1px solid rgba(112,238,255,.05)}
-.paneSplitter::after{content:"";position:absolute;left:1px;top:42%;width:2px;height:16%;border-radius:2px;background:rgba(112,238,255,.24);opacity:.45}
-.paneSplitter:hover,.resizingPanes .paneSplitter{background:rgba(42,213,184,.13)}
-.paneSplitter:hover::after,.resizingPanes .paneSplitter::after{background:var(--tc-effect);opacity:.9}
-.resizingPanes{cursor:col-resize!important;user-select:none!important}
-.resizingPanes *{cursor:col-resize!important}
-
-/* Top commands are explicit icon + text actions, never mystery glyphs. */
-.titlebar{gap:14px!important}
-.brand{min-width:220px!important}
-.toolbar{gap:4px!important}
-.iconButton{
-  width:auto!important;min-width:58px!important;height:34px!important;padding:0 9px!important;
-  display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
-}
+.paneSplitter{position:relative;z-index:40;cursor:col-resize;background:color-mix(in srgb,var(--theme-effect) 4%,transparent);border-left:1px solid color-mix(in srgb,var(--theme-effect) 10%,transparent);border-right:1px solid color-mix(in srgb,var(--theme-effect) 6%,transparent)}
+.paneSplitter::after{content:"";position:absolute;left:1px;top:42%;width:2px;height:16%;border-radius:2px;background:color-mix(in srgb,var(--theme-effect) 28%,transparent);opacity:.45}
+.paneSplitter:hover,.resizingPanes .paneSplitter{background:var(--theme-accent-soft)}
+.paneSplitter:hover::after,.resizingPanes .paneSplitter::after{background:var(--theme-effect);opacity:.9}
+.resizingPanes{cursor:col-resize!important;user-select:none!important}.resizingPanes *{cursor:col-resize!important}
+.titlebar{gap:14px!important}.brand{min-width:220px!important}.toolbar{gap:4px!important}
+.iconButton{width:auto!important;min-width:58px!important;height:34px!important;padding:0 9px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important}
 .iconButtonLabel{display:inline-block;font-size:11.5px;white-space:nowrap;color:inherit}
-
-/* Keep the document browser compact. */
-.panelTitle{height:38px!important;padding-left:12px!important}
-.sidebar>.searchBox{height:32px!important;margin:7px!important}
-.sideFooter{height:38px!important}
-
-/* The current object header is useful, but should not consume editor height. */
-.editor{grid-template-rows:66px 44px minmax(0,1fr)!important}
-.entityHeaderHost{min-height:0!important;position:relative!important;overflow:hidden}
-.entityHeaderActions{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6}
-.entityHeaderActions .chip{width:32px;padding:0;justify-content:center}
-.entityNavigation{
-  position:absolute;right:58px;top:50%;transform:translateY(-50%);z-index:5;
-  display:flex;align-items:center;gap:5px;max-width:54%;
-}
-.entityNavigation button{
-  min-width:38px;max-width:210px;height:28px;padding:0 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;
-  background:rgba(5,20,36,.34);color:rgba(255,255,255,.9);display:flex;align-items:center;gap:5px;cursor:pointer;
-  box-shadow:0 3px 10px rgba(0,0,0,.12);backdrop-filter:blur(3px);
-}
+.panelTitle{height:38px!important;padding-left:12px!important}.sidebar>.searchBox{height:32px!important;margin:7px!important}.sideFooter{height:38px!important}
+.editor{grid-template-rows:66px 44px minmax(0,1fr)!important}.entityHeaderHost{min-height:0!important;position:relative!important;overflow:hidden}.entityHeaderActions{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:6}.entityHeaderActions .chip{width:32px;padding:0;justify-content:center}
+.entityNavigation{position:absolute;right:58px;top:50%;transform:translateY(-50%);z-index:5;display:flex;align-items:center;gap:5px;max-width:54%}
+.entityNavigation button{min-width:38px;max-width:210px;height:28px;padding:0 8px;border:1px solid color-mix(in srgb,var(--theme-text) 22%,transparent);border-radius:6px;background:color-mix(in srgb,var(--theme-base) 42%,transparent);color:color-mix(in srgb,var(--theme-text) 90%,transparent);display:flex;align-items:center;gap:5px;cursor:pointer;box-shadow:0 3px 10px var(--theme-shadow);backdrop-filter:blur(3px)}
 .entityNavigation button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px}
-.entityNavigation button:hover:not(:disabled){background:rgba(5,20,36,.56);border-color:rgba(255,255,255,.42);box-shadow:0 5px 14px rgba(0,0,0,.22)}
+.entityNavigation button:hover:not(:disabled){background:color-mix(in srgb,var(--theme-base) 64%,transparent);border-color:color-mix(in srgb,var(--theme-text) 46%,transparent);box-shadow:0 5px 14px var(--theme-shadow)}
 .entityNavigation button:disabled{opacity:.32;cursor:default}
-
-/* Search/filter actions sit directly above the parameter table. */
-.editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}
-.editorControls .searchBox{height:30px!important;width:210px!important;flex-basis:210px!important}
-.segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
-
-/* Dense three-column business table. Shared controls are integrated in ui-library-integration.css. */
-.parameterTablePane{padding:0!important;overflow:auto!important;background:#091525!important}
-.parameterTableHeader{
-  position:sticky;top:0;z-index:20;
-  display:grid;grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);
-  min-width:650px;height:30px;align-items:center;
-  background:#172943;border-bottom:1px solid rgba(112,238,255,.24);
-  color:#8da7be;font-size:10.5px;font-weight:700;
-}
-.parameterTableHeader>span{height:100%;display:flex;align-items:center;padding:0 10px;border-right:1px solid rgba(112,238,255,.11)}
-.parameterTableHeader>span:last-child{border-right:0}
-.parameterTableGroup{min-width:650px}
-.parameterTableGroup .fieldGroupHeader{
-  position:sticky;top:30px;z-index:18;
-  height:28px!important;padding:0 9px!important;
-  background:#0d1e31!important;border-bottom:1px solid rgba(112,238,255,.13)!important;
-}
-.parameterTableGroup .fieldGroupHeader span{font-size:11px!important}
-.parameterTableRow{
-  position:relative;display:grid;
-  grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);
-  min-height:34px;align-items:stretch;
-  border-bottom:1px solid rgba(105,145,185,.13);
-  background:#0d1a2a;color:#c8d7e4;
-}
-.parameterTableRow:nth-child(even){background:#101f32}
-.parameterTableRow.focused{
-  z-index:2;
-  box-shadow:inset 4px 0 0 var(--tc-effect),0 5px 16px rgba(0,0,0,.34),0 0 0 1px rgba(112,238,255,.16);
-}
-.parameterTableRow.focused::after{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(65,140,210,.08)}
-.parameterTableRow.changed::before{content:"";position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:var(--tc-effect);z-index:3}
-.parameterKeyCell,.parameterLabelCell,.parameterValueCell{min-width:0;display:flex;align-items:center;border-right:1px solid rgba(105,145,185,.13);box-sizing:border-box}
-.parameterKeyCell{gap:7px;padding:0 9px 0 12px}
-.parameterKeyCell code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9db7cd;font:11px/1.2 "Cascadia Code",Consolas,monospace}
-.parameterLabelCell{padding:0 9px}
-.parameterLabelCell strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e3edf5;font-size:11.5px;font-weight:600}
-.parameterValueCell{border-right:0;padding:3px 8px;position:relative;overflow:visible}
-.parameterValueCell .rulesControlHost{width:100%;min-width:0;display:flex;align-items:center;gap:6px}
-.parameterTableRow .aresBadge{flex:0 0 auto;font-size:8px;padding:1px 4px}
-.referenceJump{
-  flex:0 0 27px;width:27px;height:26px;padding:0;border-radius:4px;
-  border:1px solid rgba(73,164,230,.55);background:rgba(16,67,102,.62);color:#70cfff;
-  display:grid;place-items:center;cursor:pointer;position:relative;z-index:4;
-}
-.referenceJump:hover{background:rgba(31,106,157,.8);border-color:#62cfff;color:#d8f5ff}
-
-/* Inspector is the single, wider home for parameter explanations. */
-.inspectorTabs{height:38px!important}
-.inspectorTabs button{font-size:11px!important}
-.helpContent{padding:14px!important}
-.helpHeader{margin-bottom:10px!important}
-.helpContent h3{font-size:15px!important;margin:9px 0!important}
-.helpContent h4{font-size:11.5px!important}
-.helpContent p{font-size:12px!important;line-height:1.68!important}
-.infoCard{font-size:10.8px!important;grid-template-columns:72px minmax(0,1fr)!important}
-.infoCard b{min-width:0;overflow-wrap:anywhere}
-.docSource{color:#7f97ad!important;overflow-wrap:anywhere}
-.valueChoices{gap:4px!important}
-.valueChoices>span{padding:5px 6px!important;font-size:10.5px!important}
-
-@media(max-width:1200px){
-  .workspace{grid-template-columns:var(--left-pane,205px) 5px minmax(500px,1fr) 5px var(--right-pane,330px)!important}
-  .editorControls .searchBox{width:180px!important;flex-basis:180px!important}
-  .parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,23%) minmax(110px,20%) minmax(290px,1fr)}
-  .iconButton{min-width:36px!important;padding:0 7px!important}
-  .iconButtonLabel{display:none}
-  .entityNavigation{max-width:46%}
-  .entityNavigation button span{display:none}
-}
+.editorControls{height:44px!important;padding:0 9px!important;gap:6px!important}.editorControls .searchBox{height:30px!important;width:210px!important;flex-basis:210px!important}.segmented button{height:27px!important;padding:0 7px!important;font-size:10.8px!important}
+.parameterTablePane{padding:0!important;overflow:auto!important;background:var(--theme-surface-0)!important}
+.parameterTableHeader{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);min-width:650px;height:30px;align-items:center;background:var(--theme-surface-2);border-bottom:1px solid color-mix(in srgb,var(--theme-effect) 28%,var(--theme-line));color:color-mix(in srgb,var(--theme-text) 58%,var(--theme-base));font-size:10.5px;font-weight:700}
+.parameterTableHeader>span{height:100%;display:flex;align-items:center;padding:0 10px;border-right:1px solid var(--theme-line)}.parameterTableHeader>span:last-child{border-right:0}.parameterTableGroup{min-width:650px}
+.parameterTableGroup .fieldGroupHeader{position:sticky;top:30px;z-index:18;height:28px!important;padding:0 9px!important;background:var(--theme-surface-1)!important;border-bottom:1px solid var(--theme-line)!important}.parameterTableGroup .fieldGroupHeader span{font-size:11px!important}
+.parameterTableRow{position:relative;display:grid;grid-template-columns:minmax(145px,23%) minmax(120px,20%) minmax(340px,1fr);min-height:34px;align-items:stretch;border-bottom:1px solid var(--theme-line);background:var(--theme-surface-soft);color:var(--theme-text)}
+.parameterTableRow:nth-child(even){background:var(--theme-surface-1)}
+.parameterTableRow.focused{z-index:2;box-shadow:inset 4px 0 0 var(--theme-effect),0 5px 16px var(--theme-shadow),0 0 0 1px color-mix(in srgb,var(--theme-effect) 22%,var(--theme-border))}
+.parameterTableRow.focused::after{content:"";position:absolute;inset:0;pointer-events:none;background:var(--theme-effect-soft)}
+.parameterTableRow.changed::before{content:"";position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:var(--theme-effect);z-index:3}
+.parameterKeyCell,.parameterLabelCell,.parameterValueCell{min-width:0;display:flex;align-items:center;border-right:1px solid var(--theme-line);box-sizing:border-box}.parameterKeyCell{gap:7px;padding:0 9px 0 12px}.parameterKeyCell code{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb,var(--theme-text) 66%,var(--theme-base));font:11px/1.2 "Cascadia Code",Consolas,monospace}.parameterLabelCell{padding:0 9px}.parameterLabelCell strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--theme-text);font-size:11.5px;font-weight:600}.parameterValueCell{border-right:0;padding:3px 8px;position:relative;overflow:visible}.parameterValueCell .rulesControlHost{width:100%;min-width:0;display:flex;align-items:center;gap:6px}.parameterTableRow .aresBadge{flex:0 0 auto;font-size:8px;padding:1px 4px}
+.referenceJump{flex:0 0 27px;width:27px;height:26px;padding:0;border-radius:4px;border:1px solid color-mix(in srgb,var(--theme-effect) 58%,var(--theme-border));background:color-mix(in srgb,var(--theme-effect) 18%,var(--theme-surface-1));color:var(--theme-effect);display:grid;place-items:center;cursor:pointer;position:relative;z-index:4}.referenceJump:hover{background:color-mix(in srgb,var(--theme-effect) 32%,var(--theme-surface-1));border-color:var(--theme-effect);color:var(--theme-text)}
+.inspectorTabs{height:38px!important}.inspectorTabs button{font-size:11px!important}.helpContent{padding:14px!important}.helpHeader{margin-bottom:10px!important}.helpContent h3{font-size:15px!important;margin:9px 0!important}.helpContent h4{font-size:11.5px!important}.helpContent p{font-size:12px!important;line-height:1.68!important}.infoCard{font-size:10.8px!important;grid-template-columns:72px minmax(0,1fr)!important}.infoCard b{min-width:0;overflow-wrap:anywhere}.docSource{color:color-mix(in srgb,var(--theme-text) 52%,var(--theme-base))!important;overflow-wrap:anywhere}.valueChoices{gap:4px!important}.valueChoices>span{padding:5px 6px!important;font-size:10.5px!important}
+@media(max-width:1200px){.workspace{grid-template-columns:var(--left-pane,205px) 5px minmax(500px,1fr) 5px var(--right-pane,330px)!important}.editorControls .searchBox{width:180px!important;flex-basis:180px!important}.parameterTableHeader,.parameterTableRow{grid-template-columns:minmax(130px,23%) minmax(110px,20%) minmax(290px,1fr)}.iconButton{min-width:36px!important;padding:0 7px!important}.iconButtonLabel{display:none}.entityNavigation{max-width:46%}.entityNavigation button span{display:none}}
