@@ -6,39 +6,28 @@ function decorateRow(row: HTMLElement) {
   row.title = stopped ? STOPPED_HINT : DEFAULT_HINT
 
   const badge = row.querySelector<HTMLElement>('.disabledBadge')
-  if (badge) badge.textContent = '停用'
+  if (badge && badge.textContent !== '停用') badge.textContent = '停用'
 
-  if (stopped) {
-    row.setAttribute('aria-disabled', 'true')
-  } else {
-    row.removeAttribute('aria-disabled')
-  }
+  if (stopped) row.setAttribute('aria-disabled', 'true')
+  else row.removeAttribute('aria-disabled')
 }
 
-function applyStoppedHints(root: ParentNode = document) {
-  root.querySelectorAll<HTMLElement>('.parameterTableRow').forEach(decorateRow)
+function rowFromEventTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement ? target.closest<HTMLElement>('.parameterTableRow') : null
 }
 
-const observer = new MutationObserver(mutations => {
-  for (const mutation of mutations) {
-    if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
-      const row = mutation.target.closest<HTMLElement>('.parameterTableRow')
-      if (row) decorateRow(row)
-      continue
-    }
-    for (const node of mutation.addedNodes) {
-      if (!(node instanceof HTMLElement)) continue
-      if (node.matches('.parameterTableRow')) decorateRow(node)
-      applyStoppedHints(node)
-    }
-  }
-})
+// Only touch a row when the user actually interacts with it. No global DOM observer.
+document.addEventListener('pointerover', event => {
+  const row = rowFromEventTarget(event.target)
+  if (row) decorateRow(row)
+}, true)
 
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['class'],
-})
+document.addEventListener('focusin', event => {
+  const row = rowFromEventTarget(event.target)
+  if (row) decorateRow(row)
+}, true)
 
-applyStoppedHints()
+document.addEventListener('contextmenu', event => {
+  const row = rowFromEventTarget(event.target)
+  if (row) decorateRow(row)
+}, true)
