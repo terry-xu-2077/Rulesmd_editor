@@ -4,28 +4,10 @@
  * Business CSS files must not reach into .tc-* selectors. If a contextual slot really
  * needs shared-control sizing/z-index integration, keep it here. Component implementation
  * details still belong in Terry_React_UI_Library itself.
+ *
+ * COLOR CONTRACT: this file never defines a palette. Shared components receive the
+ * semantic colors/derived aliases produced by theme-contract.css.
  */
-.app.tc-theme{
-  --tc-base:#011437;
-  --tc-accent:#2ad5b8;
-  --tc-effect:#70eeff;
-  --tc-text-main:#ffffff;
-  --tc-text-bright:#7fe8d8;
-}
-.app.tc-theme[data-mode="light"]{
-  --tc-base:#173a56;
-  --tc-accent:#179f8a;
-  --tc-effect:#3b8faf;
-  --tc-text-main:#17384f;
-  --tc-text-bright:#245e73;
-  --tc-panel:#e2edf3;
-  --tc-panel-2:#edf4f7;
-  --tc-panel-focus:#d7ebef;
-  --tc-border-color:#7199ae;
-  --tc-line:#b2c8d3;
-  --tc-row-hover:#dcecf1;
-  --tc-shadow:rgba(45,76,96,.18);
-}
 
 /* EntityHeader host geometry. */
 .entityHeaderHost{
@@ -62,18 +44,18 @@
   border-radius:7px;
   flex:0 0 auto;
   gap:7px;
-  color:#fff;
-  border-color:color-mix(in srgb,var(--tc-accent) 76%,white 24%);
-  background:linear-gradient(180deg,color-mix(in srgb,var(--tc-accent) 88%,white 12%),color-mix(in srgb,var(--tc-accent) 76%,black 24%));
-  box-shadow:0 2px 7px color-mix(in srgb,var(--tc-accent) 22%,transparent);
+  color:var(--theme-text);
+  border-color:color-mix(in srgb,var(--theme-accent) 76%,white 24%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--theme-accent) 88%,white 12%),color-mix(in srgb,var(--theme-accent) 76%,black 24%));
+  box-shadow:0 2px 7px color-mix(in srgb,var(--theme-accent) 22%,transparent);
   font-weight:650;
   letter-spacing:.1px;
 }
 .editorControls>.tc-button:hover:not(:disabled){
-  border-color:color-mix(in srgb,var(--tc-effect) 64%,white 36%);
-  background:linear-gradient(180deg,color-mix(in srgb,var(--tc-accent) 80%,white 20%),color-mix(in srgb,var(--tc-accent) 82%,black 18%));
+  border-color:color-mix(in srgb,var(--theme-effect) 64%,white 36%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--theme-accent) 80%,white 20%),color-mix(in srgb,var(--theme-accent) 82%,black 18%));
   filter:none;
-  box-shadow:0 3px 10px color-mix(in srgb,var(--tc-accent) 30%,transparent),0 0 7px color-mix(in srgb,var(--tc-effect) 16%,transparent);
+  box-shadow:0 3px 10px color-mix(in srgb,var(--theme-accent) 30%,transparent),0 0 7px color-mix(in srgb,var(--theme-effect) 16%,transparent);
 }
 .editorControls>.tc-button>svg{flex:none}
 .editorControls>.tc-button.variant-accent{font-weight:650;letter-spacing:.1px}
