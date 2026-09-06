@@ -71,6 +71,11 @@ function effectiveMode(app: HTMLElement): ThemeMode {
   return app.dataset.mode === 'light' ? 'light' : 'dark'
 }
 
+function currentMode(): ThemeMode {
+  const app = document.querySelector<HTMLElement>('.app.tc-theme')
+  return app ? effectiveMode(app) : 'dark'
+}
+
 function applyPalette() {
   const app = document.querySelector<HTMLElement>('.app.tc-theme')
   if (!app) return
@@ -89,19 +94,16 @@ function applyPalette() {
   }
 }
 
-let editingMode: ThemeMode = 'dark'
-
 function renderInputs(panel: HTMLElement) {
-  const palette = palettes[editingMode]
+  const mode = currentMode()
+  const palette = palettes[mode]
+  panel.dataset.mode = mode
   panel.querySelectorAll<HTMLInputElement>('input[type="color"][data-palette-key]').forEach(input => {
     const key = input.dataset.paletteKey as keyof ThemePalette
     input.value = palette[key]
   })
-  panel.querySelectorAll<HTMLButtonElement>('.themePaletteModeButton').forEach(button => {
-    button.classList.toggle('active', button.dataset.mode === editingMode)
-  })
   const modeText = panel.querySelector<HTMLElement>('.themePaletteModeHint')
-  if (modeText) modeText.textContent = editingMode === 'dark' ? '正在编辑深色配色' : '正在编辑浅色配色'
+  if (modeText) modeText.textContent = mode === 'dark' ? '当前深色配色' : '当前浅色配色'
 }
 
 function buildCustomizer(row: HTMLElement) {
@@ -121,23 +123,9 @@ function buildCustomizer(row: HTMLElement) {
 
   const toolbar = document.createElement('div')
   toolbar.className = 'themePaletteToolbar'
-
-  const darkButton = document.createElement('button')
-  darkButton.type = 'button'
-  darkButton.className = 'themePaletteModeButton'
-  darkButton.dataset.mode = 'dark'
-  darkButton.textContent = '深色配色'
-
-  const lightButton = document.createElement('button')
-  lightButton.type = 'button'
-  lightButton.className = 'themePaletteModeButton'
-  lightButton.dataset.mode = 'light'
-  lightButton.textContent = '浅色配色'
-
   const hint = document.createElement('span')
   hint.className = 'themePaletteModeHint'
-
-  toolbar.append(darkButton, lightButton, hint)
+  toolbar.append(hint)
 
   const grid = document.createElement('div')
   grid.className = 'themePaletteGrid'
@@ -151,8 +139,9 @@ function buildCustomizer(row: HTMLElement) {
     input.type = 'color'
     input.dataset.paletteKey = meta.key
     input.addEventListener('input', () => {
-      palettes[editingMode][meta.key] = input.value
-      savePalette(editingMode)
+      const mode = currentMode()
+      palettes[mode][meta.key] = input.value
+      savePalette(mode)
       applyPalette()
     })
     label.append(text, input)
@@ -166,32 +155,20 @@ function buildCustomizer(row: HTMLElement) {
   reset.className = 'themePaletteReset'
   reset.textContent = '还原当前配色'
   reset.addEventListener('click', () => {
-    palettes[editingMode] = { ...DEFAULTS[editingMode] }
-    savePalette(editingMode)
+    const mode = currentMode()
+    palettes[mode] = { ...DEFAULTS[mode] }
+    savePalette(mode)
     renderInputs(panel)
     applyPalette()
   })
   footer.append(reset)
-
-  darkButton.addEventListener('click', () => {
-    editingMode = 'dark'
-    renderInputs(panel)
-  })
-  lightButton.addEventListener('click', () => {
-    editingMode = 'light'
-    renderInputs(panel)
-  })
 
   toggle.addEventListener('click', () => {
     const nextOpen = panel.hidden
     panel.hidden = !nextOpen
     toggle.setAttribute('aria-expanded', String(nextOpen))
     toggle.textContent = nextOpen ? '自定义配色 ▴' : '自定义配色 ▾'
-    if (nextOpen) {
-      const app = document.querySelector<HTMLElement>('.app.tc-theme')
-      editingMode = app ? effectiveMode(app) : 'dark'
-      renderInputs(panel)
-    }
+    if (nextOpen) renderInputs(panel)
   })
 
   panel.append(toolbar, grid, footer)
@@ -202,7 +179,7 @@ function buildCustomizer(row: HTMLElement) {
 function attachCustomizer() {
   document.querySelectorAll<HTMLElement>('.settingsDialogBody.settingsGrid .settingRow').forEach(row => {
     const title = row.querySelector<HTMLElement>(':scope > div:first-child > strong')?.textContent?.trim()
-    if (title === '外观') buildCustomizer(row)
+    if (title === '外观' || title === '配色') buildCustomizer(row)
   })
 }
 
@@ -210,11 +187,12 @@ function refreshAfterUiEvent() {
   requestAnimationFrame(() => {
     applyPalette()
     attachCustomizer()
+    document.querySelectorAll<HTMLElement>('.themeCustomizerPanel:not([hidden])').forEach(renderInputs)
   })
 }
 
-// Event-driven only. Settings opening and appearance changes are finite user actions,
-// so there is no reason to observe the entire document tree.
+// The appearance/palette Select above the customizer is the single source of truth for
+// which palette is active. The customizer deliberately has no second dark/light switch.
 document.addEventListener('click', event => {
   const target = event.target as HTMLElement | null
   if (!target) return
