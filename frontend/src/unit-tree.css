@@ -27,40 +27,25 @@
 .unitCountryBadge{position:absolute;right:-1px;bottom:-1px;width:16px;height:11px;display:block;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px color-mix(in srgb,var(--theme-text) 82%,transparent),0 1px 3px var(--theme-shadow);pointer-events:none;z-index:2}
 .unitTreeEmpty{padding:16px 10px;color:color-mix(in srgb,var(--theme-text) 48%,var(--theme-base));font-size:11.5px;text-align:center}
 
-.entityNavigation{display:none!important}
-body.has-reference-chain .fieldsPane{padding-bottom:88px}
-.referenceChainDock{position:fixed;z-index:1450;min-height:62px;padding:7px 10px 8px;display:flex;align-items:center;gap:9px;border-top:1px solid color-mix(in srgb,var(--theme-effect) 34%,var(--theme-border));background:linear-gradient(180deg,color-mix(in srgb,var(--theme-surface-1) 96%,transparent),color-mix(in srgb,var(--theme-surface-0) 98%,transparent));box-shadow:0 -7px 22px var(--theme-shadow);backdrop-filter:blur(10px)}
-.referenceChainLabel{flex:0 0 auto;align-self:stretch;display:flex;align-items:center;padding:0 9px 0 2px;border-right:1px solid var(--theme-line);color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base));font-size:10px;font-weight:800;letter-spacing:.6px}
-.referenceChainFlow{min-width:0;flex:1;display:flex;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;padding:1px 2px 3px;scrollbar-width:thin;scrollbar-color:var(--theme-surface-strong) transparent}
-.referenceChainFlow::-webkit-scrollbar{height:6px}.referenceChainFlow::-webkit-scrollbar-thumb{border-radius:4px;background:var(--theme-surface-strong)}
-.referenceChainNode,.referenceChainCurrent{height:43px;min-width:132px;max-width:210px;flex:0 0 auto;padding:4px 7px;border-radius:6px;display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:7px;text-align:left}
-.referenceChainNode{border:1px solid var(--theme-border);background:linear-gradient(180deg,var(--theme-surface-2),var(--theme-surface-1));color:color-mix(in srgb,var(--theme-text) 80%,var(--theme-base));cursor:pointer;transition:.12s ease}
-.referenceChainNode:hover{border-color:color-mix(in srgb,var(--theme-effect) 56%,var(--theme-border));background:linear-gradient(180deg,var(--theme-surface-hover),var(--theme-surface-2));transform:translateY(-1px);box-shadow:0 5px 14px var(--theme-shadow)}
-.referenceChainCurrent{border:1px solid color-mix(in srgb,var(--theme-accent) 46%,var(--theme-border));background:linear-gradient(180deg,color-mix(in srgb,var(--theme-accent) 22%,var(--theme-surface-2)),color-mix(in srgb,var(--theme-accent) 14%,var(--theme-surface-1)));box-shadow:inset 3px 0 0 var(--theme-accent);color:var(--theme-text)}
-.referenceChainNode>span:nth-child(2),.referenceChainCurrent>span:nth-child(2){min-width:0}.referenceChainNode b,.referenceChainNode small,.referenceChainCurrent b,.referenceChainCurrent small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.referenceChainNode b,.referenceChainCurrent b{font-size:11.5px;font-weight:650}.referenceChainNode small,.referenceChainCurrent small{margin-top:1px;color:color-mix(in srgb,var(--theme-text) 48%,var(--theme-base));font:9px/1.15 "Cascadia Code",Consolas,monospace}.referenceChainCurrent small{color:color-mix(in srgb,var(--theme-accent) 46%,var(--theme-text))}.referenceChainNode em{max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 4px;border-radius:4px;background:var(--theme-effect-soft);color:color-mix(in srgb,var(--theme-effect) 62%,var(--theme-text));font:8.5px/1 "Cascadia Code",Consolas,monospace;font-style:normal}
-.referenceChainArrow{flex:0 0 auto;color:color-mix(in srgb,var(--theme-text) 42%,var(--theme-base));font-size:15px;line-height:1}
+/* Header object icon is literally the same icon+country-badge group as the left tree, enlarged as one unit. */
+.headerUnitComposite{position:absolute;left:11px;top:50%;width:50px;height:46px;transform:translateY(-50%);display:grid;place-items:center;z-index:15;pointer-events:none}
+.headerUnitComposite>.unitTreeIconWrap{transform:scale(1.56);transform-origin:center center}
+.entityHeaderHost .tc-entity-icon>.legacyUnitIcon{visibility:hidden!important}
 
-.editor{position:relative!important;grid-template-rows:54px minmax(0,1fr)!important}
-.entityHeaderHost{position:absolute!important;left:12px!important;top:4px!important;width:250px!important;height:46px!important;min-height:46px!important;z-index:8!important;overflow:hidden!important;border:0!important;background:transparent!important}
-.entityHeaderHost>header{height:46px!important;min-height:46px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
-.entityHeaderHost>header>div:nth-child(1){display:none!important}
-.entityHeaderHost>header>div:nth-child(2){width:46px!important;height:46px!important;min-width:46px!important;border:0!important;background:transparent!important;padding:0!important;margin:0 9px 0 0!important}
-.entityHeaderHost>header>div:nth-child(3){min-width:0!important;gap:1px!important}.entityHeaderHost>header>div:nth-child(3)>strong{font-size:14px!important;line-height:18px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.entityHeaderHost>header>div:nth-child(3)>span{font-size:9.5px!important;line-height:13px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:color-mix(in srgb,var(--theme-text) 50%,var(--theme-base))!important}
-.editorControls{grid-row:1!important;min-height:54px!important;height:54px!important;padding:0 12px 0 274px!important;display:grid!important;grid-template-columns:minmax(190px,280px) minmax(118px,170px) 1fr auto!important;align-items:center!important;gap:8px!important;overflow:visible!important}
-.editorControls .editorSearch{grid-column:1!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
-.editorControls>button{grid-column:4!important;grid-row:1!important}
-.editorControls .segmented{grid-column:2!important;position:relative!important;display:block!important;width:100%!important;height:32px!important;overflow:visible!important;z-index:80!important;border:1px solid var(--theme-border)!important;border-radius:7px!important;background:var(--theme-surface-soft)!important}
-.editorControls .segmented::before{content:"分类";position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:0;color:color-mix(in srgb,var(--theme-text) 46%,var(--theme-base));font-size:10px;pointer-events:none}
-.editorControls .segmented button{display:none!important;width:100%!important;height:30px!important;padding:0 28px 0 42px!important;text-align:left!important;border:0!important;border-radius:6px!important;background:transparent!important;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-base))!important}
-.editorControls .segmented button.active{display:block!important;position:relative!important;z-index:2!important;background:transparent!important;box-shadow:none!important;color:var(--theme-text)!important}
-.editorControls .segmented button.active::after{content:"⌄";position:absolute;right:10px;top:50%;transform:translateY(-55%);color:color-mix(in srgb,var(--theme-text) 52%,var(--theme-base));font-size:14px}
-.editorControls .segmented:hover,.editorControls .segmented:focus-within{height:auto!important;box-shadow:0 10px 24px var(--theme-shadow)!important;background:var(--theme-surface-1)!important}
-.editorControls .segmented:hover button,.editorControls .segmented:focus-within button{display:block!important;position:relative!important;padding-left:12px!important;border-radius:0!important;background:var(--theme-surface-1)!important}
-.editorControls .segmented:hover::before,.editorControls .segmented:focus-within::before{display:none!important}
-.editorControls .segmented:hover button:first-of-type,.editorControls .segmented:focus-within button:first-of-type{border-radius:6px 6px 0 0!important}
-.editorControls .segmented:hover button:last-of-type,.editorControls .segmented:focus-within button:last-of-type{border-radius:0 0 6px 6px!important}
-.editorControls .segmented:hover button:hover,.editorControls .segmented:focus-within button:hover{background:var(--theme-surface-hover)!important;color:var(--theme-text)!important}
-.editorControls .segmented:hover button.active,.editorControls .segmented:focus-within button.active{background:var(--theme-accent-soft)!important;color:var(--theme-text-bright)!important}
+/* Object-level relationship summary lives under parameter help. The old bottom reference-chain UI is intentionally gone. */
+.relationshipPanel{margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--theme-line)}
+.relationshipPanelToggle{width:100%;height:34px;padding:0 7px;border:1px solid transparent;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-base));display:flex;align-items:center;gap:6px;text-align:left;cursor:pointer}
+.relationshipPanelToggle:hover{background:var(--theme-surface-hover);border-color:var(--theme-border);color:var(--theme-text)}
+.relationshipPanelToggle strong{font-size:11.5px;font-weight:700}.relationshipPanelToggle em{margin-left:auto;min-width:22px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--theme-surface-strong);color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base));font-size:9.5px;font-style:normal}
+.relationshipPanelBody{padding:7px 0 2px;display:flex;flex-direction:column;gap:10px}
+.relationshipSection{min-width:0}
+.relationshipSectionTitle{height:24px;padding:0 5px;display:flex;align-items:center;gap:6px;color:color-mix(in srgb,var(--theme-text) 52%,var(--theme-base));font-size:10px;font-weight:700}
+.relationshipSectionTitle em{margin-left:auto;font-style:normal;font-weight:500;opacity:.76}
+.relationshipRow{width:100%;min-height:42px;padding:5px 6px;border:1px solid transparent;border-radius:7px;background:transparent;color:inherit;display:grid;grid-template-columns:24px minmax(78px,1fr) minmax(70px,auto) 14px;align-items:center;gap:7px;text-align:left;cursor:pointer}
+.relationshipRow:hover{background:var(--theme-surface-hover);border-color:var(--theme-border)}
+.relationshipIdentity{min-width:0}.relationshipIdentity b,.relationshipIdentity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.relationshipIdentity b{font-size:11.3px;font-weight:650;color:color-mix(in srgb,var(--theme-text) 84%,var(--theme-base))}.relationshipIdentity small{margin-top:2px;color:color-mix(in srgb,var(--theme-text) 44%,var(--theme-base));font:8.8px/1.15 "Cascadia Code",Consolas,monospace}
+.relationshipKeys{min-width:0;display:flex;justify-content:flex-end;align-items:center;gap:3px;flex-wrap:wrap}.relationshipKeys em{max-width:78px;padding:2px 4px;border-radius:4px;background:var(--theme-effect-soft);color:color-mix(in srgb,var(--theme-effect) 56%,var(--theme-text));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:8.3px/1.15 "Cascadia Code",Consolas,monospace;font-style:normal}
+.relationshipRow>svg{color:color-mix(in srgb,var(--theme-text) 38%,var(--theme-base))}
+.relationshipEmpty{padding:7px 6px 8px;color:color-mix(in srgb,var(--theme-text) 42%,var(--theme-base));font-size:9.8px;line-height:1.5}
 
-/* Light/dark modes do not own independent component colors. */
-@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.legacyLeaves{margin-left:5px;padding-left:5px}.referenceChainLabel{display:none}.referenceChainDock{padding-left:6px;padding-right:6px}.entityHeaderHost{width:220px!important}.editorControls{padding-left:242px!important;grid-template-columns:minmax(170px,1fr) 130px auto!important}.editorControls>button{grid-column:3!important}}
+@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.legacyLeaves{margin-left:5px;padding-left:5px}.relationshipRow{grid-template-columns:24px minmax(70px,1fr) 14px}.relationshipKeys{display:none}}
