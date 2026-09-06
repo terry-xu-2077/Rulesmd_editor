@@ -7,67 +7,68 @@
 .unitGlobalRule:hover{color:#e4f4fb;border-color:rgba(48,190,179,.42);background:linear-gradient(90deg,rgba(28,94,116,.62),rgba(23,57,80,.78))}
 .unitGlobalRule.selected{border-color:rgba(42,195,172,.66);background:linear-gradient(90deg,rgba(22,119,119,.42),rgba(20,54,74,.78));box-shadow:inset 3px 0 0 #25c1aa}
 .unitGlobalIcon{width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;border-radius:6px;color:#75d9cc;background:rgba(25,104,119,.28);box-shadow:inset 0 0 0 1px rgba(86,188,194,.16)}
-.unitGlobalText{min-width:0;flex:1}
-.unitGlobalText b,.unitGlobalText small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.unitGlobalText b{font-size:12px;font-weight:700;color:inherit}
-.unitGlobalText small{margin-top:1px;font-size:9.5px;color:#708aa0;font-family:"Cascadia Code",Consolas,monospace}
+.unitGlobalText{min-width:0;flex:1}.unitGlobalText b,.unitGlobalText small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.unitGlobalText b{font-size:12px;font-weight:700;color:inherit}.unitGlobalText small{margin-top:1px;font-size:9.5px;color:#708aa0;font-family:"Cascadia Code",Consolas,monospace}
 .unitTreeScroller{min-height:0;overflow:auto;padding-bottom:14px;scrollbar-width:thin;scrollbar-color:rgba(94,94,94,.56) rgba(30,63,133,.24)}
 .unitTreeScroller::-webkit-scrollbar{width:10px;height:10px}.unitTreeScroller::-webkit-scrollbar-track{background:rgba(30,63,133,.24);border-radius:7px}.unitTreeScroller::-webkit-scrollbar-thumb{border-radius:7px;border:2px solid transparent;background:linear-gradient(90deg,rgba(94,94,94,.62),rgba(52,52,52,.38)) padding-box}.unitTreeScroller::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,rgba(95,150,190,.72),rgba(52,82,104,.56)) padding-box}
-.unitFaction+.unitFaction{margin-top:5px}
+.unitTypeGroup+.unitTypeGroup{margin-top:4px}
 .unitTreeLevel,.unitTreeLeaf{width:100%;border:0;background:transparent;color:inherit;cursor:pointer;text-align:left}
-.unitTreeLevel{display:flex;align-items:center;gap:5px;min-height:27px;padding:0 6px;border-radius:5px;color:#879bb1}
+.unitTreeLevel{display:flex;align-items:center;gap:6px;min-height:30px;padding:0 7px;border-radius:5px;color:#c9d6e4}
 .unitTreeLevel em{margin-left:auto;font-size:10px;font-style:normal;color:#667c94}
-.unitTreeLevel.faction{min-height:30px;color:#c9d6e4;font-size:12px;font-weight:700;background:rgba(27,44,66,.52)}
-.unitTreeLevel.faction:hover,.unitTreeLevel.type:hover{background:rgba(38,62,91,.5);color:#e4edf7}
-.unitTreeBranch{position:relative}
-.factionBranch{margin:2px 0 3px 7px;padding-left:7px;border-left:1px solid rgba(120,155,205,.14)}
-.unitTreeLevel.type{min-height:26px;font-size:11.5px;color:#91a5bb}
-.unitLeaves{padding:1px 0 4px}
-.unitTreeLeaf{min-height:36px;padding:3px 6px;border:1px solid transparent;border-radius:6px;display:flex;align-items:center;gap:7px;color:#aebfd0}
-.unitTreeLeaf>span{min-width:0;flex:1}
-.unitTreeLeaf b,.unitTreeLeaf small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.unitTreeLeaf b{font-size:12px;font-weight:600;color:#cdd9e6}
-.unitTreeLeaf small{margin-top:1px;font-size:9.5px;color:#6f8399;font-family:"Cascadia Code",Consolas,monospace}
-.unitTreeLeaf>svg{opacity:0;color:#8298af}
-.unitTreeLeaf:hover{background:#14243a;border-color:rgba(120,155,205,.12)}
-.unitTreeLeaf:hover>svg,.unitTreeLeaf.selected>svg{opacity:1}
-.unitTreeLeaf.selected{background:linear-gradient(90deg,rgba(44,117,187,.25),rgba(24,190,162,.06));border-color:rgba(67,147,221,.24);box-shadow:inset 4px 0 0 rgba(70,157,234,.92)}
-.unitTreeIcon{width:28px;height:22px;flex:0 0 28px;border-radius:3px;overflow:hidden;background-color:#182b42;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-.unitTreeIcon.fallback{height:28px;display:grid;place-items:center;color:#8eabc4}
+.unitTreeLevel.legacyType{font-size:12px;font-weight:700;background:linear-gradient(90deg,rgba(28,48,72,.78),rgba(22,36,55,.58));border:1px solid rgba(120,155,205,.08)}
+.unitTreeLevel.legacyType:hover{background:linear-gradient(90deg,rgba(38,66,96,.82),rgba(29,47,69,.66));color:#edf5fb}
+.legacyLeaves{padding:2px 0 5px 8px;border-left:1px solid rgba(120,155,205,.12);margin-left:8px}
+.unitLeaves{padding-top:1px}
+.unitTreeLeaf{min-height:38px;padding:3px 6px;border:1px solid transparent;border-radius:6px;display:flex;align-items:center;gap:8px;color:#aebfd0}
+.unitTreeLeafText{min-width:0;flex:1}.unitTreeLeaf b,.unitTreeLeaf small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.unitTreeLeaf b{font-size:12px;font-weight:600;color:#cdd9e6}.unitTreeLeaf small{margin-top:1px;font-size:9.5px;color:#6f8399;font-family:"Cascadia Code",Consolas,monospace}
+.unitTreeLeaf>svg{opacity:0;color:#8298af}.unitTreeLeaf:hover{background:#14243a;border-color:rgba(120,155,205,.12)}.unitTreeLeaf:hover>svg,.unitTreeLeaf.selected>svg{opacity:1}.unitTreeLeaf.selected{background:linear-gradient(90deg,rgba(44,117,187,.28),rgba(24,190,162,.07));border-color:rgba(67,147,221,.24);box-shadow:inset 4px 0 0 rgba(70,157,234,.92)}
+.unitTreeIconWrap{position:relative;width:31px;height:29px;flex:0 0 31px;display:flex;align-items:center;justify-content:flex-start;overflow:visible}
+.unitTreeIcon{display:block;width:28px;height:22px;flex:0 0 28px;border-radius:3px;overflow:hidden;background-color:#182b42;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.unitTreeIcon.fallback{height:28px;display:grid;place-items:center;color:#8eabc4}.unitTreeIcon.fallback.semantic{border-radius:6px;background:linear-gradient(145deg,rgba(46,76,108,.9),rgba(24,43,65,.96));color:#9ed6ff}.unitTreeIcon.compact{width:24px;height:19px;flex-basis:24px}.unitTreeIcon.fallback.compact{height:24px}
+.unitCountryBadge{position:absolute;right:-1px;bottom:-1px;width:16px;height:11px;display:block;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.82),0 1px 3px rgba(0,0,0,.65);pointer-events:none;z-index:2}
 .unitTreeEmpty{padding:16px 10px;color:#74889e;font-size:11.5px;text-align:center}
 
-.unitCountrySection{margin-top:4px;padding-top:3px;border-top:1px solid rgba(120,155,205,.1)}
-.unitCountrySectionLabel{height:24px;display:flex;align-items:center;padding:0 7px;color:#72879d;font-size:10px;font-weight:700;letter-spacing:.5px}
-.unitCountry+.unitCountry{margin-top:2px}
-.unitCountryHeader{min-height:38px;display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;border:1px solid transparent;border-radius:6px;color:#aebfd0;transition:background .12s ease,border-color .12s ease}
-.unitCountryHeader:hover{background:rgba(30,58,86,.46);border-color:rgba(120,155,205,.1)}
-.unitCountryHeader.selected{background:linear-gradient(90deg,rgba(44,117,187,.22),rgba(24,190,162,.05));border-color:rgba(67,147,221,.22);box-shadow:inset 3px 0 0 rgba(70,157,234,.88)}
-.unitCountryToggle,.unitCountryIdentity{border:0;background:transparent;color:inherit;cursor:pointer}
-.unitCountryToggle{width:22px;height:100%;padding:0;display:grid;place-items:center;color:#8097ad}
-.unitCountryIdentity{min-width:0;display:flex;align-items:center;gap:7px;padding:3px 2px;text-align:left}
-.unitCountryIdentity>span:last-child{min-width:0;flex:1}
-.unitCountryIdentity b,.unitCountryIdentity small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.unitCountryIdentity b{font-size:12px;font-weight:650;color:#cfdae5}
-.unitCountryIdentity small{margin-top:1px;font:9.5px/1.2 "Cascadia Code",Consolas,monospace;color:#70869a}
-.unitCountryHeader>em{padding-right:7px;font-size:10px;font-style:normal;color:#667c94}
-.unitCountryFlag{display:block;flex:0 0 auto;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
-.unitCountryFlag.fallback{width:31px;height:21px;display:grid;place-items:center;background:rgba(78,103,130,.2);color:#8fa9bf}
-.unitCountryLeaves{margin-left:22px;padding:1px 0 4px 5px;border-left:1px solid rgba(120,155,205,.12)}
-.unitCountryEmpty{padding:7px 8px 9px;color:#62788d;font-size:10px}
+/* The old previous/next history controls are superseded by the contextual reference chain. */
+.entityNavigation{display:none!important}
+body.has-reference-chain .fieldsPane{padding-bottom:88px}
+.referenceChainDock{position:fixed;z-index:1450;min-height:62px;padding:7px 10px 8px;display:flex;align-items:center;gap:9px;border-top:1px solid rgba(88,155,214,.3);background:linear-gradient(180deg,rgba(15,27,43,.96),rgba(8,17,29,.985));box-shadow:0 -7px 22px rgba(0,0,0,.3);backdrop-filter:blur(10px)}
+.referenceChainLabel{flex:0 0 auto;align-self:stretch;display:flex;align-items:center;padding:0 9px 0 2px;border-right:1px solid rgba(120,155,205,.16);color:#7f94a9;font-size:10px;font-weight:800;letter-spacing:.6px}
+.referenceChainFlow{min-width:0;flex:1;display:flex;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;padding:1px 2px 3px;scrollbar-width:thin;scrollbar-color:rgba(88,121,151,.65) transparent}
+.referenceChainFlow::-webkit-scrollbar{height:6px}.referenceChainFlow::-webkit-scrollbar-thumb{border-radius:4px;background:rgba(88,121,151,.55)}
+.referenceChainNode,.referenceChainCurrent{height:43px;min-width:132px;max-width:210px;flex:0 0 auto;padding:4px 7px;border-radius:6px;display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:7px;text-align:left}
+.referenceChainNode{border:1px solid rgba(105,145,185,.18);background:linear-gradient(180deg,rgba(27,46,68,.94),rgba(18,32,50,.94));color:#c5d4e2;cursor:pointer;transition:.12s ease}
+.referenceChainNode:hover{border-color:rgba(70,157,234,.55);background:linear-gradient(180deg,rgba(35,69,99,.98),rgba(23,46,69,.98));transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.2)}
+.referenceChainCurrent{border:1px solid rgba(39,196,170,.42);background:linear-gradient(180deg,rgba(23,91,94,.55),rgba(16,52,65,.76));box-shadow:inset 3px 0 0 rgba(39,196,170,.9);color:#e4f5f2}
+.referenceChainNode>span:nth-child(2),.referenceChainCurrent>span:nth-child(2){min-width:0}.referenceChainNode b,.referenceChainNode small,.referenceChainCurrent b,.referenceChainCurrent small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.referenceChainNode b,.referenceChainCurrent b{font-size:11.5px;font-weight:650}.referenceChainNode small,.referenceChainCurrent small{margin-top:1px;color:#72879b;font:9px/1.15 "Cascadia Code",Consolas,monospace}.referenceChainCurrent small{color:#78a5a0}.referenceChainNode em{max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 4px;border-radius:4px;background:rgba(75,155,232,.1);color:#77a9d4;font:8.5px/1 "Cascadia Code",Consolas,monospace;font-style:normal}
+.referenceChainArrow{flex:0 0 auto;color:#4f748f;font-size:15px;line-height:1}
 
-.app[data-mode="light"] .unitTreeLevel.faction{color:#29485e;background:rgba(190,208,222,.55)}
-.app[data-mode="light"] .unitTreeLevel.faction:hover,.app[data-mode="light"] .unitTreeLevel.type:hover{background:rgba(178,201,217,.55);color:#17384e}
-.app[data-mode="light"] .unitTreeLevel.type{color:#48667d}
-.app[data-mode="light"] .unitTreeLevel em,.app[data-mode="light"] .unitCountryHeader>em{color:#71889a}
-.app[data-mode="light"] .unitTreeLeaf{color:#38576d}
-.app[data-mode="light"] .unitTreeLeaf b,.app[data-mode="light"] .unitCountryIdentity b{color:#254258}
-.app[data-mode="light"] .unitTreeLeaf small,.app[data-mode="light"] .unitCountryIdentity small{color:#70869a}
-.app[data-mode="light"] .unitTreeLeaf:hover,.app[data-mode="light"] .unitCountryHeader:hover{background:#e1ebf3;border-color:rgba(66,103,132,.12)}
-.app[data-mode="light"] .unitTreeLeaf.selected,.app[data-mode="light"] .unitCountryHeader.selected{background:linear-gradient(90deg,#d7e9f5,#e7f0f5);border-color:rgba(42,111,160,.2);box-shadow:inset 4px 0 0 #4aa9df}
-.app[data-mode="light"] .unitTreeIcon.fallback{background:#e5edf4;color:#7891a5;box-shadow:inset 0 0 0 1px rgba(54,84,108,.12)}
-.app[data-mode="light"] .unitCountryFlag.fallback{background:#e6eef4;color:#7891a5;box-shadow:inset 0 0 0 1px rgba(54,84,108,.12)}
-.app[data-mode="light"] .unitCountrySection{border-top-color:rgba(55,87,112,.1)}
-.app[data-mode="light"] .unitCountrySectionLabel,.app[data-mode="light"] .unitCountryEmpty{color:#6f8495}
-.app[data-mode="light"] .unitCountryLeaves{border-left-color:rgba(55,87,112,.12)}
+/* Compact editor identity/filter strip: remove the tall hero and reuse its content as a small left identity block. */
+.editor{position:relative!important;grid-template-rows:54px minmax(0,1fr)!important}
+.entityHeaderHost{position:absolute!important;left:12px!important;top:4px!important;width:250px!important;height:46px!important;min-height:46px!important;z-index:8!important;overflow:hidden!important;border:0!important;background:transparent!important}
+.entityHeaderHost>header{height:46px!important;min-height:46px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.entityHeaderHost>header>div:nth-child(1){display:none!important}
+.entityHeaderHost>header>div:nth-child(2){width:46px!important;height:46px!important;min-width:46px!important;border:0!important;background:transparent!important;padding:0!important;margin:0 9px 0 0!important}
+.entityHeaderHost>header>div:nth-child(3){min-width:0!important;gap:1px!important}.entityHeaderHost>header>div:nth-child(3)>strong{font-size:14px!important;line-height:18px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.entityHeaderHost>header>div:nth-child(3)>span{font-size:9.5px!important;line-height:13px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#758ba1!important}
+.editorControls{grid-row:1!important;min-height:54px!important;height:54px!important;padding:0 12px 0 274px!important;display:grid!important;grid-template-columns:minmax(190px,280px) minmax(118px,170px) 1fr auto!important;align-items:center!important;gap:8px!important;overflow:visible!important}
+.editorControls .editorSearch{grid-column:1!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
+.editorControls>button{grid-column:4!important;grid-row:1!important}
+/* Existing chip group becomes a compact dropdown-like selector without changing business state wiring. */
+.editorControls .segmented{grid-column:2!important;position:relative!important;display:block!important;width:100%!important;height:32px!important;overflow:visible!important;z-index:80!important;border:1px solid var(--line2)!important;border-radius:7px!important;background:#0c1624!important}
+.editorControls .segmented::before{content:"分类";position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:0;color:#6f8398;font-size:10px;pointer-events:none}
+.editorControls .segmented button{display:none!important;width:100%!important;height:30px!important;padding:0 28px 0 42px!important;text-align:left!important;border:0!important;border-radius:6px!important;background:transparent!important;color:#b8cad9!important}
+.editorControls .segmented button.active{display:block!important;position:relative!important;z-index:2!important;background:transparent!important;box-shadow:none!important;color:#e4edf7!important}
+.editorControls .segmented button.active::after{content:"⌄";position:absolute;right:10px;top:50%;transform:translateY(-55%);color:#6f8aa3;font-size:14px}
+.editorControls .segmented:hover,.editorControls .segmented:focus-within{height:auto!important;box-shadow:0 10px 24px rgba(0,0,0,.34)!important;background:#0b1522!important}
+.editorControls .segmented:hover button,.editorControls .segmented:focus-within button{display:block!important;position:relative!important;padding-left:12px!important;border-radius:0!important;background:#0b1522!important}
+.editorControls .segmented:hover::before,.editorControls .segmented:focus-within::before{display:none!important}
+.editorControls .segmented:hover button:first-of-type,.editorControls .segmented:focus-within button:first-of-type{border-radius:6px 6px 0 0!important}
+.editorControls .segmented:hover button:last-of-type,.editorControls .segmented:focus-within button:last-of-type{border-radius:0 0 6px 6px!important}
+.editorControls .segmented:hover button:hover,.editorControls .segmented:focus-within button:hover{background:#17263a!important;color:#fff!important}
+.editorControls .segmented:hover button.active,.editorControls .segmented:focus-within button.active{background:rgba(24,190,162,.12)!important;color:#8ee7d7!important}
 
-@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.factionBranch{margin-left:4px;padding-left:5px}}
+.app[data-mode="light"] .unitTreeLevel.legacyType{color:#29485e;background:linear-gradient(90deg,rgba(190,208,222,.72),rgba(207,220,230,.5));border-color:rgba(66,103,132,.08)}
+.app[data-mode="light"] .unitTreeLevel.legacyType:hover{background:linear-gradient(90deg,rgba(178,201,217,.78),rgba(199,216,227,.62));color:#17384e}
+.app[data-mode="light"] .unitTreeLevel em{color:#71889a}.app[data-mode="light"] .legacyLeaves{border-left-color:rgba(55,87,112,.12)}
+.app[data-mode="light"] .unitTreeLeaf{color:#38576d}.app[data-mode="light"] .unitTreeLeaf b{color:#254258}.app[data-mode="light"] .unitTreeLeaf small{color:#70869a}.app[data-mode="light"] .unitTreeLeaf:hover{background:#e1ebf3;border-color:rgba(66,103,132,.12)}.app[data-mode="light"] .unitTreeLeaf.selected{background:linear-gradient(90deg,#d7e9f5,#e7f0f5);border-color:rgba(42,111,160,.2);box-shadow:inset 4px 0 0 #4aa9df}.app[data-mode="light"] .unitTreeIcon.fallback{background:#e5edf4;color:#7891a5;box-shadow:inset 0 0 0 1px rgba(54,84,108,.12)}
+.app[data-mode="light"] .unitTreeIcon.fallback.semantic{background:linear-gradient(145deg,#eef5fa,#dce9f2);color:#4d7795}.app[data-mode="light"] .referenceChainDock{border-top-color:rgba(55,103,139,.22);background:linear-gradient(180deg,rgba(238,246,251,.97),rgba(222,234,243,.985));box-shadow:0 -7px 20px rgba(44,73,94,.16)}.app[data-mode="light"] .referenceChainLabel{color:#657f92;border-right-color:rgba(55,87,112,.14)}.app[data-mode="light"] .referenceChainNode{border-color:rgba(62,102,133,.16);background:linear-gradient(180deg,#f5f9fc,#e6eff5);color:#29475b}.app[data-mode="light"] .referenceChainNode:hover{border-color:rgba(42,111,160,.35);background:#eef6fb}.app[data-mode="light"] .referenceChainCurrent{border-color:rgba(29,142,126,.26);background:linear-gradient(180deg,#dff3ef,#d7ecea);color:#244d4a}.app[data-mode="light"] .referenceChainNode small{color:#72879b}.app[data-mode="light"] .referenceChainCurrent small{color:#648b87}.app[data-mode="light"] .referenceChainArrow{color:#7694a9}
+.app[data-mode="light"] .editorControls .segmented{background:#f8fafc!important;border-color:#b8c8d6!important}.app[data-mode="light"] .editorControls .segmented button.active{color:#17384f!important}.app[data-mode="light"] .editorControls .segmented:hover,.app[data-mode="light"] .editorControls .segmented:focus-within,.app[data-mode="light"] .editorControls .segmented:hover button,.app[data-mode="light"] .editorControls .segmented:focus-within button{background:#f8fafc!important}.app[data-mode="light"] .editorControls .segmented:hover button:hover,.app[data-mode="light"] .editorControls .segmented:focus-within button:hover{background:#e3edf4!important;color:#17384f!important}.app[data-mode="light"] .editorControls .segmented:hover button.active,.app[data-mode="light"] .editorControls .segmented:focus-within button.active{background:#d9f0eb!important;color:#0f635b!important}
+@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.legacyLeaves{margin-left:5px;padding-left:5px}.referenceChainLabel{display:none}.referenceChainDock{padding-left:6px;padding-right:6px}.entityHeaderHost{width:220px!important}.editorControls{padding-left:242px!important;grid-template-columns:minmax(170px,1fr) 130px auto!important}.editorControls>button{grid-column:3!important}}
