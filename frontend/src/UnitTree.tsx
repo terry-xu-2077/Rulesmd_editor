@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bomb, Box, Building2, ChevronDown, ChevronRight, Crosshair, Flag, Plane, Rocket, SlidersHorizontal, Sparkles, Truck, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bomb, Box, Building2, ChevronDown, ChevronRight, Crosshair, Flag, Plane, Rocket, SlidersHorizontal, Sparkles, Truck, Users } from 'lucide-react'
 import { workspaceApi } from './backend'
 import { isLegacyGlobalSubsection } from './generalGroups'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
@@ -169,9 +169,20 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   const [rawRules, setRawRules] = useState('')
   const [headerHost, setHeaderHost] = useState<HTMLElement | null>(null)
   const [inspectorHost, setInspectorHost] = useState<HTMLElement | null>(null)
+  const [navigationHost, setNavigationHost] = useState<HTMLElement | null>(null)
   const [relationshipsOpen, setRelationshipsOpen] = useState(false)
+  const navigationHistory = useRef<UnitTreeRow[]>([])
+  const navigationIndex = useRef(-1)
+  const navigationTarget = useRef<number | null>(null)
+  const [navigationRevision, setNavigationRevision] = useState(0)
 
-  useEffect(() => setExpanded({}), [documentEpoch])
+  useEffect(() => {
+    setExpanded({})
+    navigationHistory.current = []
+    navigationIndex.current = -1
+    navigationTarget.current = null
+    setNavigationRevision(value => value + 1)
+  }, [documentEpoch])
   useEffect(() => {
     let cancelled = false
     if (!rows.length) { setRawRules(''); return () => { cancelled = true } }
@@ -182,6 +193,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   useEffect(() => {
     setHeaderHost(document.querySelector<HTMLElement>('.entityHeaderHost'))
     setInspectorHost(document.querySelector<HTMLElement>('.inspector .helpContent'))
+    setNavigationHost(document.querySelector<HTMLElement>('.entityNavigation'))
   }, [documentEpoch, selectedId])
 
   const navigation = useMemo(() => buildRulesNavigation(rawRules), [rawRules])
@@ -194,6 +206,24 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     return id ? countryById.get(id.toLowerCase()) : undefined
   }, [countryById, navigation, selectedRow])
   const relationships = useMemo(() => buildRelationships(rawRules, selectedRow, rows), [rawRules, rows, selectedRow])
+
+  useEffect(() => {
+    if (!selectedRow) return
+    const targetIndex = navigationTarget.current
+    if (targetIndex != null && navigationHistory.current[targetIndex]?.id.toLowerCase() === selectedRow.id.toLowerCase()) {
+      navigationIndex.current = targetIndex
+      navigationTarget.current = null
+      setNavigationRevision(value => value + 1)
+      return
+    }
+    if (navigationHistory.current[navigationIndex.current]?.id.toLowerCase() === selectedRow.id.toLowerCase()) return
+    const base = navigationHistory.current.slice(0, navigationIndex.current + 1)
+    if (base.at(-1)?.id.toLowerCase() !== selectedRow.id.toLowerCase()) base.push(selectedRow)
+    navigationHistory.current = base
+    navigationIndex.current = base.length - 1
+    navigationTarget.current = null
+    setNavigationRevision(value => value + 1)
+  }, [selectedRow?.id])
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const base = rows.filter(row => row.id.toLowerCase() !== 'general' && !isLegacyGlobalSubsection(row.id))
@@ -229,6 +259,16 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
     setExpanded(value => ({ ...value, [`side:${side}`]: true, [`side:${side}:${type}`]: true }))
   }
   const selectRelated = (row: UnitTreeRow) => { expandFor(row); onSelect(row) }
+  const navigateObjectHistory = (delta: -1 | 1) => {
+    const targetIndex = navigationIndex.current + delta
+    const row = navigationHistory.current[targetIndex]
+    if (!row) return
+    navigationTarget.current = targetIndex
+    expandFor(row)
+    onSelect(row)
+  }
+  const previousObject = navigationRevision >= 0 ? navigationHistory.current[navigationIndex.current - 1] ?? null : null
+  const nextObject = navigationHistory.current[navigationIndex.current + 1] ?? null
 
   useEffect(() => {
     if (!selectedId || selectedId.toLowerCase() === 'general') return
@@ -242,6 +282,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   return <div className="unitHierarchy">
     {headerHost && selectedRow && createPortal(<span className="headerUnitComposite"><UnitCompositeIcon unit={selectedRow} exclusiveCountry={selectedExclusiveCountry}/></span>, headerHost)}
     {inspectorHost && selectedRow && createPortal(<RelationshipPanel selected={selectedRow} model={relationships} open={relationshipsOpen} onToggle={() => setRelationshipsOpen(value => !value)} onSelect={selectRelated}/>, inspectorHost)}
+    {navigationHost && createPortal(<><button className="objectNavButton" disabled={!previousObject} title={previousObject ? `后退到 ${previousObject.label} [${previousObject.id}]` : '没有上一项'} onClick={() => navigateObjectHistory(-1)}><ArrowLeft size={15}/></button><button className="objectNavButton" disabled={!nextObject} title={nextObject ? `前进到 ${nextObject.label} [${nextObject.id}]` : '没有下一项'} onClick={() => navigateObjectHistory(1)}><ArrowRight size={15}/></button></>, navigationHost)}
     {generalRow && <div className="unitGlobalBlock"><button className={`unitGlobalRule ${selectedId?.toLowerCase() === 'general' ? 'selected' : ''}`} onClick={() => onSelect(generalRow)}><span className="unitGlobalIcon"><SlidersHorizontal size={15}/></span><span className="unitGlobalText"><b>{generalRow.label || '全局规则'}</b><small>General</small></span></button></div>}
     <div className="unitTreeScroller">
       {sideGroups.map(group => {
