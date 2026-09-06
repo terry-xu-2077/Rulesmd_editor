@@ -41,15 +41,15 @@ class ExportBridge(Bridge):
     def _fragment_text(self) -> str:
         doc = self.workspace._doc()
 
-        # "删除参数"和"禁用参数"是编辑器内部调试操作，不代表需要在游戏侧
-        # 删除/禁用基础 Rules。覆盖型 INI 本来也无法可靠表达“移除基础 Key”。
-        # 因此规则片段导出时只输出当前仍启用的新增/修改项；被删除或禁用的
-        # 基础参数直接忽略，不阻止用户导出其它有效改动。
+        # “删除参数”仍是纯编辑调试操作：覆盖型 INI 无法表达从基础 Rules
+        # 中真正移除一个 Key，因此删除的基础参数不进入规则片段。
+        # “停用参数”则保留编辑器自己的 ;@rulesmd-disabled 注释标记，
+        # 这样它不会影响游戏运行时规则，但下次重新打开片段时仍可恢复。
         changed_by_section: dict[str, list[OptionLineState]] = {}
         section_order: list[str] = []
         for line in doc.lines:
             state = option_line_state(line)
-            if state is None or state.disabled:
+            if state is None:
                 continue
             baseline = self._baseline_lines.get(state.line_id)
             if not self._state_changed(state, baseline):
@@ -70,7 +70,12 @@ class ExportBridge(Bridge):
                 continue
             parts.append(f"[{section}]")
             for state in states:
-                parts.append(f"{state.key}={state.value}{state.suffix}")
+                if state.disabled:
+                    parts.append(
+                        f";@rulesmd-disabled {state.key}{state.separator}{state.value}{state.suffix}"
+                    )
+                else:
+                    parts.append(f"{state.key}={state.value}{state.suffix}")
             parts.append("")
         if not parts:
             return ""
