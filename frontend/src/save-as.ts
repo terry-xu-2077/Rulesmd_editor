@@ -7,7 +7,6 @@ type Snapshot = { document: { path: string | null; dirty: boolean } }
 
 let binding: SaveBinding | null = null
 let cachedDocumentPath: string | null = null
-let installed = false
 
 async function backendCall<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>('backend_call', { method, params })
@@ -117,12 +116,27 @@ async function handleSaveClick(event: MouseEvent) {
 
   event.preventDefault()
   event.stopImmediatePropagation()
+
+  // The document may have finished opening after our cached path was refreshed.
+  // Re-check synchronously through the backend before deciding that it is a new/MIX
+  // document that needs a mode choice.
+  try {
+    const snapshot = await backendCall<Snapshot>('snapshot')
+    cachedDocumentPath = snapshot.document.path
+    if (cachedDocumentPath) {
+      await saveTo('full', cachedDocumentPath)
+      return
+    }
+  } catch {
+    // No open document is handled by the normal disabled Save button state.
+  }
+
   await saveWithPrompt()
 }
 
 function saveAsButton() {
   const button = document.createElement('button')
-  button.className = 'iconButton'
+  button.className = 'iconButton saveAsInjected'
   button.title = '另存为'
   button.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -137,19 +151,25 @@ function saveAsButton() {
 }
 
 function install() {
-  if (installed) return
   const toolbar = document.querySelector('.toolbar')
   if (!toolbar) return
   const buttons = [...toolbar.querySelectorAll<HTMLButtonElement>('.iconButton')]
   const save = buttons.find(button => button.title === '保存')
   if (!save) return
 
-  installed = true
-  save.addEventListener('click', event => { void handleSaveClick(event) }, true)
-  save.insertAdjacentElement('afterend', saveAsButton())
+  if (!save.dataset.saveModeHooked) {
+    save.dataset.saveModeHooked = '1'
+    save.addEventListener('click', event => { void handleSaveClick(event) }, true)
+  }
+
+  if (!toolbar.querySelector('.saveAsInjected')) {
+    save.insertAdjacentElement('afterend', saveAsButton())
+  }
 
   for (const button of buttons) {
     if (button.title !== '新建' && button.title !== '打开') continue
+    if (button.dataset.saveModeResetHooked) continue
+    button.dataset.saveModeResetHooked = '1'
     button.addEventListener('click', () => {
       binding = null
       cachedDocumentPath = null
@@ -157,9 +177,9 @@ function install() {
       window.setTimeout(() => { void refreshDocumentPath() }, 1000)
     }, true)
   }
-  void refreshDocumentPath()
 }
 
 const observer = new MutationObserver(() => install())
 observer.observe(document.documentElement, { childList: true, subtree: true })
 install()
+void refreshDocumentPath()
