@@ -19,9 +19,9 @@ const SIDE_ORDER: Array<{ side: Side; label: string }> = [
   { side: 'allied', label: '盟军' },
   { side: 'soviet', label: '苏军' },
   { side: 'yuri', label: '尤里' },
-  { side: 'neutral', label: '中立与通用' },
+  { side: 'neutral', label: '其他' },
 ]
-const UNIT_TYPE_ORDER = ['国家', '步兵', '载具', '飞机', '建筑', '超级武器']
+const UNIT_TYPE_ORDER = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家']
 const WEAPON_TYPE_ORDER = ['武器', '弹头', '弹体']
 const WEAPON_TYPES = new Set(WEAPON_TYPE_ORDER)
 const COUNTRY_OWNABLE_TYPES = new Set(['步兵', '载具', '飞机', '建筑'])
