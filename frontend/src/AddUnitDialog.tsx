@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  Bomb,
   Building2,
+  Crosshair,
   Flag,
   Landmark,
   PackagePlus,
   Plane,
+  Rocket,
   Search,
   Sparkles,
   Truck,
@@ -30,10 +33,10 @@ type Props = {
   onCreated: (result: CreateUnitResult) => void | Promise<void>
 }
 
-type ObjectKind = '' | 'unit' | 'country' | 'superweapon'
+type ObjectKind = '' | 'unit' | 'country' | 'superweapon' | 'weapon' | 'warhead' | 'projectile'
 type WizardStep = 'kind' | 'unit-type' | 'details' | 'parameters'
 
-const OBJECT_CATEGORIES = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家'] as const
+const OBJECT_CATEGORIES = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家', '武器', '弹头', '弹体'] as const
 const UNIT_CATEGORIES = ['步兵', '载具', '飞机', '建筑'] as const
 const CATEGORY_ROOT: Record<string, string> = {
   步兵: 'InfantryTypes',
@@ -42,6 +45,11 @@ const CATEGORY_ROOT: Record<string, string> = {
   建筑: 'BuildingTypes',
   超级武器: 'SuperWeaponTypes',
   国家: 'Countries',
+}
+const STANDALONE_CATEGORY: Partial<Record<ObjectKind, string>> = {
+  weapon: '武器',
+  warhead: '弹头',
+  projectile: '弹体',
 }
 
 const ARES_SUPERWEAPON_TYPES = new Set([
@@ -160,6 +168,8 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
 
   const isSuperweapon = objectKind === 'superweapon'
   const isCountry = objectKind === 'country'
+  const isStandalone = objectKind === 'weapon' || objectKind === 'warhead' || objectKind === 'projectile'
+  const objectName = isCountry ? '国家' : isSuperweapon ? '超级武器' : STANDALONE_CATEGORY[objectKind] ?? '单位'
   const categoryRows = useMemo(() => eligibleRows.filter(row => row.category === category), [category, eligibleRows])
   const buildingRows = useMemo(() => eligibleRows.filter(row => row.category === '建筑'), [eligibleRows])
   const selectableOptions = useMemo(() => (templateData?.options ?? []).filter(option => {
@@ -288,7 +298,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       setWizardStep('unit-type')
       return
     }
-    setCategory(kind === 'country' ? '国家' : '超级武器')
+    setCategory(kind === 'country' ? '国家' : kind === 'superweapon' ? '超级武器' : STANDALONE_CATEGORY[kind] ?? '')
     setWizardStep('details')
   }
 
@@ -306,7 +316,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
   function detailsError() {
     if (!templateId || !templateData) return '请选择一个有效的参考模板。'
     if (!validSectionName(sectionName.trim())) return '注册名只能使用英文字母、数字和下划线，并且必须以字母开头。'
-    if (!comment.trim()) return isCountry ? '必须填写国家名称 / 注释。' : isSuperweapon ? '必须填写超级武器名称 / 注释。' : '必须填写注释（Name）。'
+    if (!isStandalone && !comment.trim()) return isCountry ? '必须填写国家名称 / 注释。' : isSuperweapon ? '必须填写超级武器名称 / 注释。' : '必须填写注释（Name）。'
     if (isSuperweapon && !superweaponType) return '请选择超级武器 Type。'
     if (isSuperweapon && ARES_SUPERWEAPON_TYPES.has(superweaponType) && !aresEnabled) return `${superweaponType} 是 Ares 新增的超级武器 Type；请先在设置中开启 Ares 支持。`
     if (isCountry && !countrySide) return '请选择国家所属阵营。'
@@ -414,7 +424,6 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
         await onCreated(result)
       }
     } catch (err) {
-      const objectName = isCountry ? '国家' : isSuperweapon ? '超级武器' : '单位'
       setError(`添加${objectName}失败：${String(err)}`)
     } finally {
       setCreating(false)
@@ -462,7 +471,17 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     ...buildingRows.map(row => ({ value: row.id, label: `${row.label} · ${row.id}` })),
   ]
 
-  const dialogIcon = isCountry ? <Flag size={18}/> : isSuperweapon ? <Sparkles size={18}/> : <PackagePlus size={18}/>
+  const dialogIcon = isCountry
+    ? <Flag size={18}/>
+    : isSuperweapon
+      ? <Sparkles size={18}/>
+      : objectKind === 'weapon'
+        ? <Crosshair size={18}/>
+        : objectKind === 'warhead'
+          ? <Bomb size={18}/>
+          : objectKind === 'projectile'
+            ? <Rocket size={18}/>
+            : <PackagePlus size={18}/>
 
   if (wizardStep === 'kind') {
     return <Dialog open={open} title="添加新对象" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
@@ -470,6 +489,9 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
         <h2>你想创建什么对象？</h2>
         <div className="objectWizardCards">
           <button onClick={() => selectObjectKind('unit')}><Users size={24}/><strong>单位</strong></button>
+          <button onClick={() => selectObjectKind('weapon')} disabled={!eligibleRows.some(row => row.category === '武器')}><Crosshair size={24}/><strong>武器</strong></button>
+          <button onClick={() => selectObjectKind('warhead')} disabled={!eligibleRows.some(row => row.category === '弹头')}><Bomb size={24}/><strong>弹头</strong></button>
+          <button onClick={() => selectObjectKind('projectile')} disabled={!eligibleRows.some(row => row.category === '弹体')}><Rocket size={24}/><strong>弹体</strong></button>
           <button onClick={() => selectObjectKind('country')} disabled={!eligibleRows.some(row => row.category === '国家')}><Flag size={24}/><strong>国家</strong></button>
           <button onClick={() => selectObjectKind('superweapon')}><Sparkles size={24}/><strong>超级武器</strong></button>
         </div>
@@ -497,21 +519,23 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       <div className="addUnitDialog objectWizardDetails">
         <div className="objectWizardStepLabel">对象信息</div>
         <div className="addUnitSetup wizardDetailsGrid">
-          <label><span>{isCountry ? '参考国家' : isSuperweapon ? '参考模板' : '现有单位模板'}</span><Select value={templateId} options={templateOptions} onChange={setTemplateId} searchable searchPlaceholder="搜索中文名或 Section"/></label>
-          <label><span>{isCountry ? '新国家 Section' : isSuperweapon ? '新超级武器 Section' : '新单位 Section'}</span><TextField value={sectionName} onChange={setSectionName} placeholder={isCountry ? '例如 MYCOUNTRY' : isSuperweapon ? '例如 MY_SUPERWEAPON' : '例如 MYTANK'}/></label>
-          <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>
+          <label><span>{isCountry ? '参考国家' : isSuperweapon ? '参考模板' : isStandalone ? `参考${objectName}` : '现有单位模板'}</span><Select value={templateId} options={templateOptions} onChange={setTemplateId} searchable searchPlaceholder="搜索中文名或 Section"/></label>
+          <label><span>{isCountry ? '新国家 Section' : isSuperweapon ? '新超级武器 Section' : isStandalone ? `新${objectName} Section` : '新单位 Section'}</span><TextField value={sectionName} onChange={setSectionName} placeholder={isCountry ? '例如 MYCOUNTRY' : isSuperweapon ? '例如 MY_SUPERWEAPON' : objectKind === 'weapon' ? '例如 MYWEAPON' : objectKind === 'warhead' ? '例如 MYWARHEAD' : objectKind === 'projectile' ? '例如 MYPROJECTILE' : '例如 MYTANK'}/></label>
+          {!isStandalone && <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>}
           {isCountry && <label><span>所属阵营 <b>必填</b></span><Select value={countrySide} options={COUNTRY_SIDES} onChange={setCountrySide}/></label>}
           {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={SUPERWEAPON_TYPES.filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
           {isSuperweapon && <label><span>提供该超武的建筑</span><Select value={providerBuilding} options={providerOptions} onChange={setProviderBuilding} searchable searchPlaceholder="搜索建筑"/></label>}
         </div>
 
         <div className="addUnitRegistrationHint">
-          <strong>{isCountry ? '国家注册自动处理' : isSuperweapon ? '超级武器注册与挂载自动处理' : '注册 ID 自动分配'}</strong>
-          <span>{isCountry
-            ? '创建时自动写入 [Countries] 的下一个数字 ID，并使用所选阵营写入 Side=。下一步只需要决定从参考国家继承哪些其他参数。'
-            : isSuperweapon
-              ? `创建时自动写入 [SuperWeaponTypes]。若选择提供建筑，编辑器会依次使用 SuperWeapon、SuperWeapon2；两个原版槽位都已占用时${aresEnabled ? '自动改用 Ares 的 SuperWeapons= 追加，不覆盖已有超武。' : '会停止创建并提示开启 Ares，不会覆盖已有超武。'}`
-              : `创建时自动写入 [${CATEGORY_ROOT[category] || 'Types'}] 的下一个数字 ID。下一步再选择需要从模板继承的参数。`}</span>
+          <strong>{isStandalone ? `${objectName}为独立 Section，无需注册` : isCountry ? '国家注册自动处理' : isSuperweapon ? '超级武器注册与挂载自动处理' : '注册 ID 自动分配'}</strong>
+          <span>{isStandalone
+            ? `创建时直接生成新的 [${sectionName.trim() || `MY${objectName}`}] Section，不写入不存在的 Types 注册表。创建完成后会立即加入${objectName}候选列表，并排在菜单最前。`
+            : isCountry
+              ? '创建时自动写入 [Countries] 的下一个数字 ID，并使用所选阵营写入 Side=。下一步只需要决定从参考国家继承哪些其他参数。'
+              : isSuperweapon
+                ? `创建时自动写入 [SuperWeaponTypes]。若选择提供建筑，编辑器会依次使用 SuperWeapon、SuperWeapon2；两个原版槽位都已占用时${aresEnabled ? '自动改用 Ares 的 SuperWeapons= 追加，不覆盖已有超武。' : '会停止创建并提示开启 Ares，不会覆盖已有超武。'}`
+                : `创建时自动写入 [${CATEGORY_ROOT[category] || 'Types'}] 的下一个数字 ID。下一步再选择需要从模板继承的参数。`}</span>
         </div>
 
         {loading && <div className="addUnitEmpty">正在读取参考模板…</div>}
@@ -556,7 +580,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       {error && <div className="addUnitError">{error}</div>}
       <footer className="addUnitActions wizardNavActions">
         <span>{isSuperweapon ? '超级武器默认不继承模板参数，避免把旧 Type 的专用配置误带入新 Type。' : '未勾选的参数不会写入新对象；创建后仍可在主编辑器继续添加。'}</span>
-        <div><Button onClick={() => setWizardStep('details')}><ArrowLeft size={15}/>上一步</Button><Button variant="accent" disabled={creating || loading} onClick={() => void createObject()}><PackagePlus size={16}/>{creating ? '正在创建…' : isCountry ? '创建国家' : isSuperweapon ? '创建超级武器' : '创建单位'}</Button></div>
+        <div><Button onClick={() => setWizardStep('details')}><ArrowLeft size={15}/>上一步</Button><Button variant="accent" disabled={creating || loading} onClick={() => void createObject()}><PackagePlus size={16}/>{creating ? '正在创建…' : `创建${objectName}`}</Button></div>
       </footer>
     </div>
   </Dialog>
