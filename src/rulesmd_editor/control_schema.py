@@ -24,6 +24,26 @@ COUNTRY_LABELS = {
 }
 
 COUNTRY_VALUES = tuple(COUNTRY_LABELS.items())
+ABILITY_VALUES = (
+    ("FASTER", "移动速度加强"),
+    ("STRONGER", "生命值加强"),
+    ("SCATTER", "自动分散火力"),
+    ("FIREPOWER", "攻击力加强"),
+    ("SIGHT", "视力加强"),
+    ("CLOAK", "可以隐形"),
+    ("TIBERIUM_PROOF", "免疫气体损害"),
+    ("VEIN_PROOF", "免受VXL误伤"),
+    ("SELF_HEAL", "自动治愈"),
+    ("EXPLODES", "可以爆炸"),
+    ("RADAR_INVISIBLE", "屏蔽雷达检测"),
+    ("SENSORS", "侦测隐形单位"),
+    ("FEARLESS", "不会畏惧"),
+    ("TIBERIUM_HEAL", "矿石上治愈"),
+    ("GUARD_AREA", "可以警戒"),
+    ("CRUSHER", "可以碾压"),
+    ("C4", "拥有C4炸弹"),
+    ("ROF", "攻击速度加快"),
+)
 BUILDING_ALIAS_VALUES = (
     ("TECH", "科技类建筑"),
     ("BARRACKS", "兵营类建筑"),
@@ -44,15 +64,16 @@ class ControlSpec:
 # names contain misleading words such as "Weapon". Keep these semantic overrides ahead
 # of generated legacy control metadata so they can never turn into Section-reference menus.
 #
-# The old Qt editor also treated the country/house and prerequisite/building families as
-# hard key semantics (OptionsDesc.ini [MultipleMenu]). Keep those here as a runtime
-# invariant as well: a missing generated control schema must never silently turn these
-# values back into free-form text fields.
+# The old Qt editor treated the three [MultipleMenu] families as hard Key semantics:
+# Country, Abilities and Buildings. Keep them as runtime invariants too, so a missing or
+# misplaced generated control schema can never silently turn these values into text fields.
 CURATED_CONTROLS: dict[str, ControlSpec] = {
     "owner": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
     "requiredhouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
     "forbiddenhouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
     "secrethouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
+    "veteranabilities": ControlSpec("multi-select", ABILITY_VALUES),
+    "eliteabilities": ControlSpec("multi-select", ABILITY_VALUES),
     "prerequisite": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
     "prerequisiteoverride": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
     "dock": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
