@@ -18,9 +18,9 @@ $RuleTemplate = Join-Path $Resources 'generated\rulesmd.template.ini'
 $RuleSchema = Join-Path $Resources 'generated\rules_schema.json'
 $LegacyHelp = Join-Path $Resources 'legacy\HelpInfor.ini'
 $LegacyNames = Join-Path $Resources 'legacy\NamesDesc.ini'
-$LegacyAssets = Join-Path $Frontend 'public\legacy'
 $IconSource = Join-Path $TauriDir 'app-icon.png'
 $IconProduct = Join-Path $TauriDir 'icons\icon.ico'
+$LegacyAssets = Join-Path $Frontend 'public\legacy'
 
 $BuildRoot = Join-Path $Root 'build\portable'
 $BackendEntry = Join-Path $BuildRoot 'backend_entry.py'
@@ -31,7 +31,13 @@ $BackendBuiltDir = Join-Path $BackendDist 'rulesmd-backend'
 $BackendBuiltExe = Join-Path $BackendBuiltDir 'rulesmd-backend.exe'
 
 $ReleaseRoot = Join-Path $Root 'release'
-$PackageName = 'Rulesmd Editor 测试版'
+
+function New-UnicodeString([int[]]$CodePoints) {
+    return -join ($CodePoints | ForEach-Object { [char]$_ })
+}
+
+$TestEdition = New-UnicodeString @(0x6D4B, 0x8BD5, 0x7248)
+$PackageName = "Rulesmd Editor $TestEdition"
 $PackageDir = Join-Path $ReleaseRoot $PackageName
 $PackageExe = Join-Path $PackageDir 'Rulesmd Editor.exe'
 $PackageRuntime = Join-Path $PackageDir 'runtime'
@@ -66,7 +72,14 @@ function Test-LocalPort([string]$HostName, [int]$Port) {
 }
 
 function Clear-ProxyEnv {
-    'HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','CARGO_HTTP_PROXY','GIT_HTTP_PROXY','GIT_HTTPS_PROXY' | ForEach-Object {
+    @(
+        'HTTP_PROXY',
+        'HTTPS_PROXY',
+        'ALL_PROXY',
+        'CARGO_HTTP_PROXY',
+        'GIT_HTTP_PROXY',
+        'GIT_HTTPS_PROXY'
+    ) | ForEach-Object {
         Remove-Item "Env:$_" -ErrorAction SilentlyContinue
     }
 }
@@ -83,7 +96,8 @@ function Enable-ProxyEnv {
 function Invoke-WithProxyFallback([scriptblock]$Action, [string]$Description) {
     Clear-ProxyEnv
     & $Action
-    if ($LASTEXITCODE -eq 0) { return }
+    $code = $LASTEXITCODE
+    if ($code -eq 0) { return }
 
     if (-not $script:ProxyAvailable) {
         Fail "$Description failed, and local proxy $ProxyUrl is unavailable."
@@ -113,9 +127,13 @@ function Ensure-PythonEnvironment {
     if (Test-VenvPython) { return }
 
     $bootstrap = $null
-    if (Get-Command py -ErrorAction SilentlyContinue) { $bootstrap = 'py' }
-    elseif (Get-Command python -ErrorAction SilentlyContinue) { $bootstrap = 'python' }
-    else { Fail 'Python 3.10+ was not found. Install Python before building the portable package.' }
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        $bootstrap = 'py'
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+        $bootstrap = 'python'
+    } else {
+        Fail 'Python 3.10 or newer was not found.'
+    }
 
     if (Test-Path -LiteralPath $Venv) {
         Write-Step 'Removing stale Python virtual environment'
@@ -128,13 +146,18 @@ function Ensure-PythonEnvironment {
     } else {
         & python -m venv $Venv
     }
-    if (-not (Test-VenvPython)) { Fail 'Python virtual environment could not be created.' }
+
+    if (-not (Test-VenvPython)) {
+        Fail 'Python virtual environment could not be created.'
+    }
 }
 
 function Ensure-PythonBuildTools {
     Write-Step 'Preparing Python backend build environment'
     & $Python -m pip install --disable-pip-version-check -e $Root --no-deps
-    if ($LASTEXITCODE -ne 0) { Fail 'Unable to register the Rulesmd Python package in the virtual environment.' }
+    if ($LASTEXITCODE -ne 0) {
+        Fail 'Unable to register the Rulesmd Python package in the virtual environment.'
+    }
 
     & $Python -c "import PyInstaller" *> $null
     if ($LASTEXITCODE -eq 0) {
@@ -167,14 +190,22 @@ function Ensure-RuleResources {
 }
 
 function Ensure-FrontendDependencies {
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Fail 'Node.js was not found.' }
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { Fail 'npm was not found.' }
-    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Fail 'Rust/Cargo was not found.' }
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Fail 'Node.js was not found.'
+    }
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Fail 'npm was not found.'
+    }
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        Fail 'Rust/Cargo was not found.'
+    }
 
-    $modules = Join-Path $Frontend 'node_modules'
-    if ((Test-Path -LiteralPath $modules) -or $SkipFrontendInstall) { return }
+    if ($SkipFrontendInstall) {
+        Write-Host 'Frontend dependency installation was skipped by request.' -ForegroundColor DarkGray
+        return
+    }
 
-    Write-Step 'Installing frontend dependencies'
+    Write-Step 'Installing/updating frontend dependencies'
     Push-Location $Frontend
     try {
         Invoke-WithProxyFallback {
@@ -185,32 +216,17 @@ function Ensure-FrontendDependencies {
     }
 }
 
-function Ensure-AppIcon {
-    if (Test-Path -LiteralPath $IconProduct) { return }
-    if (-not (Test-Path -LiteralPath $IconSource)) { Fail "Application icon source is missing: $IconSource" }
-
-    Write-Step 'Generating Tauri application icons'
-    Push-Location $Frontend
-    try {
-        & npm run tauri -- icon 'src-tauri/app-icon.png' --output 'src-tauri/icons'
-        if ($LASTEXITCODE -ne 0) { Fail 'Tauri icon generation failed.' }
-    } finally {
-        Pop-Location
-    }
-}
-
 function Sync-LegacyAsset([string]$Name, [string]$Url) {
     $target = Join-Path $LegacyAssets $Name
     if (Test-Path -LiteralPath $target) { return }
 
-    Write-Host "  Legacy UI: $Name" -ForegroundColor DarkGray
     try {
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $target -TimeoutSec 20
         return
     } catch {
         if (-not $script:ProxyAvailable) {
-            Write-Host "  [WARN] Unable to download $Name; UI fallback will be used." -ForegroundColor Yellow
-            Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+            Write-Host "[WARN] Unable to download legacy asset $Name." -ForegroundColor Yellow
+            Remove-Item -LiteralPath $target -ErrorAction SilentlyContinue
             return
         }
     }
@@ -218,14 +234,15 @@ function Sync-LegacyAsset([string]$Name, [string]$Url) {
     try {
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $target -Proxy $ProxyUrl -TimeoutSec 30
     } catch {
-        Write-Host "  [WARN] Unable to download $Name through $ProxyUrl; UI fallback will be used." -ForegroundColor Yellow
-        Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+        Write-Host "[WARN] Unable to download legacy asset $Name." -ForegroundColor Yellow
+        Remove-Item -LiteralPath $target -ErrorAction SilentlyContinue
     }
 }
 
 function Ensure-LegacyAssets {
-    Write-Step 'Synchronizing legacy UI assets used by the React frontend'
+    Write-Step 'Synchronizing legacy UI assets'
     New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
+
     $base = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
     Sync-LegacyAsset 'iconTile.jpg' "$base/iconTile.jpg"
     Sync-LegacyAsset 'countryTile.png' "$base/countryTile.png"
@@ -234,8 +251,27 @@ function Ensure-LegacyAssets {
     Sync-LegacyAsset 'app-logo.png' "$base/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
 }
 
+function Ensure-AppIcon {
+    if (Test-Path -LiteralPath $IconProduct) { return }
+    if (-not (Test-Path -LiteralPath $IconSource)) {
+        Fail "Application icon source is missing: $IconSource"
+    }
+
+    Write-Step 'Generating Tauri application icons'
+    Push-Location $Frontend
+    try {
+        & npm run tauri -- icon 'src-tauri/app-icon.png' --output 'src-tauri/icons'
+        if ($LASTEXITCODE -ne 0) {
+            Fail 'Tauri icon generation failed.'
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 function Build-PythonBackend {
     Write-Step 'Building Python backend into runtime/backend'
+
     if (Test-Path -LiteralPath $BuildRoot) {
         Remove-Item -LiteralPath $BuildRoot -Recurse -Force
     }
@@ -250,27 +286,33 @@ if __name__ == "__main__":
 '@ | Set-Content -LiteralPath $BackendEntry -Encoding UTF8
 
     $addData = "$Resources;rulesmd_editor/resources"
-    & $Python -m PyInstaller `
-        --noconfirm `
-        --clean `
-        --onedir `
-        --console `
-        --name 'rulesmd-backend' `
-        --distpath $BackendDist `
-        --workpath $BackendWork `
-        --specpath $BackendSpec `
-        --add-data $addData `
+    $args = @(
+        '-m', 'PyInstaller',
+        '--noconfirm',
+        '--clean',
+        '--onedir',
+        '--console',
+        '--name', 'rulesmd-backend',
+        '--distpath', $BackendDist,
+        '--workpath', $BackendWork,
+        '--specpath', $BackendSpec,
+        '--add-data', $addData,
         $BackendEntry
+    )
 
-    if ($LASTEXITCODE -ne 0) { Fail 'PyInstaller backend build failed.' }
+    & $Python @args
+    if ($LASTEXITCODE -ne 0) {
+        Fail 'PyInstaller backend build failed.'
+    }
     if (-not (Test-Path -LiteralPath $BackendBuiltExe)) {
         Fail "Backend build finished but executable was not found: $BackendBuiltExe"
     }
 }
 
 function Build-TauriApp {
-    Write-Step 'Building Tauri desktop executable (no installer bundle)'
+    Write-Step 'Building Tauri desktop executable without installer bundle'
     Clear-ProxyEnv
+
     Push-Location $Frontend
     try {
         & npm run tauri -- build --no-bundle
@@ -278,7 +320,10 @@ function Build-TauriApp {
     } finally {
         Pop-Location
     }
-    if ($code -ne 0) { Fail "Tauri build failed with exit code $code." }
+
+    if ($code -ne 0) {
+        Fail "Tauri build failed with exit code $code."
+    }
     if (-not (Test-Path -LiteralPath $TauriExe)) {
         Fail "Tauri build finished but executable was not found: $TauriExe"
     }
@@ -286,6 +331,7 @@ function Build-TauriApp {
 
 function Assemble-Package {
     Write-Step 'Assembling clean portable package'
+
     if (Test-Path -LiteralPath $PackageDir) {
         Remove-Item -LiteralPath $PackageDir -Recurse -Force
     }
@@ -294,23 +340,28 @@ function Assemble-Package {
     Copy-Item -LiteralPath $TauriExe -Destination $PackageExe -Force
     Copy-Item -Path (Join-Path $BackendBuiltDir '*') -Destination $PackageBackend -Recurse -Force
 
-    if (-not (Test-Path -LiteralPath $PackageExe)) { Fail 'Portable main executable was not copied.' }
-    if (-not (Test-Path -LiteralPath $PackageBackendExe)) { Fail 'Portable backend executable was not copied.' }
+    if (-not (Test-Path -LiteralPath $PackageExe)) {
+        Fail 'Portable main executable was not copied.'
+    }
+    if (-not (Test-Path -LiteralPath $PackageBackendExe)) {
+        Fail 'Portable backend executable was not copied.'
+    }
 
     $rootItems = @(Get-ChildItem -LiteralPath $PackageDir -Force)
-    $unexpected = @($rootItems | Where-Object { $_.Name -notin @('Rulesmd Editor.exe', 'runtime') })
+    $unexpected = @(
+        $rootItems | Where-Object { $_.Name -notin @('Rulesmd Editor.exe', 'runtime') }
+    )
     if ($unexpected.Count -gt 0) {
         Fail "Portable package root contains unexpected files: $($unexpected.Name -join ', ')"
     }
     if ($rootItems.Count -ne 2) {
-        Fail "Portable package root should contain exactly the main EXE and runtime folder, but contains $($rootItems.Count) items."
+        Fail "Portable package root must contain exactly two items, but contains $($rootItems.Count)."
     }
 }
 
 function Test-PackagedBackend {
-    Write-Step 'Testing bundled backend from Chinese + space path'
-    # PackageDir intentionally contains Chinese characters and spaces. Launching the
-    # final copied backend from here verifies that no cmd.exe/string-quoting path is used.
+    Write-Step 'Testing bundled backend from a Chinese and space path'
+
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $PackageBackendExe
     $psi.WorkingDirectory = $PackageBackend
@@ -321,11 +372,15 @@ function Test-PackagedBackend {
     $psi.CreateNoWindow = $true
 
     $process = [System.Diagnostics.Process]::Start($psi)
-    if ($null -eq $process) { Fail 'Unable to start the packaged backend for smoke testing.' }
+    if ($null -eq $process) {
+        Fail 'Unable to start the packaged backend for smoke testing.'
+    }
 
     try {
-        $process.StandardInput.WriteLine('{"id":1,"method":"ping","params":{}}')
+        $request = '{"id":1,"method":"ping","params":{}}'
+        $process.StandardInput.WriteLine($request)
         $process.StandardInput.Flush()
+
         $responseLine = $process.StandardOutput.ReadLine()
         if ([string]::IsNullOrWhiteSpace($responseLine)) {
             $stderr = $process.StandardError.ReadToEnd()
@@ -336,6 +391,7 @@ function Test-PackagedBackend {
         if (($response.ok -ne $true) -or ($response.result.status -ne 'ok')) {
             Fail "Packaged backend ping failed: $responseLine"
         }
+
         Write-Host 'Chinese-path backend smoke test passed.' -ForegroundColor Green
     } finally {
         try { $process.StandardInput.Close() } catch {}
@@ -349,10 +405,16 @@ function Test-PackagedBackend {
 
 function Create-Zip {
     if ($NoZip) { return }
+
     Write-Step 'Creating player ZIP package'
-    if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
+    if (Test-Path -LiteralPath $ZipPath) {
+        Remove-Item -LiteralPath $ZipPath -Force
+    }
+
     Compress-Archive -LiteralPath $PackageDir -DestinationPath $ZipPath -CompressionLevel Optimal
-    if (-not (Test-Path -LiteralPath $ZipPath)) { Fail 'ZIP creation failed.' }
+    if (-not (Test-Path -LiteralPath $ZipPath)) {
+        Fail 'ZIP creation failed.'
+    }
 }
 
 Set-Location $Root
@@ -369,8 +431,8 @@ Ensure-PythonEnvironment
 Ensure-PythonBuildTools
 Ensure-RuleResources
 Ensure-FrontendDependencies
-Ensure-AppIcon
 Ensure-LegacyAssets
+Ensure-AppIcon
 Build-PythonBackend
 Build-TauriApp
 Assemble-Package
