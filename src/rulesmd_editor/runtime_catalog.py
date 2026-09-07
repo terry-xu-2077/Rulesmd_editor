@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 import json
-from pathlib import Path
 from threading import Lock
 
 from .ares_schema import AresSchemaCatalog
 from .category_rules import categorize_yr_option
+from .resource_paths import RESOURCE_ROOT
 from .schema import OptionMeta, SchemaCatalog
 from .translations_zh import (
     PARAMETER_META_FIXES,
@@ -16,7 +16,6 @@ from .translations_zh import (
 )
 
 
-RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 LEGACY_ROOT = RESOURCE_ROOT / "legacy"
 GENERATED_ROOT = RESOURCE_ROOT / "generated"
 
