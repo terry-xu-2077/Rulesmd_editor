@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from rulesmd_editor.ini_document import IniDocument
+from rulesmd_editor.ini_document import IniDocument, categorized_sections
 from rulesmd_editor.workspace import RulesWorkspace
 
 
@@ -74,6 +74,24 @@ def test_prerequisite_candidates_match_legacy_building_rules() -> None:
     assert "GACNST" in values
     assert "HIDDEN" not in values
     assert values.index("GAPOWR") > values.index("BARRACKS")
+
+
+def test_legacy_standalone_identifiers_cover_aa_ag_and_vertical_projectiles() -> None:
+    doc = IniDocument.from_text(
+        "[WEP]\nDamage=20\nWarhead=WH\n"
+        "[WH]\nBombDisarm=yes\n"
+        "[PROJAA]\nImage=none\nAA=yes\n"
+        "[PROJAG]\nImage=none\nAG=yes\n"
+        "[PROJVERT]\nImage=none\nVertical=yes\n"
+        "[NOTPROJ]\nImage=none\nROT=1\n"
+    )
+    categories = categorized_sections(doc)
+
+    assert [section for section, _ in categories["武器"]] == ["WEP"]
+    assert [section for section, _ in categories["弹头"]] == ["WH"]
+    projectiles = [section for section, _ in categories["弹体"]]
+    assert projectiles == ["PROJAA", "PROJAG", "PROJVERT"]
+    assert "NOTPROJ" in [section for section, _ in categories["其他"]]
 
 
 def test_new_registered_unit_is_immediately_first_in_runtime_lists() -> None:
