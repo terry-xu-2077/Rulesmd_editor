@@ -47,6 +47,12 @@ fn backend_command() -> Result<(Command, String), String> {
     Ok((command, format!("内置后端 ({})", backend.display())))
 }
 
+fn configure_backend_environment(command: &mut Command) {
+    command
+        .env("PYTHONUTF8", "1")
+        .env("PYTHONIOENCODING", "utf-8");
+}
+
 fn suppress_backend_console(command: &mut Command) {
     #[cfg(target_os = "windows")]
     {
@@ -64,6 +70,7 @@ struct BackendProcess {
 impl BackendProcess {
     fn spawn() -> Result<Self, String> {
         let (mut command, backend_name) = backend_command()?;
+        configure_backend_environment(&mut command);
         suppress_backend_console(&mut command);
         let mut child = command
             .stdin(Stdio::piped())
