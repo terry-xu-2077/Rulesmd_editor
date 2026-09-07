@@ -323,9 +323,16 @@ ROOT_TYPES = {
     "Countries": "国家",
 }
 
+# Keep the original RulesmdEditor IdentType.ini rules as the primary recognizer for
+# standalone objects that have no *Types registration list.
+WEAPON_REQUIRED_KEYS = {"warhead", "damage"}
+WARHEAD_ANY_KEYS = {"bombdisarm", "verses"}
+PROJECTILE_REQUIRED_KEYS = {"image"}
+PROJECTILE_ANY_KEYS = {"inviso", "aa", "ag", "arcing", "detonationaltitude", "vertical"}
+
 
 def categorized_sections(doc: IniDocument) -> dict[str, list[tuple[str, str]]]:
-    """Classify sections using the document indexes instead of repeated full scans."""
+    """Classify sections using registration roots plus the legacy standalone rules."""
     result: dict[str, list[tuple[str, str]]] = {label: [] for label in ROOT_TYPES.values()}
     registered = {name.casefold() for name in ROOT_TYPES}
     for root, label in ROOT_TYPES.items():
@@ -343,12 +350,16 @@ def categorized_sections(doc: IniDocument) -> dict[str, list[tuple[str, str]]]:
         if section.casefold() in registered:
             continue
         keys = {(line.key or "").casefold() for line in doc.section_lines(section, keys_only=True)}
-        if "warhead" in keys and ("damage" in keys or "projectile" in keys or "speed" in keys):
+        if WEAPON_REQUIRED_KEYS.issubset(keys):
             result["武器"].append((section, ""))
-        elif "verses" in keys or ("cellspread" in keys and "percentatmax" in keys):
+        elif keys.intersection(WARHEAD_ANY_KEYS):
             result["弹头"].append((section, ""))
-        elif "image" in keys and ("arcing" in keys or "inviso" in keys or "rot" in keys):
+        elif PROJECTILE_REQUIRED_KEYS.issubset(keys) and keys.intersection(PROJECTILE_ANY_KEYS):
             result["弹体"].append((section, ""))
+        # Preserve the newer Ares-friendly warhead fallback for unusual definitions that
+        # omit Verses/BombDisarm but still expose the characteristic spread pair.
+        elif "cellspread" in keys and "percentatmax" in keys:
+            result["弹头"].append((section, ""))
         else:
             result["其他"].append((section, ""))
     return result
