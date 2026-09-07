@@ -407,6 +407,10 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       })
 
       let needsRefresh = false
+      if (isStandalone && comment.trim()) {
+        await workspaceApi.addOption(cleanSection, 'Name', comment.trim())
+        needsRefresh = true
+      }
       if (isSuperweapon) {
         await workspaceApi.addOption(cleanSection, 'Type', superweaponType)
         await attachSuperweapon(providerTarget, cleanSection)
@@ -521,7 +525,9 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
         <div className="addUnitSetup wizardDetailsGrid">
           <label><span>{isCountry ? '参考国家' : isSuperweapon ? '参考模板' : isStandalone ? `参考${objectName}` : '现有单位模板'}</span><Select value={templateId} options={templateOptions} onChange={setTemplateId} searchable searchPlaceholder="搜索中文名或 Section"/></label>
           <label><span>{isCountry ? '新国家 Section' : isSuperweapon ? '新超级武器 Section' : isStandalone ? `新${objectName} Section` : '新单位 Section'}</span><TextField value={sectionName} onChange={setSectionName} placeholder={isCountry ? '例如 MYCOUNTRY' : isSuperweapon ? '例如 MY_SUPERWEAPON' : objectKind === 'weapon' ? '例如 MYWEAPON' : objectKind === 'warhead' ? '例如 MYWARHEAD' : objectKind === 'projectile' ? '例如 MYPROJECTILE' : '例如 MYTANK'}/></label>
-          {!isStandalone && <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>}
+          {isStandalone
+            ? <label><span>中文注释 / Name（仅维护）</span><TextField value={comment} onChange={setComment} placeholder={`例如 我的${objectName}`}/></label>
+            : <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>}
           {isCountry && <label><span>所属阵营 <b>必填</b></span><Select value={countrySide} options={COUNTRY_SIDES} onChange={setCountrySide}/></label>}
           {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={SUPERWEAPON_TYPES.filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
           {isSuperweapon && <label><span>提供该超武的建筑</span><Select value={providerBuilding} options={providerOptions} onChange={setProviderBuilding} searchable searchPlaceholder="搜索建筑"/></label>}
@@ -530,7 +536,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
         <div className="addUnitRegistrationHint">
           <strong>{isStandalone ? `${objectName}为独立 Section，无需注册` : isCountry ? '国家注册自动处理' : isSuperweapon ? '超级武器注册与挂载自动处理' : '注册 ID 自动分配'}</strong>
           <span>{isStandalone
-            ? `创建时直接生成新的 [${sectionName.trim() || `MY${objectName}`}] Section，不写入不存在的 Types 注册表。创建完成后会立即加入${objectName}候选列表，并排在菜单最前。`
+            ? `创建时直接生成新的 [${sectionName.trim() || `MY${objectName}`}] Section，不写入不存在的 Types 注册表。中文注释会写入 Name=，仅供编辑器和人工维护识别；创建完成后会立即加入${objectName}候选列表，并排在菜单最前。`
             : isCountry
               ? '创建时自动写入 [Countries] 的下一个数字 ID，并使用所选阵营写入 Side=。下一步只需要决定从参考国家继承哪些其他参数。'
               : isSuperweapon
