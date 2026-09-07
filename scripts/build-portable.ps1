@@ -390,6 +390,8 @@ function Test-PackagedBackend {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
+    $psi.EnvironmentVariables['PYTHONUTF8'] = '1'
+    $psi.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
 
     $process = [System.Diagnostics.Process]::Start($psi)
     if ($null -eq $process) {
@@ -400,7 +402,9 @@ function Test-PackagedBackend {
         $requestObject = [ordered]@{
             id = 1
             method = 'ping'
-            params = @{}
+            params = @{
+                unicode = $TestEdition
+            }
         }
         $request = $requestObject | ConvertTo-Json -Compress
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -420,7 +424,7 @@ function Test-PackagedBackend {
             Fail "Packaged backend ping failed: $responseLine"
         }
 
-        Write-Host 'Chinese-path backend smoke test passed.' -ForegroundColor Green
+        Write-Host 'Chinese-path and UTF-8 backend smoke test passed.' -ForegroundColor Green
     } finally {
         try { $process.StandardInput.Close() } catch {}
         if (-not $process.HasExited) {
