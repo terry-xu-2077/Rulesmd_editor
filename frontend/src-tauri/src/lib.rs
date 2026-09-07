@@ -6,6 +6,54 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
 use tauri::State;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+fn packaged_backend_path() -> Result<PathBuf, String> {
+    let executable = env::current_exe().map_err(|err| format!("无法确定编辑器程序位置: {err}"))?;
+    let app_dir = executable
+        .parent()
+        .ok_or_else(|| format!("无法确定编辑器所在目录: {}", executable.display()))?;
+    let mut backend = app_dir.join("runtime").join("backend").join("rulesmd-backend");
+    #[cfg(target_os = "windows")]
+    backend.set_extension("exe");
+    Ok(backend)
+}
+
+fn backend_command() -> Result<(Command, String), String> {
+    if let Ok(python) = env::var("RULESMD_PYTHON") {
+        if !python.trim().is_empty() {
+            let mut command = Command::new(&python);
+            command.args(["-m", "rulesmd_editor.desktop_bridge"]);
+            return Ok((command, format!("Python 后端 ({python})")));
+        }
+    }
+
+    let backend = packaged_backend_path()?;
+    if !backend.is_file() {
+        return Err(format!(
+            "内置后端不存在：{}。绿色版可能没有完整解压，请保留 runtime 文件夹与主程序在同一目录。",
+            backend.display()
+        ));
+    }
+
+    let mut command = Command::new(&backend);
+    if let Some(parent) = backend.parent() {
+        command.current_dir(parent);
+    }
+    Ok((command, format!("内置后端 ({})", backend.display())))
+}
+
+fn suppress_backend_console(command: &mut Command) {
+    #[cfg(target_os = "windows")]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+}
+
 struct BackendProcess {
     child: Child,
     stdin: ChildStdin,
@@ -15,14 +63,14 @@ struct BackendProcess {
 
 impl BackendProcess {
     fn spawn() -> Result<Self, String> {
-        let python = env::var("RULESMD_PYTHON").unwrap_or_else(|_| "python".to_string());
-        let mut child = Command::new(&python)
-            .args(["-m", "rulesmd_editor.desktop_bridge"])
+        let (mut command, backend_name) = backend_command()?;
+        suppress_backend_console(&mut command);
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|err| format!("无法启动 Python 后端 ({python}): {err}"))?;
+            .map_err(|err| format!("无法启动 {backend_name}: {err}"))?;
 
         let stdin = child.stdin.take().ok_or("无法连接 Python 后端 stdin")?;
         let stdout = child.stdout.take().ok_or("无法连接 Python 后端 stdout")?;
