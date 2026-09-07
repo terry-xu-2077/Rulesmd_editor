@@ -40,9 +40,14 @@ $TestEdition = New-UnicodeString @(0x6D4B, 0x8BD5, 0x7248)
 $PackageName = "Rulesmd Editor $TestEdition"
 $PackageDir = Join-Path $ReleaseRoot $PackageName
 $PackageExe = Join-Path $PackageDir 'Rulesmd Editor.exe'
+$PackageResources = Join-Path $PackageDir 'resources'
 $PackageRuntime = Join-Path $PackageDir 'runtime'
-$PackageBackend = Join-Path $PackageRuntime 'backend'
-$PackageBackendExe = Join-Path $PackageBackend 'rulesmd-backend.exe'
+$PackageBackendExe = Join-Path $PackageRuntime 'rulesmd-backend.exe'
+$PackageBackendInternal = Join-Path $PackageRuntime '_internal'
+$PackageRuleSchema = Join-Path $PackageResources 'generated\rules_schema.json'
+$PackageAresSchema = Join-Path $PackageResources 'generated\ares_schema.json'
+$PackageLegacyHelp = Join-Path $PackageResources 'legacy\HelpInfor.ini'
+$PackageAresUnlocks = Join-Path $PackageResources 'ares_hardcode_unlocks.json'
 $ZipPath = Join-Path $ReleaseRoot "$PackageName.zip"
 
 $ProxyHost = '127.0.0.1'
@@ -290,7 +295,7 @@ function Ensure-AppIcon {
 }
 
 function Build-PythonBackend {
-    Write-Step 'Building Python backend into runtime/backend'
+    Write-Step 'Building Python backend into runtime'
 
     if (Test-Path -LiteralPath $BuildRoot) {
         Remove-Item -LiteralPath $BuildRoot -Recurse -Force
@@ -305,7 +310,6 @@ if __name__ == "__main__":
     main()
 '@ | Set-Content -LiteralPath $BackendEntry -Encoding UTF8
 
-    $addData = "$Resources;rulesmd_editor/resources"
     $args = @(
         '-m', 'PyInstaller',
         '--noconfirm',
@@ -316,7 +320,6 @@ if __name__ == "__main__":
         '--distpath', $BackendDist,
         '--workpath', $BackendWork,
         '--specpath', $BackendSpec,
-        '--add-data', $addData,
         $BackendEntry
     )
 
@@ -350,15 +353,17 @@ function Build-TauriApp {
 }
 
 function Assemble-Package {
-    Write-Step 'Assembling clean portable package'
+    Write-Step 'Assembling flat portable package'
 
     if (Test-Path -LiteralPath $PackageDir) {
         Remove-Item -LiteralPath $PackageDir -Recurse -Force
     }
-    New-Item -ItemType Directory -Path $PackageBackend -Force | Out-Null
+    New-Item -ItemType Directory -Path $PackageRuntime -Force | Out-Null
+    New-Item -ItemType Directory -Path $PackageResources -Force | Out-Null
 
     Copy-Item -LiteralPath $TauriExe -Destination $PackageExe -Force
-    Copy-Item -Path (Join-Path $BackendBuiltDir '*') -Destination $PackageBackend -Recurse -Force
+    Copy-Item -Path (Join-Path $BackendBuiltDir '*') -Destination $PackageRuntime -Recurse -Force
+    Copy-Item -Path (Join-Path $Resources '*') -Destination $PackageResources -Recurse -Force
 
     if (-not (Test-Path -LiteralPath $PackageExe)) {
         Fail 'Portable main executable was not copied.'
@@ -366,25 +371,52 @@ function Assemble-Package {
     if (-not (Test-Path -LiteralPath $PackageBackendExe)) {
         Fail 'Portable backend executable was not copied.'
     }
+    if (-not (Test-Path -LiteralPath $PackageBackendInternal -PathType Container)) {
+        Fail 'Portable backend _internal directory was not copied.'
+    }
+
+    $requiredPackagedResources = @(
+        $PackageRuleSchema,
+        $PackageAresSchema,
+        $PackageLegacyHelp,
+        $PackageAresUnlocks
+    )
+    $missingPackagedResources = @(
+        $requiredPackagedResources | Where-Object { -not (Test-Path -LiteralPath $_) }
+    )
+    if ($missingPackagedResources.Count -gt 0) {
+        Fail "Portable resources are incomplete:`n$($missingPackagedResources -join "`n")"
+    }
 
     $rootItems = @(Get-ChildItem -LiteralPath $PackageDir -Force)
-    $unexpected = @(
-        $rootItems | Where-Object { $_.Name -notin @('Rulesmd Editor.exe', 'runtime') }
+    $unexpectedRoot = @(
+        $rootItems | Where-Object { $_.Name -notin @('Rulesmd Editor.exe', 'resources', 'runtime') }
     )
-    if ($unexpected.Count -gt 0) {
-        Fail "Portable package root contains unexpected files: $($unexpected.Name -join ', ')"
+    if ($unexpectedRoot.Count -gt 0) {
+        Fail "Portable package root contains unexpected files: $($unexpectedRoot.Name -join ', ')"
     }
-    if ($rootItems.Count -ne 2) {
-        Fail "Portable package root must contain exactly two items, but contains $($rootItems.Count)."
+    if ($rootItems.Count -ne 3) {
+        Fail "Portable package root must contain exactly three items, but contains $($rootItems.Count)."
+    }
+
+    $runtimeItems = @(Get-ChildItem -LiteralPath $PackageRuntime -Force)
+    $unexpectedRuntime = @(
+        $runtimeItems | Where-Object { $_.Name -notin @('rulesmd-backend.exe', '_internal') }
+    )
+    if ($unexpectedRuntime.Count -gt 0) {
+        Fail "Portable runtime contains unexpected files: $($unexpectedRuntime.Name -join ', ')"
+    }
+    if ($runtimeItems.Count -ne 2) {
+        Fail "Portable runtime must contain exactly rulesmd-backend.exe and _internal, but contains $($runtimeItems.Count) items."
     }
 }
 
 function Test-PackagedBackend {
-    Write-Step 'Testing bundled backend from a Chinese and space path'
+    Write-Step 'Testing bundled backend from the final portable layout'
 
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $PackageBackendExe
-    $psi.WorkingDirectory = $PackageBackend
+    $psi.WorkingDirectory = $PackageRuntime
     $psi.UseShellExecute = $false
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
@@ -392,6 +424,7 @@ function Test-PackagedBackend {
     $psi.CreateNoWindow = $true
     $psi.EnvironmentVariables['PYTHONUTF8'] = '1'
     $psi.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
+    $psi.EnvironmentVariables['RULESMD_RESOURCES_DIR'] = $PackageResources
 
     $process = [System.Diagnostics.Process]::Start($psi)
     if ($null -eq $process) {
@@ -423,8 +456,11 @@ function Test-PackagedBackend {
         if (($response.ok -ne $true) -or ($response.result.status -ne 'ok')) {
             Fail "Packaged backend ping failed: $responseLine"
         }
+        if ($response.result.unicode -ne $TestEdition) {
+            Fail "Packaged backend Unicode round trip failed: $responseLine"
+        }
 
-        Write-Host 'Chinese-path and UTF-8 backend smoke test passed.' -ForegroundColor Green
+        Write-Host 'Flat-layout, Chinese-path, resources, and UTF-8 backend smoke test passed.' -ForegroundColor Green
     } finally {
         try { $process.StandardInput.Close() } catch {}
         if (-not $process.HasExited) {
@@ -477,4 +513,5 @@ Write-Host "Player folder: $PackageDir"
 if (-not $NoZip) {
     Write-Host "Player ZIP:    $ZipPath"
 }
-Write-Host 'Package root contains only Rulesmd Editor.exe and runtime\.' -ForegroundColor Green
+Write-Host 'Package root: Rulesmd Editor.exe, resources, runtime.' -ForegroundColor Green
+Write-Host 'Runtime root: rulesmd-backend.exe, _internal.' -ForegroundColor Green
