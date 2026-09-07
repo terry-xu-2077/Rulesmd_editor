@@ -22,28 +22,32 @@ def _dispatch_raw(bridge: ExportBridge, raw: str) -> dict:
         }
 
 
+def _clean_decoded_request(raw: str) -> str:
+    return raw.strip().lstrip("\ufeff\x00")
+
+
 def _decode_request_bytes(raw: bytes) -> str:
     raw = raw.strip()
     if not raw:
         return ""
 
     if raw.startswith(b"\xef\xbb\xbf"):
-        return raw.decode("utf-8-sig")
+        return _clean_decoded_request(raw.decode("utf-8-sig"))
     if raw.startswith(b"\xff\xfe"):
-        return raw.decode("utf-16-le").lstrip("\ufeff")
+        return _clean_decoded_request(raw.decode("utf-16-le"))
     if raw.startswith(b"\xfe\xff"):
-        return raw.decode("utf-16-be").lstrip("\ufeff")
+        return _clean_decoded_request(raw.decode("utf-16-be"))
 
     prefix = raw[:16]
     if b"\x00" in prefix:
         even_zeros = sum(1 for index, value in enumerate(prefix) if index % 2 == 0 and value == 0)
         odd_zeros = sum(1 for index, value in enumerate(prefix) if index % 2 == 1 and value == 0)
         if odd_zeros > even_zeros:
-            return raw.decode("utf-16-le").lstrip("\ufeff")
+            return _clean_decoded_request(raw.decode("utf-16-le"))
         if even_zeros > odd_zeros:
-            return raw.decode("utf-16-be").lstrip("\ufeff")
+            return _clean_decoded_request(raw.decode("utf-16-be"))
 
-    return raw.decode("utf-8-sig").lstrip("\ufeff\x00")
+    return _clean_decoded_request(raw.decode("utf-8-sig"))
 
 
 def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
