@@ -4,10 +4,10 @@ from dataclasses import replace
 import json
 from pathlib import Path
 
+from .resource_paths import RESOURCE_ROOT
 from .schema import OptionMeta
 
 
-RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
 ARES_SCHEMA_PATH = RESOURCE_ROOT / "generated" / "ares_schema.json"
 ARES_HARDCODE_UNLOCKS_PATH = RESOURCE_ROOT / "ares_hardcode_unlocks.json"
 UNLOCK_ICON = "🔓︎"  # U+FE0E text presentation: keep the icon flat/monochrome instead of emoji-style.
