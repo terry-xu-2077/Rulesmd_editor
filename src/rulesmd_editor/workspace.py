@@ -24,6 +24,7 @@ CATEGORY_TYPES = {
     "弹头": "Warhead",
     "弹体": "Projectile",
 }
+TYPE_CATEGORIES = {value: key for key, value in CATEGORY_TYPES.items()}
 MAP_RULE_CATALOG_CATEGORIES = {"步兵", "载具", "飞机", "建筑", "超级武器", "武器", "弹头", "弹体"}
 TECHNO_TYPES = {"InfantryType", "VehicleType", "AircraftType", "BuildingType"}
 UNIT_REGISTRATION_ROOTS = {
@@ -34,6 +35,7 @@ UNIT_REGISTRATION_ROOTS = {
     "SuperWeapon": "SuperWeaponTypes",
     "Country": "Countries",
 }
+UNREGISTERED_OBJECT_TYPES = {"Weapon", "Warhead", "Projectile"}
 SECTION_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -81,6 +83,13 @@ class RulesWorkspace:
         self._last_values: dict[tuple[str, str], str] = {}
         self._observed_keys: dict[str, set[str]] = {}
         self._country_sides: dict[str, str] = {}
+        # New objects must become immediately available to every reference menu. Keep
+        # newest-first session ordering independently from the document's physical order.
+        self._recent_sections: list[str] = []
+        # Weapons/warheads/projectiles have no registration root. Preserve the template
+        # type during the editing session even when the user creates a deliberately sparse
+        # object that does not yet contain enough keys for heuristic classification.
+        self._created_section_types: dict[str, str] = {}
 
     def _doc(self) -> IniDocument:
         if self.document is None:
@@ -104,6 +113,51 @@ class RulesWorkspace:
         if key in {"thirdside", "yuri", "尤里"}:
             return "yuri"
         return None
+
+    def _reset_session_indexes(self) -> None:
+        self._recent_sections.clear()
+        self._created_section_types.clear()
+
+    def _remember_recent_section(self, section: str, section_type: str | None = None) -> None:
+        folded = section.casefold()
+        self._recent_sections = [item for item in self._recent_sections if item.casefold() != folded]
+        self._recent_sections.insert(0, section)
+        if section_type:
+            self._created_section_types[folded] = section_type
+
+    def _apply_created_type_overrides(self, categories: dict[str, list[tuple[str, str]]]) -> None:
+        if not self._created_section_types:
+            return
+        doc = self._doc()
+        for folded, section_type in tuple(self._created_section_types.items()):
+            actual = next((name for name in doc.sections() if name.casefold() == folded), None)
+            target_category = TYPE_CATEGORIES.get(section_type)
+            if actual is None or target_category is None:
+                continue
+
+            registration_id = ""
+            for entries in categories.values():
+                for section, candidate_id in tuple(entries):
+                    if section.casefold() != folded:
+                        continue
+                    registration_id = candidate_id or registration_id
+                    entries.remove((section, candidate_id))
+            categories.setdefault(target_category, []).append((actual, registration_id))
+
+    def _prioritize_recent_categories(
+        self,
+        categories: dict[str, list[tuple[str, str]]],
+    ) -> dict[str, list[tuple[str, str]]]:
+        if not self._recent_sections:
+            return categories
+        priority = {section.casefold(): index for index, section in enumerate(self._recent_sections)}
+        result: dict[str, list[tuple[str, str]]] = {}
+        for category, entries in categories.items():
+            recent = [entry for entry in entries if entry[0].casefold() in priority]
+            recent.sort(key=lambda entry: priority[entry[0].casefold()])
+            older = [entry for entry in entries if entry[0].casefold() not in priority]
+            result[category] = recent + older
+        return result
 
     def _build_country_side_index(self) -> None:
         self._country_sides = {}
@@ -162,11 +216,16 @@ class RulesWorkspace:
     def _rebuild_indexes(self) -> None:
         doc = self._doc()
         if self.is_map_document() and self.base_document is not None:
-            self._catalog_categories_cache = categorized_sections(self.base_document)
-            self._categories_cache = self._map_visible_categories(self._catalog_categories_cache, doc)
+            catalog = categorized_sections(self.base_document)
+            catalog = self._prioritize_recent_categories(catalog)
+            self._catalog_categories_cache = catalog
+            self._categories_cache = self._map_visible_categories(catalog, doc)
         else:
-            self._categories_cache = categorized_sections(doc)
-            self._catalog_categories_cache = self._categories_cache
+            categories = categorized_sections(doc)
+            self._apply_created_type_overrides(categories)
+            categories = self._prioritize_recent_categories(categories)
+            self._categories_cache = categories
+            self._catalog_categories_cache = categories
 
         self._section_types = {}
         for category, entries in self._catalog_categories_cache.items():
@@ -228,6 +287,7 @@ class RulesWorkspace:
     def new_document(self) -> dict:
         self.document_kind = "rules"
         self.base_document = None
+        self._reset_session_indexes()
         if DEFAULT_TEMPLATE.exists():
             self.document = IniDocument.load(DEFAULT_TEMPLATE)
             self.document.path = None
@@ -238,6 +298,7 @@ class RulesWorkspace:
 
     def open_file(self, path: str | Path) -> dict:
         path = Path(path)
+        self._reset_session_indexes()
         self.document = IniDocument.load(path)
         self.document_kind = "map" if path.suffix.casefold() in MAP_EXTENSIONS else "rules"
         self.base_document = IniDocument.load(DEFAULT_TEMPLATE) if self.is_map_document() and DEFAULT_TEMPLATE.exists() else None
@@ -322,14 +383,24 @@ class RulesWorkspace:
         if dynamic in self._dynamic_cache:
             return self._dynamic_cache[dynamic]
 
+        if dynamic == "countries":
+            result = tuple(
+                (section, self._section_label(section))
+                for section, _ in self._catalog_categories_cache.get("国家", [])
+                if section.casefold() not in {"neutral", "special"}
+            )
+            self._dynamic_cache[dynamic] = result
+            return result
+
         if dynamic == "buildings":
             values: list[tuple[str, str]] = []
             for section, _ in self._catalog_categories_cache.get("建筑", []):
-                raw_level = self._last_values.get((section.casefold(), "techlevel"), "-1")
-                try:
-                    if float(raw_level) <= -1:
-                        continue
-                except ValueError:
+                folded = section.casefold()
+                has_tech_level = (folded, "techlevel") in self._last_values
+                raw_level = self._last_values.get((folded, "techlevel"), "")
+                buildable = has_tech_level and raw_level.strip() != "-1"
+                construction_yard = (folded, "undeploysinto") in self._last_values
+                if not buildable and not construction_yard:
                     continue
                 values.append((section, self._section_label(section)))
             result = tuple(values)
@@ -540,6 +611,8 @@ class RulesWorkspace:
         if not doc.has_section(actual):
             doc.add_section(actual)
             self._structural_dirty = True
+        section_type = self._section_types.get(actual.casefold())
+        self._remember_recent_section(actual, section_type if section_type in UNREGISTERED_OBJECT_TYPES else None)
         self._rebuild_indexes()
         self._refresh_dirty()
         return {
@@ -569,22 +642,24 @@ class RulesWorkspace:
         display_comment = comment.strip()
         if not SECTION_NAME_RE.fullmatch(new_section):
             raise ValueError("Section 注册名只能使用英文字母、数字和下划线，并且必须以字母开头")
-        if not display_comment:
-            raise ValueError("必须填写注释（Name）")
         if doc.has_section(new_section):
             raise ValueError(f"Section 已存在: {new_section}")
 
         section_type = self._section_types.get(template_actual.casefold())
         root = UNIT_REGISTRATION_ROOTS.get(section_type or "")
-        if not root:
-            raise ValueError("所选模板不是可注册的对象类型")
+        is_unregistered_object = section_type in UNREGISTERED_OBJECT_TYPES
+        if not root and not is_unregistered_object:
+            raise ValueError("所选模板不是可新建的对象类型")
+        if root and not display_comment:
+            raise ValueError("必须填写注释（Name）")
 
-        registration_id = self._next_registration_id(root)
+        registration_id = self._next_registration_id(root) if root else "无需注册"
         include_all = included_line_ids is None
         included = {int(line_id) for line_id in (included_line_ids or [])}
         template_lines = doc.section_lines(template_actual, keys_only=True)
 
-        doc.set(root, registration_id, new_section)
+        if root:
+            doc.set(root, registration_id, new_section)
         doc.add_section(new_section)
 
         saw_name = False
@@ -592,11 +667,11 @@ class RulesWorkspace:
         for line in template_lines:
             key = line.key or ""
             folded = key.casefold()
-            if folded == "uiname":
+            if root and folded == "uiname":
                 doc.set(new_section, key, f"Name:{new_section}")
                 saw_uiname = True
                 continue
-            if folded == "name":
+            if root and folded == "name":
                 doc.set(new_section, key, display_comment)
                 saw_name = True
                 continue
@@ -604,11 +679,16 @@ class RulesWorkspace:
                 continue
             doc.set(new_section, key, line.value or "")
 
-        if not saw_uiname:
-            doc.set(new_section, "UIName", f"Name:{new_section}")
-        if not saw_name:
-            doc.set(new_section, "Name", display_comment)
+        if root:
+            if not saw_uiname:
+                doc.set(new_section, "UIName", f"Name:{new_section}")
+            if not saw_name:
+                doc.set(new_section, "Name", display_comment)
 
+        self._remember_recent_section(
+            new_section,
+            section_type if is_unregistered_object else None,
+        )
         self._structural_dirty = True
         self._rebuild_indexes()
         self._refresh_dirty()
@@ -616,7 +696,7 @@ class RulesWorkspace:
             "snapshot": self.snapshot(),
             "section": self.section(new_section),
             "registration_id": registration_id,
-            "root": root,
+            "root": root or (section_type or "独立Section"),
         }
 
     def remove_line(self, line_id: int) -> dict:
