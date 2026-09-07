@@ -99,8 +99,8 @@ function Invoke-NativeAllowFailure([scriptblock]$Action) {
         # Windows PowerShell 5.1 may promote native stderr into PowerShell errors.
         # Use the native exit code for commands that are intentionally allowed to fail.
         $ErrorActionPreference = 'Continue'
-        & $Action
-        return $LASTEXITCODE
+        & $Action | Out-Host
+        return [int]$LASTEXITCODE
     } finally {
         $ErrorActionPreference = $previousPreference
     }
