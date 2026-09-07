@@ -19,8 +19,8 @@ jobs:
         run: pytest -q
       - name: Python compile
         run: python -m compileall -q src
-      - name: Portable build script syntax
-        shell: pwsh
+      - name: Portable build script syntax (Windows PowerShell 5.1)
+        shell: powershell
         run: |
           $tokens = $null
           $errors = $null
