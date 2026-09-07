@@ -27,6 +27,12 @@ class ExportMixRulesWorkspace(MixRulesWorkspace):
 class ExportBridge(Bridge):
     """Bridge extensions for full-file vs changed-rule-fragment export."""
 
+    def rpc_ping(self, unicode: str | None = None) -> dict[str, str]:
+        result = super().rpc_ping()
+        if unicode is not None:
+            result["unicode"] = unicode
+        return result
+
     @staticmethod
     def _state_changed(current: OptionLineState, baseline: OptionLineState | None) -> bool:
         if baseline is None:
