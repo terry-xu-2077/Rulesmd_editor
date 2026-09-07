@@ -18,6 +18,7 @@ $RuleTemplate = Join-Path $Resources 'generated\rulesmd.template.ini'
 $RuleSchema = Join-Path $Resources 'generated\rules_schema.json'
 $LegacyHelp = Join-Path $Resources 'legacy\HelpInfor.ini'
 $LegacyNames = Join-Path $Resources 'legacy\NamesDesc.ini'
+$LegacyAssets = Join-Path $Frontend 'public\legacy'
 $IconSource = Join-Path $TauriDir 'app-icon.png'
 $IconProduct = Join-Path $TauriDir 'icons\icon.ico'
 
@@ -198,6 +199,41 @@ function Ensure-AppIcon {
     }
 }
 
+function Sync-LegacyAsset([string]$Name, [string]$Url) {
+    $target = Join-Path $LegacyAssets $Name
+    if (Test-Path -LiteralPath $target) { return }
+
+    Write-Host "  Legacy UI: $Name" -ForegroundColor DarkGray
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $target -TimeoutSec 20
+        return
+    } catch {
+        if (-not $script:ProxyAvailable) {
+            Write-Host "  [WARN] Unable to download $Name; UI fallback will be used." -ForegroundColor Yellow
+            Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+            return
+        }
+    }
+
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $target -Proxy $ProxyUrl -TimeoutSec 30
+    } catch {
+        Write-Host "  [WARN] Unable to download $Name through $ProxyUrl; UI fallback will be used." -ForegroundColor Yellow
+        Remove-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Ensure-LegacyAssets {
+    Write-Step 'Synchronizing legacy UI assets used by the React frontend'
+    New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
+    $base = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
+    Sync-LegacyAsset 'iconTile.jpg' "$base/iconTile.jpg"
+    Sync-LegacyAsset 'countryTile.png' "$base/countryTile.png"
+    Sync-LegacyAsset 'bgIcon.png' "$base/bgIcon.png"
+    Sync-LegacyAsset 'RA2_NONE.png' "$base/RA2_NONE.png"
+    Sync-LegacyAsset 'app-logo.png' "$base/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
+}
+
 function Build-PythonBackend {
     Write-Step 'Building Python backend into runtime/backend'
     if (Test-Path -LiteralPath $BuildRoot) {
@@ -334,6 +370,7 @@ Ensure-PythonBuildTools
 Ensure-RuleResources
 Ensure-FrontendDependencies
 Ensure-AppIcon
+Ensure-LegacyAssets
 Build-PythonBackend
 Build-TauriApp
 Assemble-Package
