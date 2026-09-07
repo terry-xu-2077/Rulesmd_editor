@@ -63,7 +63,7 @@ fn configure_backend_environment(command: &mut Command) {
         .env("PYTHONIOENCODING", "utf-8");
 }
 
-fn suppress_backend_console(command: &mut Command) {
+fn suppress_console(command: &mut Command) {
     #[cfg(target_os = "windows")]
     {
         command.creation_flags(CREATE_NO_WINDOW);
@@ -81,7 +81,7 @@ impl BackendProcess {
     fn spawn() -> Result<Self, String> {
         let (mut command, backend_name) = backend_command()?;
         configure_backend_environment(&mut command);
-        suppress_backend_console(&mut command);
+        suppress_console(&mut command);
         let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -183,13 +183,15 @@ fn pick_save_file(window: tauri::Window, default_name: Option<String>) -> Result
 fn pick_game_executable(window: tauri::Window) -> Result<Option<String>, String> {
     let path = rfd::FileDialog::new()
         .set_parent(&window)
-        .set_title("选择游戏启动程序")
+        .set_title("选择游戏启动入口")
+        .add_filter("游戏启动入口", &["exe", "bat", "cmd"])
         .add_filter("Windows 程序", &["exe"])
+        .add_filter("批处理脚本", &["bat", "cmd"])
         .pick_file();
     Ok(path.map(|value| value.to_string_lossy().into_owned()))
 }
 
-fn normalize_executable_path(path: &str) -> String {
+fn normalize_launcher_path(path: &str) -> String {
     let trimmed = path.trim();
     if trimmed.len() >= 2 {
         let bytes = trimmed.as_bytes();
@@ -202,23 +204,37 @@ fn normalize_executable_path(path: &str) -> String {
     trimmed.to_string()
 }
 
-#[tauri::command]
-fn launch_game(path: String) -> Result<(), String> {
-    let normalized = normalize_executable_path(&path);
-    if normalized.is_empty() {
-        return Err("请先在设置中选择游戏启动程序。".to_string());
+fn launch_batch_script(script: &PathBuf, parent: &std::path::Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        // Keep the user's BAT/CMD intact. This is important for Ares/Phobos and custom
+        // mod packs because RunAres.bat may contain Syringe arguments or extra setup.
+        // The path travels through an environment variable instead of being interpolated
+        // into the command text, so spaces and non-ASCII paths remain intact.
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/d", "/s", "/c", "call \"%RULESMD_GAME_LAUNCHER%\""])
+            .env("RULESMD_GAME_LAUNCHER", script)
+            .current_dir(parent)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        suppress_console(&mut command);
+        command
+            .spawn()
+            .map(|_| ())
+            .map_err(|err| format!("无法启动批处理入口 {}：{err}", script.display()))
     }
 
-    let executable = PathBuf::from(&normalized);
-    if !executable.is_file() {
-        return Err(format!("游戏启动程序不存在：{}", executable.display()));
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (script, parent);
+        Err("BAT/CMD 启动入口仅支持 Windows。".to_string())
     }
+}
 
-    let parent = executable
-        .parent()
-        .ok_or_else(|| format!("无法确定游戏启动目录：{}", executable.display()))?;
-
-    let direct = Command::new(&executable)
+fn launch_executable(executable: &PathBuf, parent: &std::path::Path) -> Result<(), String> {
+    let direct = Command::new(executable)
         .current_dir(parent)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -231,8 +247,7 @@ fn launch_game(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        // 部分 CnCNet / 整合包启动器需要由 Windows Shell 间接启动。
-        // PowerShell Start-Process 只接收环境变量里的路径，避免路径空格或特殊字符被再次解析。
+        // Some CnCNet / mod-pack launchers need Windows Shell semantics.
         let fallback = Command::new("powershell.exe")
             .args([
                 "-NoProfile",
@@ -240,7 +255,7 @@ fn launch_game(path: String) -> Result<(), String> {
                 "-Command",
                 "Start-Process -FilePath $env:RULESMD_GAME_EXE -WorkingDirectory $env:RULESMD_GAME_DIR",
             ])
-            .env("RULESMD_GAME_EXE", &executable)
+            .env("RULESMD_GAME_EXE", executable)
             .env("RULESMD_GAME_DIR", parent)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -254,10 +269,44 @@ fn launch_game(path: String) -> Result<(), String> {
         }
     }
 
-    let direct_error = direct.err().map(|err| err.to_string()).unwrap_or_else(|| "未知错误".to_string());
+    let direct_error = direct
+        .err()
+        .map(|err| err.to_string())
+        .unwrap_or_else(|| "未知错误".to_string());
     Err(format!(
-        "启动游戏失败：{direct_error}。已确认路径存在，但系统未能启动该程序。"
+        "启动游戏失败：{direct_error}。已确认入口存在，但系统未能启动该程序。"
     ))
+}
+
+#[tauri::command]
+fn launch_game(path: String) -> Result<(), String> {
+    let normalized = normalize_launcher_path(&path);
+    if normalized.is_empty() {
+        return Err("请先在设置中选择游戏启动入口。".to_string());
+    }
+
+    let launcher = PathBuf::from(&normalized);
+    if !launcher.is_file() {
+        return Err(format!("游戏启动入口不存在：{}", launcher.display()));
+    }
+
+    let parent = launcher
+        .parent()
+        .ok_or_else(|| format!("无法确定游戏启动目录：{}", launcher.display()))?;
+    let extension = launcher
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+
+    match extension.as_str() {
+        "exe" => launch_executable(&launcher, parent),
+        "bat" | "cmd" => launch_batch_script(&launcher, parent),
+        _ => Err(format!(
+            "不支持的游戏启动入口：{}。请选择 EXE、BAT 或 CMD 文件。",
+            launcher.display()
+        )),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
