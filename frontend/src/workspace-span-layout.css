@@ -4,6 +4,9 @@
  * The editor identity/navigation/filter/search/action row spans the center editor and
  * right help column at every window width. The inspector starts below that shared strip;
  * this is the normal desktop layout, not a narrow-window fallback.
+ *
+ * Shared Terry UI component selectors intentionally do not live here. Their host-slot
+ * integration remains owned exclusively by ui-library-integration.css.
  */
 .app .workspace{
   grid-template-columns:var(--left-pane,230px) 5px minmax(0,1fr) 5px var(--right-pane,390px)!important;
@@ -86,10 +89,6 @@
   margin:0!important;
   padding-top:0!important;
   padding-bottom:0!important;
-}
-.app .editorControls>.tc-button{
-  order:3!important;
-  flex:0 0 92px!important;
 }
 
 /* Compact identity block: less empty space at the far left, but a larger safe gap
