@@ -397,9 +397,17 @@ function Test-PackagedBackend {
     }
 
     try {
-        $request = '{"id":1,"method":"ping","params":{}}'
-        $process.StandardInput.WriteLine($request)
-        $process.StandardInput.Flush()
+        $requestObject = [ordered]@{
+            id = 1
+            method = 'ping'
+            params = @{}
+        }
+        $request = $requestObject | ConvertTo-Json -Compress
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $requestBytes = $utf8NoBom.GetBytes($request + "`n")
+        $stdin = $process.StandardInput.BaseStream
+        $stdin.Write($requestBytes, 0, $requestBytes.Length)
+        $stdin.Flush()
 
         $responseLine = $process.StandardOutput.ReadLine()
         if ([string]::IsNullOrWhiteSpace($responseLine)) {
