@@ -13,16 +13,15 @@
  * business CSS and Terry_React_UI_Library resolve to the same source colors.
  */
 .app.tc-theme {
-  --theme-base: #011437;
+  --theme-base: #0f1529;
   --theme-accent: #2ad5b8;
   --theme-effect: #70eeff;
   --theme-text: #ffffff;
   --theme-text-bright: #7fe8d8;
 
   /*
-   * Keep hue/saturation variation visible while making lightness variation deliberately
-   * conservative. Surface hierarchy should be read mostly from chroma, borders and
-   * spacing rather than large jumps toward white.
+   * Dark mode keeps the chosen Base visibly dominant. Surface hierarchy is deliberately
+   * conservative so the editor remains a dense desktop tool rather than a stack of cards.
    */
   --theme-base-cool: color-mix(in oklab, var(--theme-base) 94%, var(--theme-effect) 6%);
   --theme-base-accent: color-mix(in oklab, var(--theme-base) 94%, var(--theme-accent) 6%);
@@ -61,7 +60,7 @@
   --theme-warning: oklch(from var(--theme-effect) l c calc(h + 120));
 
   /* Business aliases retained only for old layout selectors. */
-  --bg: var(--theme-base);
+  --bg: var(--theme-surface-0);
   --text: var(--theme-text);
   --muted: color-mix(in oklab, var(--theme-text) 72%, var(--theme-base-cool) 28%);
   --muted2: color-mix(in oklab, var(--theme-text) 56%, var(--theme-base-accent) 44%);
@@ -77,10 +76,7 @@
   --control: var(--theme-surface-soft);
   --control2: var(--theme-control-fill);
 
-  /* Terry UI Library receives only the five public source channels plus broad host
-   * surface aliases. Component-internal light/dark roles such as control fill/focus are
-   * intentionally left to Terry_React_UI_Library so its own theme cascade cannot be
-   * silently overridden by the host. */
+  /* Terry UI Library receives the same five public channels plus host surface aliases. */
   --tc-base: var(--theme-base);
   --tc-accent: var(--theme-accent);
   --tc-effect: var(--theme-effect);
@@ -89,7 +85,7 @@
   --tc-bg: var(--theme-surface-0);
   --tc-surface: var(--theme-surface-1);
   --tc-surface-2: var(--theme-surface-2);
-  --tc-panel: var(--theme-surface-1);
+  --tc-panel: var(--theme-surface-strong);
   --tc-panel-2: var(--theme-surface-2);
   --tc-row-hover: var(--theme-surface-hover);
   --tc-border-color: var(--theme-border);
@@ -102,33 +98,41 @@
 }
 
 /*
- * The React tree already resolves "system" to an effective dark/light data-mode before
- * rendering. Keep both default source palettes in CSS as well, so the very first paint
- * matches the stored appearance even before the optional custom-palette script runs.
+ * Light mode follows the Terry React UI Library showcase model: Base is a tint source,
+ * not the literal full-window paint. Large surfaces mix a small amount of Base into
+ * white. This keeps user-selected low-saturation colors low-saturation instead of
+ * amplifying Accent/Effect into the entire workspace.
  */
 .app.tc-theme[data-mode="light"] {
-  /* Cleaner and slightly more saturated than the previous gray-blue default. */
-  --theme-base: #d8ebf6;
-  --theme-accent: #2acfb7;
+  --theme-base: #a6b7c9;
+  --theme-accent: #159f8b;
   --theme-effect: #16a6c7;
   --theme-text: #343a40;
   --theme-text-bright: #168f9f;
 
-  /* Custom light bases need chromatic separation, not just tiny white/black steps. */
-  --theme-base-cool: color-mix(in oklab, var(--theme-base) 82%, var(--theme-effect) 18%);
-  --theme-base-accent: color-mix(in oklab, var(--theme-base) 82%, var(--theme-accent) 18%);
-  --theme-surface-hover: color-mix(in oklab, var(--theme-base-accent) 82%, var(--theme-accent-shift) 18%);
-  --theme-surface-focus: color-mix(in oklab, var(--theme-base-accent) 72%, var(--theme-accent-shift) 28%);
+  /* Match the UI library demo's light palette derivation weights. */
+  --theme-base-cool: color-mix(in oklab, var(--theme-base) 84%, var(--theme-effect) 16%);
+  --theme-base-accent: color-mix(in oklab, var(--theme-base) 84%, var(--theme-accent) 16%);
 
-  /* Legacy/business fields may still consume this semantic role. Shared Terry UI
-   * controls derive their own light fill in the library itself. */
-  --theme-control-fill: color-mix(in oklab, var(--theme-base) 24%, white 76%);
+  --theme-surface-0: color-mix(in oklab, var(--theme-base-cool) 8%, white 92%);
+  --theme-surface-1: color-mix(in oklab, var(--theme-base-cool) 22%, white 78%);
+  --theme-surface-2: color-mix(in oklab, var(--theme-base-accent) 31%, white 69%);
+  --theme-surface-soft: color-mix(in oklab, var(--theme-base-accent) 16%, white 84%);
+  --theme-surface-strong: color-mix(in oklab, var(--theme-base-accent) 39%, white 61%);
+  --theme-control-fill: color-mix(in oklab, var(--theme-base-accent) 16%, white 84%);
+  --theme-surface-focus: color-mix(in oklab, var(--theme-control-fill) 80%, var(--theme-accent) 20%);
+  --theme-surface-hover: color-mix(in oklab, var(--theme-base-accent) 24%, white 76%);
+  --theme-border: color-mix(in oklab, var(--theme-base-accent) 58%, white 42%);
+  --theme-line: color-mix(in oklab, var(--theme-base-cool) 48%, white 52%);
+  --theme-shadow: color-mix(in srgb, color-mix(in oklab, var(--theme-base) 74%, black 26%) 44%, transparent 56%);
 
-  /* Fold bars are deeper and cooler; selected items shift clearly toward Accent. */
-  --theme-fold-surface: color-mix(in oklab, var(--theme-base-cool) 90%, var(--theme-text) 10%);
-  --theme-selection-surface: color-mix(in oklab, var(--theme-base-accent) 62%, var(--theme-accent) 38%);
+  /* Keep persistent states readable without turning whole rows into saturated swatches. */
+  --theme-fold-surface: var(--theme-surface-2);
+  --theme-selection-surface: color-mix(in oklab, var(--theme-surface-2) 82%, var(--theme-accent) 18%);
+  --theme-accent-soft: color-mix(in srgb, var(--theme-accent) 10%, transparent 90%);
+  --theme-effect-soft: color-mix(in srgb, var(--theme-effect) 9%, transparent 91%);
 
-  /* Default/secondary copy moves much closer to the primary Chinese parameter labels. */
+  /* Secondary text stays close to the main neutral text and is not re-tinted by Accent. */
   --theme-default-text: color-mix(in oklab, var(--theme-text) 90%, var(--theme-base) 10%);
   --muted: color-mix(in oklab, var(--theme-text) 82%, var(--theme-base) 18%);
   --muted2: color-mix(in oklab, var(--theme-text) 70%, var(--theme-base) 30%);
