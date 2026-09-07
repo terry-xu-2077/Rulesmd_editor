@@ -5,8 +5,9 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from .resource_paths import RESOURCE_ROOT
 
-RESOURCE_ROOT = Path(__file__).resolve().parent / "resources"
+
 DEFAULT_SCHEMA = RESOURCE_ROOT / "generated" / "control_schema.json"
 
 COUNTRY_LABELS = {
@@ -22,6 +23,15 @@ COUNTRY_LABELS = {
     "YuriCountry": "尤里",
 }
 
+COUNTRY_VALUES = tuple(COUNTRY_LABELS.items())
+BUILDING_ALIAS_VALUES = (
+    ("TECH", "科技类建筑"),
+    ("BARRACKS", "兵营类建筑"),
+    ("POWER", "发电厂类建筑"),
+    ("PROC", "矿厂类建筑"),
+    ("RADAR", "雷达类建筑"),
+)
+
 
 @dataclass(frozen=True)
 class ControlSpec:
@@ -33,7 +43,19 @@ class ControlSpec:
 # HelpInfor.ini is more authoritative than the old web DSL for a handful of keys whose
 # names contain misleading words such as "Weapon". Keep these semantic overrides ahead
 # of generated legacy control metadata so they can never turn into Section-reference menus.
+#
+# The old Qt editor also treated the country/house and prerequisite/building families as
+# hard key semantics (OptionsDesc.ini [MultipleMenu]). Keep those here as a runtime
+# invariant as well: a missing generated control schema must never silently turn these
+# values back into free-form text fields.
 CURATED_CONTROLS: dict[str, ControlSpec] = {
+    "owner": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
+    "requiredhouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
+    "forbiddenhouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
+    "secrethouses": ControlSpec("multi-select", COUNTRY_VALUES, "countries"),
+    "prerequisite": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
+    "prerequisiteoverride": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
+    "dock": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
     "opentransportweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
     "deployfireweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
     "aibaseplanningside": ControlSpec("select", (("0", "盟军"), ("1", "苏军"))),
@@ -83,7 +105,7 @@ class ControlSchema:
         found = self._find(key)
         if not found:
             return None
-        name, row = found
+        _name, row = found
         widget = row.get("widget")
         if not widget:
             return None
@@ -110,11 +132,16 @@ class ControlSchema:
     ) -> ControlSpec:
         explicit = self.explicit(key)
         if explicit:
-            values = tuple(dynamic_values) if explicit.dynamic else explicit.values
+            dynamic_values = tuple(dynamic_values)
+            values = dynamic_values if explicit.dynamic else explicit.values
             if explicit.dynamic == "buildings":
-                # Static category aliases from Buildings_List remain useful in addition
-                # to live BuildingTypes entries from the current document.
-                values = tuple(dict.fromkeys((*explicit.values, *tuple(dynamic_values))))
+                # Same behavior as the old editor: category aliases plus the live
+                # BuildingTypes candidates from the opened Rules document.
+                values = tuple(dict.fromkeys((*explicit.values, *dynamic_values)))
+            elif explicit.dynamic == "countries":
+                # The old editor read the live [Countries] registration list. Static
+                # vanilla values are only a resilience fallback for partial snippets.
+                values = dynamic_values or explicit.values
             return ControlSpec(explicit.widget, values, explicit.dynamic)
 
         lowered = value.strip().casefold()
