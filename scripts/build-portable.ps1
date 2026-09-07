@@ -93,10 +93,22 @@ function Enable-ProxyEnv {
     $env:GIT_HTTPS_PROXY = $ProxyUrl
 }
 
+function Invoke-NativeAllowFailure([scriptblock]$Action) {
+    $previousPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 may promote native stderr into PowerShell errors.
+        # Use the native exit code for commands that are intentionally allowed to fail.
+        $ErrorActionPreference = 'Continue'
+        & $Action
+        return $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
 function Invoke-WithProxyFallback([scriptblock]$Action, [string]$Description) {
     Clear-ProxyEnv
-    & $Action
-    $code = $LASTEXITCODE
+    $code = Invoke-NativeAllowFailure $Action
     if ($code -eq 0) { return }
 
     if (-not $script:ProxyAvailable) {
@@ -105,9 +117,11 @@ function Invoke-WithProxyFallback([scriptblock]$Action, [string]$Description) {
 
     Write-Host "$Description failed directly. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
     Enable-ProxyEnv
-    & $Action
-    $code = $LASTEXITCODE
-    Clear-ProxyEnv
+    try {
+        $code = Invoke-NativeAllowFailure $Action
+    } finally {
+        Clear-ProxyEnv
+    }
     if ($code -ne 0) {
         Fail "$Description failed both directly and through $ProxyUrl."
     }
@@ -116,8 +130,10 @@ function Invoke-WithProxyFallback([scriptblock]$Action, [string]$Description) {
 function Test-VenvPython {
     if (-not (Test-Path -LiteralPath $Python)) { return $false }
     try {
-        & $Python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" *> $null
-        return $LASTEXITCODE -eq 0
+        $code = Invoke-NativeAllowFailure {
+            & $Python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" *> $null
+        }
+        return $code -eq 0
     } catch {
         return $false
     }
@@ -154,13 +170,17 @@ function Ensure-PythonEnvironment {
 
 function Ensure-PythonBuildTools {
     Write-Step 'Preparing Python backend build environment'
-    & $Python -m pip install --disable-pip-version-check -e $Root --no-deps
-    if ($LASTEXITCODE -ne 0) {
+    $code = Invoke-NativeAllowFailure {
+        & $Python -m pip install --disable-pip-version-check -e $Root --no-deps
+    }
+    if ($code -ne 0) {
         Fail 'Unable to register the Rulesmd Python package in the virtual environment.'
     }
 
-    & $Python -c "import PyInstaller" *> $null
-    if ($LASTEXITCODE -eq 0) {
+    $code = Invoke-NativeAllowFailure {
+        & $Python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('PyInstaller') else 1)" *> $null
+    }
+    if ($code -eq 0) {
         Write-Host 'PyInstaller is already available.' -ForegroundColor DarkGray
         return
     }
