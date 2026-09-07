@@ -12,15 +12,18 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-fn packaged_backend_path() -> Result<PathBuf, String> {
+fn packaged_layout_paths() -> Result<(PathBuf, PathBuf), String> {
     let executable = env::current_exe().map_err(|err| format!("无法确定编辑器程序位置: {err}"))?;
     let app_dir = executable
         .parent()
         .ok_or_else(|| format!("无法确定编辑器所在目录: {}", executable.display()))?;
-    let mut backend = app_dir.join("runtime").join("backend").join("rulesmd-backend");
+
+    let mut backend = app_dir.join("runtime").join("rulesmd-backend");
     #[cfg(target_os = "windows")]
     backend.set_extension("exe");
-    Ok(backend)
+
+    let resources = app_dir.join("resources");
+    Ok((backend, resources))
 }
 
 fn backend_command() -> Result<(Command, String), String> {
@@ -32,11 +35,17 @@ fn backend_command() -> Result<(Command, String), String> {
         }
     }
 
-    let backend = packaged_backend_path()?;
+    let (backend, resources) = packaged_layout_paths()?;
     if !backend.is_file() {
         return Err(format!(
             "内置后端不存在：{}。绿色版可能没有完整解压，请保留 runtime 文件夹与主程序在同一目录。",
             backend.display()
+        ));
+    }
+    if !resources.is_dir() {
+        return Err(format!(
+            "规则资源目录不存在：{}。绿色版可能没有完整解压，请保留 resources 文件夹与主程序在同一目录。",
+            resources.display()
         ));
     }
 
@@ -44,6 +53,7 @@ fn backend_command() -> Result<(Command, String), String> {
     if let Some(parent) = backend.parent() {
         command.current_dir(parent);
     }
+    command.env("RULESMD_RESOURCES_DIR", &resources);
     Ok((command, format!("内置后端 ({})", backend.display())))
 }
 
