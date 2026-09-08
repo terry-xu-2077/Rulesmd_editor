@@ -29,11 +29,12 @@ def test_country_specific_paradrop_keeps_mod_country_id_visible():
 
 
 def test_generic_known_ares_family_gets_chinese_family_and_safe_help():
-    row = AresSchemaCatalog().option("Missile.TrailerSeparation")
+    row = AresSchemaCatalog().option("Sidebar.YuriFileNames")
     assert row is not None
     assert row.source == "Ares"
-    assert "自定义导弹" in row.description
-    assert "尾迹生成间隔" in row.description
+    assert "侧边栏" in row.description
+    assert "尤里复仇文件名规则" in row.description
+    assert "未出现在当前内置精确元数据快照" in row.help_text
 
 
 def test_unknown_dotted_family_stays_ares_without_inventing_semantics():
