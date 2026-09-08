@@ -11,7 +11,7 @@ from .schema import OptionMeta
 
 ARES_SCHEMA_PATH = RESOURCE_ROOT / "generated" / "ares_schema.json"
 ARES_HARDCODE_UNLOCKS_PATH = RESOURCE_ROOT / "ares_hardcode_unlocks.json"
-UNLOCK_ICON = "🔓︎"  # U+FE0E text presentation: keep the icon flat/monochrome instead of emoji-style.
+UNLOCK_ICON = "✦"  # Match the Sparkles visual language used by the Ares UI; avoid a lock-shaped glyph.
 
 
 class AresSchemaCatalog:
@@ -122,7 +122,7 @@ class AresSchemaCatalog:
         unlock_help = self._unlock_help(row)
         help_text = f"{base_help}\n\n{unlock_help}" if base_help else unlock_help
         description = str(row.get("description", meta.description)).strip() or meta.name
-        if not description.startswith("🔓"):
+        if not description.startswith(UNLOCK_ICON):
             description = f"{UNLOCK_ICON} {description}"
         values = meta.values
         if "values" in row:
