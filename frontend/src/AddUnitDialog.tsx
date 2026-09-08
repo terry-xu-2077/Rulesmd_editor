@@ -503,15 +503,17 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       setError(problem)
       return
     }
+    const picked = selectableOptions.filter(option => selectedLines[option.line_id])
+    if (!picked.length) {
+      setError('新阵营至少需要继承一个有效参数；建议保留参考阵营的默认参数后再逐项调整。')
+      return
+    }
     const cleanSection = sectionName.trim()
     setCreating(true)
     setError('')
     try {
       await registerListValue('Sides', cleanSection)
-      for (const option of selectableOptions) {
-        if (!selectedLines[option.line_id]) continue
-        await workspaceApi.addOption(cleanSection, option.key, option.value)
-      }
+      for (const option of picked) await workspaceApi.addOption(cleanSection, option.key, option.value)
       const [snapshot, section, sides] = await Promise.all([
         workspaceApi.snapshot(),
         workspaceApi.section(cleanSection),
