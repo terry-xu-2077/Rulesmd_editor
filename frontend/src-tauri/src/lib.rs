@@ -7,10 +7,16 @@ use std::sync::Mutex;
 use tauri::State;
 
 #[cfg(target_os = "windows")]
+use std::os::windows::ffi::OsStrExt;
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::UI::Shell::ShellExecuteW;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+#[cfg(target_os = "windows")]
+const SW_SHOWNORMAL: i32 = 1;
 
 fn packaged_layout_paths() -> Result<(PathBuf, PathBuf), String> {
     let executable = env::current_exe().map_err(|err| format!("无法确定编辑器程序位置: {err}"))?;
@@ -207,23 +213,31 @@ fn normalize_launcher_path(path: &str) -> String {
 fn launch_batch_script(script: &PathBuf, parent: &std::path::Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        // Keep the user's BAT/CMD intact. This is important for Ares/Phobos and custom
-        // mod packs because RunAres.bat may contain Syringe arguments or extra setup.
-        // The path travels through an environment variable instead of being interpolated
-        // into the command text, so spaces and non-ASCII paths remain intact.
-        let mut command = Command::new("cmd.exe");
-        command
-            .args(["/d", "/s", "/c", "call \"%RULESMD_GAME_LAUNCHER%\""])
-            .env("RULESMD_GAME_LAUNCHER", script)
-            .current_dir(parent)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        suppress_console(&mut command);
-        command
-            .spawn()
-            .map(|_| ())
-            .map_err(|err| format!("无法启动批处理入口 {}：{err}", script.display()))
+        // BAT/CMD launchers such as RunAres.bat must behave exactly like a user double-click.
+        // A hidden child cmd.exe changes the console/stdio environment enough to break some
+        // Syringe/Ares launch chains, so delegate the file association to Windows Shell.
+        let verb: Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(Some(0)).collect();
+        let file: Vec<u16> = script.as_os_str().encode_wide().chain(Some(0)).collect();
+        let directory: Vec<u16> = parent.as_os_str().encode_wide().chain(Some(0)).collect();
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                verb.as_ptr(),
+                file.as_ptr(),
+                std::ptr::null(),
+                directory.as_ptr(),
+                SW_SHOWNORMAL,
+            )
+        };
+        let code = result as isize;
+        if code > 32 {
+            Ok(())
+        } else {
+            Err(format!(
+                "Windows Shell 无法启动批处理入口 {}（ShellExecute 错误码 {code}）。",
+                script.display()
+            ))
+        }
     }
 
     #[cfg(not(target_os = "windows"))]
