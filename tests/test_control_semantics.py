@@ -34,7 +34,7 @@ def test_help_backed_numeric_selectors_keep_documented_domains() -> None:
 
     assert [row["value"] for row in _option(workspace, "E1", "DeployFireWeapon")["values"]] == ["0", "1"]
     assert [row["value"] for row in _option(workspace, "E1", "DeployFacing")["values"]] == [str(i) for i in range(8)]
-    assert [row["value"] for row in _option(workspace, "GAPOWR", "AIBasePlanningSide")["values"]] == ["0", "1"]
+    assert [row["value"] for row in _option(workspace, "GAPOWR", "AIBasePlanningSide")["values"]] == ["-1", "0", "1", "2"]
     assert [row["value"] for row in _option(workspace, "SUB", "LandTargeting")["values"]] == ["0", "1", "2"]
 
 
