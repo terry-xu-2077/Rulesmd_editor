@@ -24,26 +24,59 @@ COUNTRY_LABELS = {
 }
 
 COUNTRY_VALUES = tuple(COUNTRY_LABELS.items())
+
+# These labels are audited against the actual veteran-ability semantics instead of
+# inheriting old desktop/web translations verbatim. TIBERIUM/VEIN flags are TS-era
+# compatibility abilities and are effectively irrelevant in stock RA2/YR.
 ABILITY_VALUES = (
-    ("FASTER", "移动速度加强"),
-    ("STRONGER", "生命值加强"),
-    ("SCATTER", "自动分散火力"),
-    ("FIREPOWER", "攻击力加强"),
-    ("SIGHT", "视力加强"),
-    ("CLOAK", "可以隐形"),
-    ("TIBERIUM_PROOF", "免疫气体损害"),
-    ("VEIN_PROOF", "免受VXL误伤"),
-    ("SELF_HEAL", "自动治愈"),
-    ("EXPLODES", "可以爆炸"),
-    ("RADAR_INVISIBLE", "屏蔽雷达检测"),
+    ("FASTER", "移动速度加成"),
+    ("STRONGER", "生命值加成"),
+    ("SCATTER", "受碾压威胁时自动散开"),
+    ("FIREPOWER", "火力加成"),
+    ("SIGHT", "视野加成"),
+    ("CLOAK", "获得隐形能力"),
+    ("TIBERIUM_PROOF", "免疫泰伯利亚矿伤害（RA2/YR 中无效）"),
+    ("VEIN_PROOF", "免疫藤蔓伤害（RA2/YR 中无效）"),
+    ("SELF_HEAL", "自动恢复生命"),
+    ("EXPLODES", "使用爆炸死亡方式"),
+    ("RADAR_INVISIBLE", "雷达不可见"),
     ("SENSORS", "侦测隐形单位"),
-    ("FEARLESS", "不会畏惧"),
-    ("TIBERIUM_HEAL", "矿石上治愈"),
-    ("GUARD_AREA", "可以警戒"),
-    ("CRUSHER", "可以碾压"),
-    ("C4", "拥有C4炸弹"),
-    ("ROF", "攻击速度加快"),
+    ("FEARLESS", "不会卧倒"),
+    ("TIBERIUM_HEAL", "在泰伯利亚矿上恢复生命（RA2/YR 中无效）"),
+    ("GUARD_AREA", "默认区域警戒"),
+    ("CRUSHER", "获得碾压能力"),
+    ("C4", "获得 C4 能力"),
+    ("ROF", "攻击间隔加成"),
 )
+
+# Historical Chinese resources mislabeled flak/plate/light as cloth/iron/metal. Keep the
+# actual engine ids visible in values, but use armor-class wording that matches YR usage.
+ARMOR_VALUES = (
+    ("None", "无装甲（普通步兵）"),
+    ("Flak", "防弹衣装甲（特殊步兵）"),
+    ("Plate", "步兵金属装甲"),
+    ("Light", "轻型载具装甲"),
+    ("Medium", "中型载具装甲"),
+    ("Heavy", "重型载具装甲"),
+    ("Wood", "木质建筑装甲"),
+    ("Steel", "钢制建筑装甲"),
+    ("Concrete", "混凝土建筑装甲"),
+    ("special_1", "特殊装甲 1"),
+    ("special_2", "特殊装甲 2"),
+)
+
+SPEED_TYPE_VALUES = (
+    ("Underground", "潜地"),
+    ("FloatBeach", "水面/海滩浮动"),
+    ("Float", "水面浮动"),
+    ("Winged", "飞行"),
+    ("Hover", "悬浮"),
+    ("Wheel", "轮式"),
+    ("Track", "履带式"),
+    ("Foot", "步行"),
+    ("Amphibious", "两栖"),
+)
+
 BUILDING_ALIAS_VALUES = (
     ("TECH", "科技类建筑"),
     ("BARRACKS", "兵营类建筑"),
@@ -77,9 +110,16 @@ CURATED_CONTROLS: dict[str, ControlSpec] = {
     "prerequisite": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
     "prerequisiteoverride": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
     "dock": ControlSpec("multi-select", BUILDING_ALIAS_VALUES, "buildings"),
+    "armor": ControlSpec("select", ARMOR_VALUES),
+    "speedtype": ControlSpec("select", SPEED_TYPE_VALUES),
     "opentransportweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
     "deployfireweapon": ControlSpec("select", (("0", "主武器"), ("1", "副武器"))),
-    "aibaseplanningside": ControlSpec("select", (("0", "盟军"), ("1", "苏军"))),
+    "aibaseplanningside": ControlSpec("select", (
+        ("-1", "所有阵营"),
+        ("0", "盟军"),
+        ("1", "苏军"),
+        ("2", "尤里"),
+    )),
     "landtargeting": ControlSpec("select", (
         ("0", "可以攻击陆地单位"),
         ("1", "不能攻击陆地单位"),

@@ -14,6 +14,7 @@ from .translations_zh import (
     guess_section_name,
     translate_option_meta,
 )
+from .yr_translation_audit import audit_yr_meta
 
 
 LEGACY_ROOT = RESOURCE_ROOT / "legacy"
@@ -36,6 +37,20 @@ def _has_curated_yr_semantics(key: str) -> bool:
     return any(name.casefold() == folded for name in PARAMETER_META_FIXES)
 
 
+def _inferred_unknown_meta(meta: OptionMeta) -> OptionMeta:
+    """Give a readable label to an unknown non-dotted key without inventing semantics."""
+    translated = translate_option_meta(meta)
+    if translated.description and translated.description.casefold() != meta.name.casefold():
+        return replace(
+            translated,
+            help_text=(
+                "【名称自动推断】当前没有找到可靠的内置参数说明；中文名仅根据英文 Key 的可识别单词生成。"
+                "请以原始 Key、游戏实际行为或可靠文档为准。编辑器不会改写真实 Key。"
+            ),
+        )
+    return meta
+
+
 class RuntimeSchemaCatalog(SchemaCatalog):
     """Unified presentation catalog backed by physically separate rule sources."""
 
@@ -43,6 +58,10 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         super().__init__(LEGACY_ROOT if LEGACY_ROOT.exists() else None)
         self._load_generated_yr()
         apply_yr_translations(self.options, self.name_desc)
+        # Historical/manual Chinese data is useful, but verified review overrides sit
+        # above it so a known mistranslation cannot win merely because it came from JSON.
+        for key, meta in list(self.options.items()):
+            self.options[key] = audit_yr_meta(meta)
         self.ares = AresSchemaCatalog()
         self._all_options_cache: tuple[OptionMeta, ...] | None = None
         self._all_options_lock = Lock()
@@ -92,28 +111,42 @@ class RuntimeSchemaCatalog(SchemaCatalog):
             # when OptionsDesc omitted a legitimate engine key. Translate/correct that
             # row on demand just like the eagerly loaded catalog rows. Ares may further
             # enrich an original YR tag when it removes a vanilla hard-coded limit.
-            return self.ares.enrich(translate_option_meta(base))
+            return self.ares.enrich(audit_yr_meta(translate_option_meta(base)))
 
         # Some original YR keys are absent from one or more historical metadata files.
         # Only explicit semantic corrections count as evidence that such a key is YR.
         # A generic Chinese label guess must never shadow a real Ares key.
         if _has_curated_yr_semantics(key):
-            return self.ares.enrich(replace(translate_option_meta(base), source="YR"))
+            fixed = replace(translate_option_meta(base), source="YR")
+            return self.ares.enrich(audit_yr_meta(fixed))
 
         # A handful of well-known vanilla tags are missing from the historical metadata
         # snapshots even though the engine supports them. Ares only extends their range
         # or removes a hard-coded identity check, so never reclassify them as Ares-only.
         if key.casefold() in ARES_EXTENDED_YR_KEYS and self.ares.is_hardcode_unlock(key):
-            return replace(self.ares.enrich(base), source="YR")
+            return replace(self.ares.enrich(audit_yr_meta(base)), source="YR")
 
         ares = self.ares.option(key)
         if ares is not None:
             return self.ares.enrich(ares)
-        # Ares establishes the dotted Key convention (for example Versus.light,
-        # Weapon1.Elite and SW.Range.*). Even when a specific dotted tag is not yet in
-        # the metadata catalog, classify it as Ares so filtering/badges remain correct.
-        source = "Ares" if "." in key else "自定义"
-        return OptionMeta(key, source=source)
+
+        # Ares establishes the dotted Key convention.  Known families are synthesized by
+        # AresSchemaCatalog above.  A completely unknown dotted family remains Ares so the
+        # filter/badge is still correct, but its semantics are not invented.
+        if "." in key:
+            return OptionMeta(
+                key,
+                source="Ares",
+                help_text=(
+                    "检测到 Ares 风格的点号参数，但当前没有匹配到已知参数族。"
+                    "编辑器保留原始 Key，不根据名称猜测具体语义。"
+                ),
+            )
+
+        # Original rulesmd.ini and mods contain many readable CamelCase/PascalCase keys.
+        # A conservative all-token translation is useful as a label, but it does not turn
+        # an unknown key into a verified YR key and never fabricates a gameplay description.
+        return _inferred_unknown_meta(base)
 
     def section_description(self, section: str) -> str:
         current = super().section_description(section).strip()

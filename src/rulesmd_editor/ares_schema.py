@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 
+from .ares_patterns_zh import audit_ares_meta, synthesize_ares_option
 from .resource_paths import RESOURCE_ROOT
 from .schema import OptionMeta
 
@@ -49,7 +50,7 @@ class AresSchemaCatalog:
                 (str(item.get("value", "")), str(item.get("label") or item.get("value", "")))
                 for item in row.get("values", [])
             )
-            self.options[key] = OptionMeta(
+            self.options[key] = audit_ares_meta(OptionMeta(
                 name=key,
                 description=str(row.get("description", "")),
                 help_text=str(row.get("help", "")),
@@ -60,7 +61,7 @@ class AresSchemaCatalog:
                 applies_to=tuple(str(x) for x in row.get("applies_to", [])),
                 default=str(row.get("default", "")),
                 docs=str(row.get("docs", "")),
-            )
+            ))
 
     @staticmethod
     def _unlock_help(row: dict[str, object]) -> str:
@@ -133,7 +134,7 @@ class AresSchemaCatalog:
         applies_to = meta.applies_to
         if "applies_to" in row:
             applies_to = tuple(str(item) for item in row.get("applies_to", []))
-        return replace(
+        return audit_ares_meta(replace(
             meta,
             description=description,
             help_text=help_text,
@@ -143,12 +144,27 @@ class AresSchemaCatalog:
             applies_to=applies_to,
             default=str(row.get("default", meta.default)),
             docs=str(row.get("docs", meta.docs)),
-        )
+        ))
 
     def enrich(self, meta: OptionMeta) -> OptionMeta:
         """Attach curated hard-code-unlock help to either YR or Ares metadata."""
         row = self._row_for_key(meta.name)
-        return self._apply_unlock_row(meta, row) if row else meta
+        if row is None:
+            return audit_ares_meta(meta)
+
+        # ``Versus.*`` is a wildcard documentation row. Dynamic forms such as
+        # ``Versus.f_viper`` and ``Versus.defense.PassiveAcquire`` already have more
+        # specific metadata synthesized from the real key structure. Keep that specific
+        # label/value type and only append the hard-code-unlock note; otherwise the
+        # wildcard percent row would incorrectly turn behavior flags into percentages.
+        folded = meta.name.casefold()
+        if folded.startswith("versus."):
+            unlock_help = self._unlock_help(row)
+            base_help = meta.help_text.strip()
+            help_text = f"{base_help}\n\n{unlock_help}" if base_help else unlock_help
+            return audit_ares_meta(replace(meta, help_text=help_text))
+
+        return self._apply_unlock_row(meta, row)
 
     def is_hardcode_unlock(self, key: str) -> bool:
         return self._row_for_key(key) is not None
@@ -166,9 +182,13 @@ class AresSchemaCatalog:
         if folded.startswith("weaponturretindex") and folded[len("weaponturretindex"):].isdigit():
             row = self._unlock_rows.get("WeaponTurretIndex#")
             return self._apply_unlock_row(OptionMeta(name=key, source="Ares"), row) if row else None
-        if folded.startswith("versus.") and len(folded) > len("versus."):
-            row = self._unlock_rows.get("Versus.*")
-            return self._apply_unlock_row(OptionMeta(name=key, source="Ares"), row) if row else None
+
+        # Dotted Ares keys can contain user-defined identifiers, so they cannot all live
+        # in a static JSON catalog.  Synthesize presentation metadata from verified family
+        # structure and then attach any hard-code-unlock note (Versus.* in particular).
+        synthesized = synthesize_ares_option(key)
+        if synthesized is not None:
+            return self.enrich(synthesized)
         return None
 
     def available_options(self, *, query: str = "", applies_to: str | None = None) -> list[OptionMeta]:
