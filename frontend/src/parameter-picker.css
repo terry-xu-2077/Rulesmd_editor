@@ -16,5 +16,5 @@
 .parameterManualEntry.matched small{color:color-mix(in srgb,var(--theme-accent) 64%,var(--theme-text))}
 .parameterManualEntry.invalid label{border-color:color-mix(in srgb,var(--theme-danger,#e56b78) 54%,var(--theme-border))}
 .parameterManualEntry.invalid small{color:var(--theme-danger,#e56b78)}
-.parameterExplorerFooter>.tc-button{height:34px!important;min-width:126px;border-radius:7px}
-@media(max-width:720px){.parameterExplorerFooter{grid-template-columns:minmax(0,1fr)}.parameterExplorerFooter>.tc-button{justify-self:end}}
+.parameterExplorerFooter>button{height:34px!important;min-width:126px;border-radius:7px}
+@media(max-width:720px){.parameterExplorerFooter{grid-template-columns:minmax(0,1fr)}.parameterExplorerFooter>button{justify-self:end}}
