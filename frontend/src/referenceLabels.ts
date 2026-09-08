@@ -12,25 +12,21 @@ const DIRECT_LABELS: Record<string, string> = {
   mindcontrol: '心灵控制', supermindcontrol: '超级心灵控制', radbeamweapon: '辐射射线', radbeamweapone: '精英辐射射线',
   raderuptionweapon: '辐射爆发', shovel: '铁锹',
 
-  // High-frequency technical names which are clearer when translated as a phrase.
+  // Common warheads / projectiles and high-frequency technical names.
+  ap: '穿甲弹头', he: '高爆弹头', hollowpoint: '空尖弹头', super: '超级弹头',
+  sa: '轻武器弹头', ssab: '强化轻武器弹头', howitzerwh: '榴弹炮弹头', flakwh: '高射炮弹头',
+  tankogas: '神经毒气弹头', radiationwh: '辐射弹头', nuke: '核爆弹头', nukemaker: '核爆生成弹头',
+  electric: '电击弹头', controller: '心灵控制弹头', psyrevealwh: '心灵探测弹头',
+  invisible: '隐形弹体', invisiblelow: '低空隐形弹体', cannon: '炮弹', largecannon: '重型炮弹',
+  smallrocket: '小型火箭弹', medrocket: '中型火箭弹', largemissile: '大型导弹', torpedo: '鱼雷',
   blimpbomb: '飞艇炸弹', blimpbombeffect: '飞艇炸弹效果', assaultcannon: '突击炮', harpyclaw: '哈比爪',
   raidercannon: '突袭炮', vulcantower: '火神炮塔', vulcan2: '火神炮 2',
 
-  // Common Warhead ids.
-  ap: '穿甲弹头', he: '高爆弹头', hollowpoint: '空尖弹头', hollowpoint2: '强化空尖弹头',
-  flakwh: '防空弹头', flaktwh: '防空炮塔弹头', samwh: '防空导弹弹头', c4warhead: 'C4 弹头',
-  terrorbombwh: '恐怖炸弹弹头', radbeamwarhead: '辐射射线弹头', nuke: '核爆弹头',
-  demobombwh: '自爆炸弹弹头', controller: '心灵控制弹头', psipulse: '心灵脉冲弹头', superpsipulse: '超级心灵脉冲弹头',
-
-  // Common Projectile ids.
-  invisible: '隐形弹体', invisiblelow: '低空隐形弹体', invisiblehigh: '高空隐形弹体',
-  ballistic: '弹道弹体', cannon: '炮弹', smallmissile: '小型导弹', largemissile: '大型导弹',
-  heatseeker: '热源追踪弹体', aaheatseeker: '防空热源追踪弹体', aaheatseeker2: '防空热源追踪弹体 2',
-  torpedo: '鱼雷', flakproj: '防空弹体', v3rocket: 'V3 火箭弹',
-
   // High-frequency generic audio ids in vanilla/YR rules.
   genvehicledie: '通用载具 · 摧毁音效', infantrysquish: '步兵 · 被碾压音效', tankcrush: '坦克 · 碾压音效',
-  placebuilding: '建筑 · 放置音效', mcvmovestart: '机动基地车 · 移动音效', mcvsovietselect: '苏联机动基地车 · 选择语音',
+  placebuilding: '建筑 · 放置音效', sellbuilding: '建筑 · 出售音效', buildingexplode: '建筑 · 爆炸音效',
+  explosion01: '爆炸音效 01', explosion02: '爆炸音效 02', explosion03: '爆炸音效 03',
+  mcvmovestart: '机动基地车 · 移动音效', mcvsovietselect: '苏联机动基地车 · 选择语音',
   mcvsovietmove: '苏联机动基地车 · 移动语音', mcvyuriselect: '尤里机动基地车 · 选择语音', mcvyurimove: '尤里机动基地车 · 移动语音',
   initiateselect: '尤里新兵 · 选择语音', initiatemove: '尤里新兵 · 移动语音', initiateattackcommand: '尤里新兵 · 攻击语音',
   initiatefear: '尤里新兵 · 受惊语音', initiatedie: '尤里新兵 · 死亡音效', apocalypsemovestart: '天启坦克 · 移动音效',
@@ -38,27 +34,23 @@ const DIRECT_LABELS: Record<string, string> = {
 
 // Longest-prefix match. This keeps technical audio ids readable without changing values.
 const AUDIO_PREFIXES: Array<[string, string]> = [
-  ['ChronoLegionnaire', '超时空军团兵'], ['GuardianGI', '重装大兵'], ['BlackEagle', '黑鹰战机'], ['BattleFortress', '战斗要塞'],
-  ['MasterMind', '精神控制车'], ['GattlingTank', '盖特坦克'], ['Magnetron', '磁电坦克'], ['CrazyIvan', '疯狂伊文'],
-  ['Rocketeer', '火箭飞行兵'], ['Apocalypse', '天启坦克'], ['Dreadnought', '无畏级战舰'], ['SeaScorpion', '海蝎'],
-  ['TerrorDrone', '恐怖机器人'], ['FlakTrack', '防空履带车'], ['ChronoMiner', '超时空采矿车'], ['RobotTank', '遥控坦克'],
-  ['Destroyer', '驱逐舰'], ['AircraftCarrier', '航空母舰'], ['Carrier', '航空母舰'], ['Typhoon', '台风级潜艇'],
-  ['Initiate', '尤里新兵'], ['Conscript', '动员兵'], ['Tesla', '磁爆步兵'], ['Flak', '防空步兵'], ['Terrorist', '恐怖分子'],
-  ['Desolator', '辐射工兵'], ['Engineer', '工程师'], ['Sniper', '狙击手'], ['Boris', '鲍里斯'], ['Tanya', '谭雅'],
-  ['Virus', '病毒狙击手'], ['Brute', '狂兽人'], ['Slave', '奴隶'], ['YuriPrime', '尤里X'], ['Yuri', '尤里'],
-  ['Grizzly', '灰熊坦克'], ['Rhino', '犀牛坦克'], ['Prism', '光棱坦克'], ['Mirage', '幻影坦克'], ['Lasher', '狂风坦克'],
-  ['Kirov', '基洛夫空艇'], ['Harrier', '入侵者战机'], ['Dolphin', '海豚'], ['Squid', '巨型乌贼'], ['Boomer', '雷鸣攻击潜艇'],
-  ['IFV', '多功能步兵车'], ['SEAL', '海豹部队'], ['Spy', '间谍'], ['GI', '美国大兵'],
-  ['MCVSoviet', '苏联机动基地车'], ['MCVYuri', '尤里机动基地车'], ['MCVAllied', '盟军机动基地车'], ['Chrono', '超时空单位'],
+  ['GuardianGI', '重装大兵'], ['BlackEagle', '黑鹰战机'], ['ChronoLegionnaire', '超时空军团兵'], ['Chrono', '超时空单位'],
+  ['Rocketeer', '火箭飞行兵'], ['Apocalypse', '天启坦克'], ['Dreadnought', '无畏级战舰'], ['Initiate', '尤里新兵'],
+  ['Conscript', '动员兵'], ['Tesla', '磁爆步兵'], ['Flak', '防空步兵'], ['Terrorist', '恐怖分子'], ['Desolator', '辐射工兵'],
+  ['Boris', '鲍里斯'], ['Tanya', '谭雅'], ['Virus', '病毒狙击手'], ['Brute', '狂兽人'], ['Slave', '奴隶'], ['Yuri', '尤里'],
+  ['Grizzly', '灰熊坦克'], ['Rhino', '犀牛坦克'], ['Prism', '光棱坦克'], ['Mirage', '幻影坦克'], ['Kirov', '基洛夫空艇'],
+  ['Harrier', '入侵者战机'], ['Dolphin', '海豚'], ['Squid', '巨型乌贼'], ['Boomer', '雷鸣攻击潜艇'], ['IFV', '多功能步兵车'],
+  ['GI', '美国大兵'], ['Spy', '间谍'], ['SEAL', '海豹部队'], ['MCVSoviet', '苏联机动基地车'], ['MCVYuri', '尤里机动基地车'],
+  ['MCVAllied', '盟军机动基地车'], ['BattleFortress', '战斗要塞'], ['RobotTank', '遥控坦克'], ['Magnetron', '磁电坦克'],
+  ['MasterMind', '精神控制车'], ['GattlingTank', '盖特坦克'], ['SeaScorpion', '海蝎'], ['Destroyer', '驱逐舰'], ['Aegis', '神盾巡洋舰'],
 ]
 
 const AUDIO_SUFFIXES: Array<[string, string]> = [
   ['AttackCommand', '攻击语音'], ['SpecialAttack', '特殊攻击语音'], ['MoveStart', '移动音效'], ['Select', '选择语音'],
   ['Move', '移动语音'], ['Attack', '攻击语音'], ['Fear', '受惊语音'], ['Feedback', '反馈语音'], ['Created', '建造完成语音'],
   ['Ready', '就绪语音'], ['Deploy', '部署音效'], ['Undeploy', '解除部署音效'], ['Enter', '进入音效'], ['Leave', '离开音效'],
-  ['Capture', '占领音效'], ['Repair', '维修音效'], ['Build', '建造音效'], ['Sell', '出售音效'], ['PowerDown', '断电音效'],
-  ['PowerUp', '恢复供电音效'], ['Online', '上线音效'], ['Offline', '离线音效'], ['Crushed', '被碾压音效'],
-  ['Die', '死亡音效'], ['Crush', '碾压音效'], ['Fire', '开火音效'], ['Start', '启动音效'], ['Stop', '停止音效'],
+  ['Die', '死亡音效'], ['Crush', '碾压音效'], ['Fire', '开火音效'], ['Reload', '装填音效'], ['Activate', '启动音效'],
+  ['Deactivate', '关闭音效'], ['Ambient', '环境音效'], ['Loop', '循环音效'], ['Impact', '命中音效'], ['Launch', '发射音效'],
 ]
 
 // Conservative vocabulary for PascalCase/CamelCase technical IDs. We only emit a guessed
@@ -66,18 +58,19 @@ const AUDIO_SUFFIXES: Array<[string, string]> = [
 const TOKEN_ZH: Record<string, string> = {
   Default: '默认', Death: '死亡', Weapon: '武器', Elite: '精英', Primary: '主武器', Secondary: '副武器',
   Oil: '油井', Barrel: '油桶', Explosion: '爆炸', Terror: '恐怖分子', Bomb: '炸弹', Mini: '迷你', Gun: '枪',
-  Bazooka: '火箭筒', Psychic: '心灵', Psi: '心灵', Pulse: '脉冲', Jab: '冲击', UC: '驻军', Virus: '病毒', Mind: '心灵', Control: '控制',
-  Controller: '控制', Super: '超级', Rad: '辐射', Beam: '射线', Eruption: '爆发', Cannon: '火炮', Jump: '跳跃', Punch: '重拳',
+  Bazooka: '火箭筒', Psychic: '心灵', Jab: '冲击', UC: '驻军', Virus: '病毒', Mind: '心灵', Control: '控制',
+  Super: '超级', Rad: '辐射', Beam: '射线', Eruption: '爆发', Cannon: '火炮', Jump: '跳跃', Punch: '重拳',
   Smash: '猛击', Flare: '信号弹', Shovel: '铁锹', Sound: '音效', Voice: '语音', Attack: '攻击', Move: '移动',
-  Select: '选择', Die: '死亡', Deploy: '部署', Report: '开火音效', Projectile: '弹体', Proj: '弹体', Warhead: '弹头', WH: '弹头', Debris: '残骸',
+  Select: '选择', Die: '死亡', Deploy: '部署', Report: '开火音效', Projectile: '弹体', Warhead: '弹头', Debris: '残骸',
   Blimp: '飞艇', Effect: '效果', Assault: '突击', Raider: '突袭', Vulcan: '火神炮', Tower: '炮塔', Harpy: '哈比', Claw: '爪',
   Tank: '坦克', Rocket: '火箭', Missile: '导弹', Laser: '激光', Tesla: '磁暴', Flak: '防空', Prism: '光棱', Chrono: '超时空',
   Para: '空降', Drop: '投放', Air: '空中', Strike: '打击', Naval: '海军', Infantry: '步兵', Vehicle: '载具', Aircraft: '飞机',
   Building: '建筑', Guard: '警戒', Range: '范围', Damage: '伤害', Fire: '开火', Burst: '连发', Carrier: '航母', Drone: '无人机',
   Spawn: '生成', Special: '特殊', Normal: '普通', Small: '小型', Large: '大型', Heavy: '重型', Light: '轻型',
-  AP: '穿甲', HE: '高爆', AA: '防空', EMP: '电磁脉冲', C4: 'C4', Hollow: '空尖', Point: '',
-  Invisible: '隐形', Low: '低空', High: '高空', Heat: '热源', Seeker: '追踪', Torpedo: '鱼雷', Ballistic: '弹道',
-  Shell: '炮弹', Bullet: '子弹', Straight: '直射', Arcing: '抛物线', Nuke: '核爆', Demo: '自爆',
+  Armor: '装甲', Piercing: '穿甲', High: '高', Explosive: '爆炸', Gas: '毒气', Radiation: '辐射', Electric: '电击',
+  Shell: '炮弹', Bullet: '子弹', Torpedo: '鱼雷', Invisible: '隐形', Low: '低空', Medium: '中型', Homing: '追踪',
+  Sonic: '声波', SonicWave: '声波', Neutron: '中子', EMP: 'EMP', Bio: '生化', Plasma: '等离子', Wave: '波',
+  Impact: '命中', Launch: '发射', Reload: '装填', Activate: '启动', Deactivate: '关闭', Ambient: '环境', Loop: '循环',
 }
 
 function camelTokens(value: string) {
@@ -110,18 +103,10 @@ function guessTokenLabel(value: string) {
       continue
     }
     const label = TOKEN_ZH[token]
-    if (label == null) return undefined
+    if (!label) return undefined
     translated.push(label)
   }
   return translated.join('').trim() || undefined
-}
-
-function guessTypedLabel(value: string, kind: ReferenceLabelKind) {
-  const guessed = guessTokenLabel(value)
-  if (!guessed) return undefined
-  if (kind === 'warhead') return guessed.endsWith('弹头') ? guessed : `${guessed}弹头`
-  if (kind === 'projectile') return guessed.endsWith('弹体') || /(?:导弹|火箭|鱼雷|炮弹|子弹)$/.test(guessed) ? guessed : `${guessed}弹体`
-  return guessed
 }
 
 export function localizedReferenceLabel(value: string, kind: ReferenceLabelKind = 'generic') {
@@ -130,6 +115,5 @@ export function localizedReferenceLabel(value: string, kind: ReferenceLabelKind 
   const direct = DIRECT_LABELS[raw.toLowerCase()]
   if (direct) return direct
   if (kind === 'audio') return guessAudioLabel(raw) ?? guessTokenLabel(raw) ?? raw
-  if (kind === 'warhead' || kind === 'projectile') return guessTypedLabel(raw, kind) ?? raw
   return guessTokenLabel(raw) ?? raw
 }
