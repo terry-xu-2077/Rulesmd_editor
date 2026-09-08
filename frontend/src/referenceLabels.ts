@@ -53,8 +53,8 @@ const AUDIO_SUFFIXES: Array<[string, string]> = [
   ['Deactivate', '关闭音效'], ['Ambient', '环境音效'], ['Loop', '循环音效'], ['Impact', '命中音效'], ['Launch', '发射音效'],
 ]
 
-// Conservative vocabulary for PascalCase/CamelCase technical IDs. We only emit a guessed
-// Chinese label when every word is known; an unknown token keeps the original ID intact.
+// Conservative vocabulary shared by weapon, warhead, projectile, audio and other technical IDs.
+// We only emit a guessed Chinese label when every word is known; an unknown token keeps the original ID intact.
 const TOKEN_ZH: Record<string, string> = {
   Default: '默认', Death: '死亡', Weapon: '武器', Elite: '精英', Primary: '主武器', Secondary: '副武器',
   Oil: '油井', Barrel: '油桶', Explosion: '爆炸', Terror: '恐怖分子', Bomb: '炸弹', Mini: '迷你', Gun: '枪',
