@@ -70,13 +70,13 @@ const SUPERWEAPON_TYPES = [
   { value: 'SpyPlane', label: '侦察机 · SpyPlane' },
   { value: 'PsychicReveal', label: '心灵探测 · PsychicReveal' },
   { value: 'SonarPulse', label: '声呐脉冲 · SonarPulse' },
-  { value: 'GenericWarhead', label: '🔓︎ 通用弹头 · GenericWarhead · Ares' },
-  { value: 'UnitDelivery', label: '🔓︎ 单位投送 · UnitDelivery · Ares' },
-  { value: 'Firestorm', label: '🔓︎ 火风暴 · Firestorm · Ares' },
-  { value: 'HunterSeeker', label: '🔓︎ 猎杀搜寻 · HunterSeeker · Ares' },
-  { value: 'DropPod', label: '🔓︎ 空降舱 · DropPod · Ares' },
-  { value: 'EMPulse', label: '🔓︎ EMP 脉冲 · EMPulse · Ares' },
-  { value: 'Battery', label: '🔓︎ 电池 / 充能 · Battery · Ares' },
+  { value: 'GenericWarhead', label: '通用弹头 · GenericWarhead · Ares' },
+  { value: 'UnitDelivery', label: '单位投送 · UnitDelivery · Ares' },
+  { value: 'Firestorm', label: '火风暴 · Firestorm · Ares' },
+  { value: 'HunterSeeker', label: '猎杀搜寻 · HunterSeeker · Ares' },
+  { value: 'DropPod', label: '空降舱 · DropPod · Ares' },
+  { value: 'EMPulse', label: 'EMP 脉冲 · EMPulse · Ares' },
+  { value: 'Battery', label: '电池 / 充能 · Battery · Ares' },
 ]
 
 const COUNTRY_SIDES = [
@@ -474,6 +474,9 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     { value: '', label: '不自动挂载到建筑' },
     ...buildingRows.map(row => ({ value: row.id, label: `${row.label} · ${row.id}` })),
   ]
+  const superweaponTypeOptions = SUPERWEAPON_TYPES
+    .filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))
+    .map(item => ({ ...item, icon: ARES_SUPERWEAPON_TYPES.has(item.value) ? <Sparkles size={13}/> : undefined }))
 
   const dialogIcon = isCountry
     ? <Flag size={18}/>
@@ -529,7 +532,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
             ? <label><span>中文注释 / Name（仅维护）</span><TextField value={comment} onChange={setComment} placeholder={`例如 我的${objectName}`}/></label>
             : <label><span>{isCountry ? '国家名称 / 注释' : isSuperweapon ? '名称 / 注释' : '注释 / Name'} <b>必填</b></span><TextField value={comment} onChange={setComment} placeholder={isCountry ? '例如 我的国家' : isSuperweapon ? '例如 我的轨道打击' : '例如 我的测试坦克'}/></label>}
           {isCountry && <label><span>所属阵营 <b>必填</b></span><Select value={countrySide} options={COUNTRY_SIDES} onChange={setCountrySide}/></label>}
-          {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={SUPERWEAPON_TYPES.filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
+          {isSuperweapon && <label><span>超级武器 Type <b>必填</b></span><Select value={superweaponType} options={superweaponTypeOptions} onChange={setSuperweaponType} searchable searchPlaceholder="搜索 Type"/></label>}
           {isSuperweapon && <label><span>提供该超武的建筑</span><Select value={providerBuilding} options={providerOptions} onChange={setProviderBuilding} searchable searchPlaceholder="搜索建筑"/></label>}
         </div>
 
@@ -573,7 +576,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
             const display = displayedValues.get(option.line_id) ?? (option.value || '空值')
             const checked = Boolean(selectedLines[option.line_id])
             return <div className={`addUnitParameterRow parameterTableRow ${checked ? 'selected' : 'excluded'}`} key={option.line_id}>
-              <div className="parameterKeyCell"><code title={option.key}>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}</div>
+              <div className="parameterKeyCell"><code title={option.key}>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge"><Sparkles size={10}/>ARES</span>}</div>
               <div className="parameterLabelCell"><strong title={option.label || option.key}>{option.label || option.key}</strong></div>
               <div className="parameterValueCell addUnitReadOnlyValue"><div className="rulesControlHost"><TextField value={display} onChange={() => {}} disabled/></div></div>
               <div className="addUnitParameterUse"><Checkbox checked={checked} onChange={() => toggleLine(option.line_id)} title={checked ? '创建时继承此参数' : '创建时不写入此参数'} ariaLabel={`${checked ? '取消继承' : '继承'} ${option.key}`}/></div>
