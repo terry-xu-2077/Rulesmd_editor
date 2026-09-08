@@ -109,7 +109,10 @@ class RuntimeSchemaCatalog(SchemaCatalog):
         ares = self.ares.option(key)
         if ares is not None:
             return self.ares.enrich(ares)
-        source = "Ares/扩展" if "." in key else "自定义"
+        # Ares establishes the dotted Key convention (for example Versus.light,
+        # Weapon1.Elite and SW.Range.*). Even when a specific dotted tag is not yet in
+        # the metadata catalog, classify it as Ares so filtering/badges remain correct.
+        source = "Ares" if "." in key else "自定义"
         return OptionMeta(key, source=source)
 
     def section_description(self, section: str) -> str:
