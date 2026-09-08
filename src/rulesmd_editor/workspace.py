@@ -37,6 +37,7 @@ UNIT_REGISTRATION_ROOTS = {
 }
 UNREGISTERED_OBJECT_TYPES = {"Weapon", "Warhead", "Projectile"}
 SECTION_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+CJK_RE = re.compile(r"[\u3400-\u9fff]")
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,7 @@ class RulesWorkspace:
         self._reference_index: dict[str, list[tuple[str, str]]] = {}
         self._dynamic_cache: dict[str, tuple[tuple[str, str], ...]] = {}
         self._last_values: dict[tuple[str, str], str] = {}
+        self._last_comments: dict[tuple[str, str], str] = {}
         self._observed_keys: dict[str, set[str]] = {}
         self._country_sides: dict[str, str] = {}
         # New objects must become immediately available to every reference menu. Keep
@@ -113,6 +115,13 @@ class RulesWorkspace:
         if key in {"thirdside", "yuri", "尤里"}:
             return "yuri"
         return None
+
+    @staticmethod
+    def _inline_comment_text(suffix: str) -> str:
+        text = suffix.strip()
+        if text.startswith((";", "#")):
+            text = text[1:].strip()
+        return text
 
     def _reset_session_indexes(self) -> None:
         self._recent_sections.clear()
@@ -197,11 +206,16 @@ class RulesWorkspace:
         return "neutral"
 
     def _section_label(self, section: str) -> str:
+        folded = section.casefold()
         catalog = (self.schema.section_description(section) or "").strip()
-        if catalog and catalog.casefold() != section.casefold():
+        # A curated Chinese catalog label is authoritative. Otherwise user-authored Name
+        # annotations are more useful than an English/internal catalog description.
+        if catalog and CJK_RE.search(catalog):
             return catalog
-        comment = self._last_values.get((section.casefold(), "name"), "").strip()
-        return comment or catalog or section
+        name_comment = self._last_comments.get((folded, "name"), "").strip()
+        name_value = self._last_values.get((folded, "name"), "").strip()
+        fallback_catalog = catalog if catalog and catalog.casefold() != folded else ""
+        return name_comment or name_value or fallback_catalog or section
 
     def _map_visible_categories(
         self,
@@ -237,6 +251,7 @@ class RulesWorkspace:
 
         self._reference_index = {}
         self._last_values = {}
+        self._last_comments = {}
         self._observed_keys = {}
         source_documents = []
         if self.is_map_document() and self.base_document is not None:
@@ -249,6 +264,9 @@ class RulesWorkspace:
                 section_fold = line.section.casefold()
                 key_fold = line.key.casefold()
                 self._last_values[(section_fold, key_fold)] = line.value or ""
+                inline_comment = self._inline_comment_text(line.suffix)
+                if inline_comment:
+                    self._last_comments[(section_fold, key_fold)] = inline_comment
                 section_type = self._section_types.get(section_fold)
                 if section_type:
                     self._observed_keys.setdefault(section_type, set()).add(key_fold)
@@ -657,7 +675,6 @@ class RulesWorkspace:
         include_all = included_line_ids is None
         included = {int(line_id) for line_id in (included_line_ids or [])}
         template_lines = doc.section_lines(template_actual, keys_only=True)
-
         if root:
             doc.set(root, registration_id, new_section)
         doc.add_section(new_section)
