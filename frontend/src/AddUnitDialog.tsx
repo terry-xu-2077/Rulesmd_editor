@@ -5,11 +5,11 @@ import {
   Building2,
   Crosshair,
   Flag,
-  Landmark,
   PackagePlus,
   Plane,
   Rocket,
   Search,
+  Shield,
   Sparkles,
   Truck,
   Users,
@@ -33,7 +33,7 @@ type Props = {
   onCreated: (result: CreateUnitResult) => void | Promise<void>
 }
 
-type ObjectKind = '' | 'unit' | 'country' | 'superweapon' | 'weapon' | 'warhead' | 'projectile'
+type ObjectKind = '' | 'unit' | 'country' | 'superweapon' | 'weapon' | 'warhead' | 'projectile' | 'armor'
 type WizardStep = 'kind' | 'unit-type' | 'details' | 'parameters'
 
 const OBJECT_CATEGORIES = ['步兵', '载具', '飞机', '建筑', '超级武器', '国家', '武器', '弹头', '弹体'] as const
@@ -91,6 +91,11 @@ function normalizedCategory(value: string) {
 
 function validSectionName(value: string) {
   return /^[A-Za-z][A-Za-z0-9_]*$/.test(value.trim())
+}
+
+function validArmorValue(value: string) {
+  const clean = value.trim()
+  return /^[A-Za-z][A-Za-z0-9_]*$/.test(clean) || /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(clean)
 }
 
 function valueKind(option: SectionOption) {
@@ -165,11 +170,13 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
   const [superweaponType, setSuperweaponType] = useState('')
   const [providerBuilding, setProviderBuilding] = useState('')
   const [countrySide, setCountrySide] = useState('GDI')
+  const [armorBase, setArmorBase] = useState('steel')
 
   const isSuperweapon = objectKind === 'superweapon'
   const isCountry = objectKind === 'country'
+  const isArmor = objectKind === 'armor'
   const isStandalone = objectKind === 'weapon' || objectKind === 'warhead' || objectKind === 'projectile'
-  const objectName = isCountry ? '国家' : isSuperweapon ? '超级武器' : STANDALONE_CATEGORY[objectKind] ?? '单位'
+  const objectName = isArmor ? '护甲' : isCountry ? '国家' : isSuperweapon ? '超级武器' : STANDALONE_CATEGORY[objectKind] ?? '单位'
   const categoryRows = useMemo(() => eligibleRows.filter(row => row.category === category), [category, eligibleRows])
   const buildingRows = useMemo(() => eligibleRows.filter(row => row.category === '建筑'), [eligibleRows])
   const selectableOptions = useMemo(() => (templateData?.options ?? []).filter(option => {
@@ -216,6 +223,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     setSuperweaponType('')
     setProviderBuilding('')
     setCountrySide('GDI')
+    setArmorBase('steel')
 
     void workspaceApi.snapshot().then(snapshot => {
       if (cancelled) return
@@ -246,13 +254,13 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
   }, [mapMode, open, visibleMapRules])
 
   useEffect(() => {
-    if (!open || mapMode || !category) return
+    if (!open || mapMode || !category || isArmor) return
     const first = categoryRows[0]?.id ?? ''
     setTemplateId(current => categoryRows.some(row => row.id === current) ? current : first)
-  }, [category, categoryRows, mapMode, open])
+  }, [category, categoryRows, isArmor, mapMode, open])
 
   useEffect(() => {
-    if (!open || mapMode || !templateId) {
+    if (!open || mapMode || isArmor || !templateId) {
       setTemplateData(null)
       setSelectedLines({})
       return
@@ -288,7 +296,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
       if (!cancelled) setLoading(false)
     })
     return () => { cancelled = true }
-  }, [isCountry, isSuperweapon, mapMode, open, templateId])
+  }, [isArmor, isCountry, isSuperweapon, mapMode, open, templateId])
 
   function selectObjectKind(kind: Exclude<ObjectKind, ''>) {
     setObjectKind(kind)
@@ -296,6 +304,13 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     if (kind === 'unit') {
       setCategory('')
       setWizardStep('unit-type')
+      return
+    }
+    if (kind === 'armor') {
+      setCategory('')
+      setTemplateId('')
+      setTemplateData(null)
+      setWizardStep('details')
       return
     }
     setCategory(kind === 'country' ? '国家' : kind === 'superweapon' ? '超级武器' : STANDALONE_CATEGORY[kind] ?? '')
@@ -314,6 +329,12 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
   }
 
   function detailsError() {
+    if (isArmor) {
+      if (!aresEnabled) return '请先在设置中开启 Ares 支持。'
+      if (!validSectionName(sectionName.trim())) return '护甲 ID 只能使用英文字母、数字和下划线，并且必须以字母开头。'
+      if (!validArmorValue(armorBase)) return '继承值请填写已有护甲 ID（例如 steel）或百分比（例如 100%）。'
+      return ''
+    }
     if (!templateId || !templateData) return '请选择一个有效的参考模板。'
     if (!validSectionName(sectionName.trim())) return '注册名只能使用英文字母、数字和下划线，并且必须以字母开头。'
     if (!isStandalone && !comment.trim()) return isCountry ? '必须填写国家名称 / 注释。' : isSuperweapon ? '必须填写超级武器名称 / 注释。' : '必须填写注释（Name）。'
@@ -388,7 +409,31 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     else await workspaceApi.addOption(providerBuilding, target.key, newSection)
   }
 
+  async function createArmor() {
+    const problem = detailsError()
+    if (problem) {
+      setError(problem)
+      return
+    }
+    const armorId = sectionName.trim()
+    setCreating(true)
+    setError('')
+    try {
+      await workspaceApi.addOption('ArmorTypes', armorId, armorBase.trim())
+      const [snapshot, section] = await Promise.all([workspaceApi.snapshot(), workspaceApi.section('ArmorTypes')])
+      await onCreated({ snapshot, section, registration_id: armorId, root: 'ArmorTypes' })
+    } catch (err) {
+      setError(`添加护甲失败：${String(err)}`)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   async function createObject() {
+    if (isArmor) {
+      await createArmor()
+      return
+    }
     const problem = detailsError()
     if (problem) {
       setError(problem)
@@ -478,17 +523,19 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
     .filter(item => aresEnabled || !ARES_SUPERWEAPON_TYPES.has(item.value))
     .map(item => ({ ...item, icon: ARES_SUPERWEAPON_TYPES.has(item.value) ? <Sparkles size={13}/> : undefined }))
 
-  const dialogIcon = isCountry
-    ? <Flag size={18}/>
-    : isSuperweapon
-      ? <Sparkles size={18}/>
-      : objectKind === 'weapon'
-        ? <Crosshair size={18}/>
-        : objectKind === 'warhead'
-          ? <Bomb size={18}/>
-          : objectKind === 'projectile'
-            ? <Rocket size={18}/>
-            : <PackagePlus size={18}/>
+  const dialogIcon = isArmor
+    ? <Shield size={18}/>
+    : isCountry
+      ? <Flag size={18}/>
+      : isSuperweapon
+        ? <Sparkles size={18}/>
+        : objectKind === 'weapon'
+          ? <Crosshair size={18}/>
+          : objectKind === 'warhead'
+            ? <Bomb size={18}/>
+            : objectKind === 'projectile'
+              ? <Rocket size={18}/>
+              : <PackagePlus size={18}/>
 
   if (wizardStep === 'kind') {
     return <Dialog open={open} title="添加新对象" icon={<PackagePlus size={18}/>} size="wide" onClose={onClose}>
@@ -501,6 +548,7 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
           <button onClick={() => selectObjectKind('projectile')} disabled={!eligibleRows.some(row => row.category === '弹体')}><Rocket size={24}/><strong>弹体</strong></button>
           <button onClick={() => selectObjectKind('country')} disabled={!eligibleRows.some(row => row.category === '国家')}><Flag size={24}/><strong>国家</strong></button>
           <button onClick={() => selectObjectKind('superweapon')}><Sparkles size={24}/><strong>超级武器</strong></button>
+          {aresEnabled && <button onClick={() => selectObjectKind('armor')}><Shield size={24}/><strong>护甲</strong><small>Ares</small></button>}
         </div>
       </div>
     </Dialog>
@@ -517,6 +565,27 @@ export function AddUnitDialog({ open, rows, onClose, onCreated }: Props) {
           <button onClick={() => selectUnitType('建筑')} disabled={!eligibleRows.some(row => row.category === '建筑')}><Building2 size={23}/><strong>建筑</strong></button>
         </div>
         <button className="wizardBackLink" onClick={() => setWizardStep('kind')}><ArrowLeft size={14}/> 返回</button>
+      </div>
+    </Dialog>
+  }
+
+  if (wizardStep === 'details' && isArmor) {
+    return <Dialog open={open} title="添加 Ares 护甲" icon={dialogIcon} size="wide" onClose={onClose}>
+      <div className="addUnitDialog objectWizardDetails">
+        <div className="objectWizardStepLabel"><Sparkles size={14}/> Ares 对象</div>
+        <div className="addUnitSetup wizardDetailsGrid">
+          <label><span>新护甲 ID <b>必填</b></span><TextField value={sectionName} onChange={setSectionName} placeholder="例如 magic"/></label>
+          <label><span>继承护甲 / 默认倍率 <b>必填</b></span><TextField value={armorBase} onChange={setArmorBase} placeholder="例如 steel 或 100%"/></label>
+        </div>
+        <div className="addUnitRegistrationHint">
+          <strong>自动写入 [ArmorTypes]</strong>
+          <span>Ares 自定义护甲不是独立 Section，而是 [ArmorTypes] 中的一项。填写已有护甲 ID（例如 steel）时继承它的默认弹头倍率；也可直接填写百分比作为默认倍率。创建后即可在 Armor= 与 Versus.&lt;Armor&gt; 中使用。</span>
+        </div>
+        {error && <div className="addUnitError">{error}</div>}
+        <footer className="addUnitActions wizardNavActions">
+          <span>只在开启 Ares 支持时显示此对象类型。</span>
+          <div><Button onClick={backFromDetails}><ArrowLeft size={15}/>上一步</Button><Button variant="accent" disabled={creating} onClick={() => void createArmor()}><Shield size={16}/>{creating ? '正在创建…' : '创建护甲'}</Button></div>
+        </footer>
       </div>
     </Dialog>
   }
