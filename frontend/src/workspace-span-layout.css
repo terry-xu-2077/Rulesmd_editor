@@ -85,7 +85,7 @@
   grid-template-rows:32px!important;
   align-content:center!important;
   align-items:center!important;
-  column-gap:8px!important;
+  column-gap:0!important;
   row-gap:0!important;
   overflow:visible!important;
   border-bottom:1px solid var(--theme-line)!important;
