@@ -12,6 +12,7 @@ from .global_rules import (
     is_global_rule_section,
     is_hidden_legacy_global_option,
 )
+from .ini_document import IniDocument
 from .line_actions import (
     OptionLineState,
     all_option_keys,
@@ -56,6 +57,7 @@ class Bridge:
                     state.key.casefold(),
                     state.disabled,
                     state.value if state.disabled else None,
+                    state.suffix,
                 ))
             else:
                 signature.append(("line", line.line_id, line.kind, line.section or "", line.raw))
@@ -83,6 +85,64 @@ class Bridge:
             "section": self.rpc_section(target),
             "dirty": self.workspace.info().dirty,
         }
+
+    @staticmethod
+    def _line_identity(line) -> tuple:
+        if line.kind == "key":
+            return ("key", (line.section or "").casefold(), (line.key or "").casefold())
+        if line.kind == "section":
+            return ("section", (line.section or "").casefold())
+        return (line.kind,)
+
+    def _replace_single_section_raw(self, section: str, raw: str) -> str:
+        doc = self.workspace._doc()
+        actual = doc._section_name(section)
+        if actual is None:
+            raise KeyError(f"Unknown section: {section}")
+
+        parsed = IniDocument.from_text(raw, encoding=doc.encoding)
+        parsed_sections = parsed.sections()
+        if len(parsed_sections) != 1 or parsed_sections[0].casefold() != actual.casefold():
+            raise ValueError(f"原文必须只包含 [{actual}] Section，且不能修改 Section 名称")
+
+        bounds = doc._section_bounds(actual)
+        if bounds is None:
+            raise KeyError(f"Unknown section: {section}")
+        old_rows = list(doc.lines[bounds[0]:bounds[1]])
+        new_rows = parsed.lines
+
+        for index, line in enumerate(new_rows):
+            if line.section and line.section.casefold() == actual.casefold():
+                line.section = actual
+            old = old_rows[index] if index < len(old_rows) else None
+            if old is not None and self._line_identity(old) == self._line_identity(line):
+                line.line_id = old.line_id
+            else:
+                line.line_id = doc._next_line_id
+                doc._next_line_id += 1
+
+        doc.lines[bounds[0]:bounds[1]] = new_rows
+        doc.dirty = True
+        doc._reindex_structure()
+        return actual
+
+    def _replace_global_raw(self, raw: str) -> None:
+        doc = self.workspace._doc()
+        parsed = IniDocument.from_text(raw, encoding=doc.encoding)
+        supplied = parsed.sections()
+        allowed = {name.casefold() for name in global_rule_sections_in_order()}
+        if not supplied:
+            raise ValueError("全局规则原文至少需要包含 [General]")
+        if any(name.casefold() not in allowed for name in supplied):
+            raise ValueError("全局规则原文只能编辑全局规则所属的 Section")
+        if not any(name.casefold() == "general" for name in supplied):
+            raise ValueError("全局规则原文必须保留 [General]")
+
+        for section in supplied:
+            actual = doc._section_name(section)
+            if actual is None:
+                raise ValueError(f"当前文档中不存在 [{section}]，原文模式暂不用于新建全局子 Section")
+            self._replace_single_section_raw(actual, parsed.clone_section_text(section))
 
     def _decorate_active_row(self, row: dict, *, category: str | None = None) -> dict:
         baseline = self._baseline_lines.get(row["line_id"])
@@ -298,6 +358,26 @@ class Bridge:
             result["section"] = "General"
             result["raw"] = self._global_raw()
         return result
+
+    def rpc_set_section_raw(self, section: str, raw: str) -> dict:
+        target = section.strip()
+        if not target:
+            raise ValueError("Section 不能为空")
+        if target.casefold() == "general":
+            self._replace_global_raw(raw)
+        else:
+            self._replace_single_section_raw(target, raw)
+
+        self.workspace._rebuild_indexes()
+        self.workspace._changed_value_ids = {
+            line.line_id
+            for line in self.workspace._doc().lines
+            if line.kind == "key"
+            and line.line_id in self.workspace._original_values
+            and (line.value or "") != self.workspace._original_values[line.line_id]
+        }
+        self._sync_structural_dirty()
+        return self._line_action_result(target)
 
     def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)

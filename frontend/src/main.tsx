@@ -338,6 +338,7 @@ function App() {
   }))
   const [observedValues, setObservedValues] = useState<ObservedValueIndex>(EMPTY_OBSERVED_VALUES)
   const [rawRules, setRawRules] = useState('')
+  const [rawDraft, setRawDraft] = useState('')
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
   const allowWindowClose = useRef(false)
@@ -466,6 +467,7 @@ function App() {
     const cached = sectionCache.current.get(row.id)
     if (cached) {
       setSectionData(cached)
+      setRawDraft(cached.raw)
       setSelectedOptionId(cached.options[0]?.line_id ?? null)
       setStatus(`已载入 [${row.id}] · ${cached.options.length} 个参数`)
       return
@@ -475,6 +477,7 @@ function App() {
       if (requestId !== sectionRequest.current) return
       sectionCache.current.set(row.id, data)
       setSectionData(data)
+      setRawDraft(data.raw)
       setSelectedOptionId(data.options[0]?.line_id ?? null)
       setStatus(`已载入 [${row.id}] · ${data.options.length} 个参数`)
     } catch (error) {
@@ -482,12 +485,39 @@ function App() {
     }
   }
 
+  async function commitRawDraft(): Promise<boolean> {
+    if (viewMode !== 'raw' || !selected || rawDraft === sectionData.raw) return true
+    try {
+      const result = await workspaceApi.setSectionRaw(selected.id, rawDraft)
+      await applyLineActionResult(result, null)
+      setRawDraft(result.section.raw)
+      setStatus(`已从原文同步 [${selected.id}]，表格控件已更新`)
+      return true
+    } catch (error) {
+      setStatus(`原文写入失败：${String(error)}`)
+      return false
+    }
+  }
+
+  async function changeViewMode(next: EditorViewMode) {
+    if (next === viewMode) return
+    if (next === 'raw') {
+      setRawDraft(sectionData.raw)
+      setViewMode('raw')
+      return
+    }
+    if (!(await commitRawDraft())) return
+    setViewMode('table')
+  }
+
   async function manualSelect(row: SectionRow) {
+    if (!(await commitRawDraft())) return
     setNavigation({ items: [row], index: 0 })
     await loadSection(row)
   }
 
   async function navigateTo(row: SectionRow) {
+    if (!(await commitRawDraft())) return
     setNavigation(current => {
       if (current.index >= 0 && current.items[current.index]?.id === row.id) return current
       const base = current.items.slice(0, current.index + 1)
@@ -497,6 +527,7 @@ function App() {
   }
 
   async function navigateHistory(delta: -1 | 1) {
+    if (!(await commitRawDraft())) return
     const targetIndex = navigation.index + delta
     const row = navigation.items[targetIndex]
     if (!row) return
@@ -542,6 +573,7 @@ function App() {
     setNavigation({ items: [], index: -1 })
     setSelected(null)
     setSectionData(EMPTY_SECTION)
+    setRawDraft('')
     setSelectedOptionId(null)
     setDocumentEpoch(value => value + 1)
     await refreshObservedValues()
@@ -573,6 +605,7 @@ function App() {
 
   async function saveRules(): Promise<boolean> {
     if (!snapshot) return false
+    if (!(await commitRawDraft())) return false
     setBusy(true)
     try {
       let path = snapshot.document.path ?? undefined
@@ -587,6 +620,7 @@ function App() {
         const data = await workspaceApi.section(selected.id)
         sectionCache.current.set(selected.id, data)
         setSectionData(data)
+        setRawDraft(data.raw)
       }
       setStatus(`已保存 ${path}`)
       return true
@@ -645,6 +679,7 @@ function App() {
   async function applyLineActionResult(result: LineActionResult, preferredLineId?: number | null) {
     sectionCache.current.set(result.section.section, result.section)
     setSectionData(result.section)
+    setRawDraft(result.section.raw)
     setSelectedOptionId(current => {
       if (preferredLineId != null && result.section.options.some(option => option.line_id === preferredLineId)) return preferredLineId
       if (current != null && result.section.options.some(option => option.line_id === current)) return current
@@ -705,6 +740,7 @@ function App() {
       const data = await workspaceApi.section(selected.id)
       sectionCache.current.set(selected.id, data)
       setSectionData(data)
+      setRawDraft(data.raw)
       const added = [...data.options].reverse().find(item => item.key === option.key)
       setSelectedOptionId(added?.line_id ?? data.options[0]?.line_id ?? null)
       const next = await workspaceApi.snapshot()
@@ -730,6 +766,7 @@ function App() {
       setNavigation({ items: [row], index: 0 })
       sectionCache.current.set(row.id, result.section)
       setSectionData(result.section)
+      setRawDraft(result.section.raw)
       setSelectedOptionId(result.section.options[0]?.line_id ?? null)
       setActiveGroup('全部')
     }
@@ -761,7 +798,7 @@ function App() {
         <IconButton title="启动游戏" disabled={busy} onClick={() => void launchGame()}><Gamepad2 size={18}/></IconButton>
         <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
       </nav>
-      <div className="titleViewSwitch viewSwitch" role="group" aria-label="编辑视图"><button disabled={!selected} className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}>表格</button><button disabled={!selected} className={viewMode === 'raw' ? 'active' : ''} onClick={() => setViewMode('raw')}>原文</button></div>
+      <div className="titleViewSwitch viewSwitch" role="group" aria-label="编辑视图"><button disabled={!selected} className={viewMode === 'table' ? 'active' : ''} onClick={() => void changeViewMode('table')}>表格</button><button disabled={!selected} className={viewMode === 'raw' ? 'active' : ''} onClick={() => void changeViewMode('raw')}>原文</button></div>
     </header>
 
     <div className="workspace" style={workspaceStyle}>
@@ -827,7 +864,7 @@ function App() {
                 <ArrowRight size={15}/>
               </button>)}</div>
             </div>}
-          </section> : <section className="rawEditorPane"><pre>{sectionData.raw}</pre></section>}
+          </section> : <section className="rawEditorPane"><textarea autoFocus spellCheck={false} aria-label={`${selected.id} 原文编辑`} value={rawDraft} onChange={event => setRawDraft(event.target.value)} style={{width:'100%',height:'100%',boxSizing:'border-box',resize:'none',border:0,outline:0,padding:'14px',background:'transparent',color:'inherit',font:'12px/1.55 "Cascadia Code",Consolas,monospace'}}/></section>}
         </> : <div className="emptyPane"><strong>Rulesmd Editor</strong><span>{snapshot ? '从左侧选择一个对象开始编辑。' : '使用“新建”创建完整原版 rulesmd.ini，或打开已有文件。'}</span></div>}
       </main>
 

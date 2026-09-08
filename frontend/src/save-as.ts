@@ -69,7 +69,10 @@ function chooseMode(): Promise<SaveMode | null> {
     overlay.querySelectorAll<HTMLButtonElement>('.saveModeChoice').forEach(button => {
       button.addEventListener('click', () => finish(button.dataset.mode as SaveMode))
     })
-    document.body.appendChild(overlay)
+    // Theme variables are scoped on .app.tc-theme. Mounting the chooser on body made
+    // every var(--theme-*) declaration invalid and left the dialog visually transparent.
+    const themeHost = document.querySelector<HTMLElement>('.app.tc-theme') ?? document.body
+    themeHost.appendChild(overlay)
   })
 }
 

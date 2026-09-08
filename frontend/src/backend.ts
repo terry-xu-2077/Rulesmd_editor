@@ -214,6 +214,10 @@ export const workspaceApi = {
     return call<SectionData>('section', { section })
   },
   setValue: (lineId: number, value: string) => queueValueEdit(lineId, value),
+  setSectionRaw: async (section: string, raw: string) => {
+    await flushPendingValues()
+    return call<LineActionResult>('set_section_raw', { section, raw })
+  },
   flushPendingValues,
   addOption: async (section: string, key: string, value?: string) => {
     await flushPendingValues()

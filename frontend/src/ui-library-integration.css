@@ -224,3 +224,20 @@
 .parameterPickerBody .catalogList{max-height:52vh}
 
 /* Settings layout intentionally lives in settings-panel.css only. */
+
+/* The editor-level filter is outside parameterTablePane, so it needs its own stacking
+ * contract. Without this the sticky table/group header paints over the first menu row. */
+.editorControls:has(.editorFilterSelect .tc-select.is-open){z-index:260!important}
+.editorFilterSelect .tc-control-wrap:has(.tc-select.is-open),
+.editorFilterSelect .tc-select.is-open,
+.editorFilterSelect .tc-select.is-open .tc-pop{z-index:6000!important}
+.editor:has(.editorFilterSelect .tc-select.is-open) .parameterTableHeader,
+.editor:has(.editorFilterSelect .tc-select.is-open) .fieldGroupHeader{z-index:0!important}
+
+/* Preserve the UI library's adaptive placement inside table cells even when consumer
+ * rules change popup geometry. The Select component marks constrained menus opens-up. */
+.parameterValueCell .tc-select.opens-up .tc-pop,
+.parameterValueCell .tc-multi.opens-up .tc-pop{
+  top:auto!important;
+  bottom:calc(100% + 6px)!important;
+}
