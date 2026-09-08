@@ -5,7 +5,7 @@
 .parameterExplorer{grid-template-rows:auto minmax(0,1fr) auto}
 .parameterDetail{grid-template-rows:minmax(0,1fr)}
 .parameterTreeEmpty{padding:18px 8px;color:color-mix(in srgb,var(--theme-text) 42%,var(--theme-base));text-align:center;font-size:10.5px}
-.parameterExplorerFooter{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:0 1px}
+.parameterExplorerFooter{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;padding:0 1px}
 .parameterManualEntry{min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:3px}
 .parameterManualEntry label{height:34px;min-width:0;display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;border:1px solid var(--theme-border);border-radius:8px;background:var(--theme-surface-soft);overflow:hidden;transition:border-color .12s ease,box-shadow .12s ease}
 .parameterManualEntry label:focus-within{border-color:color-mix(in srgb,var(--theme-accent) 52%,var(--theme-border));box-shadow:0 0 0 3px var(--theme-accent-soft)}
@@ -16,5 +16,5 @@
 .parameterManualEntry.matched small{color:color-mix(in srgb,var(--theme-accent) 64%,var(--theme-text))}
 .parameterManualEntry.invalid label{border-color:color-mix(in srgb,var(--theme-warning) 54%,var(--theme-border))}
 .parameterManualEntry.invalid small{color:var(--theme-warning)}
-.parameterExplorerFooter>button{height:34px!important;min-width:126px;border-radius:7px}
+.parameterExplorerFooter>button{height:34px!important;min-width:126px;border-radius:7px;align-self:start}
 @media(max-width:720px){.parameterExplorerFooter{grid-template-columns:minmax(0,1fr)}.parameterExplorerFooter>button{justify-self:end}}
