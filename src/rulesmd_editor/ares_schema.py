@@ -149,7 +149,22 @@ class AresSchemaCatalog:
     def enrich(self, meta: OptionMeta) -> OptionMeta:
         """Attach curated hard-code-unlock help to either YR or Ares metadata."""
         row = self._row_for_key(meta.name)
-        return self._apply_unlock_row(meta, row) if row else audit_ares_meta(meta)
+        if row is None:
+            return audit_ares_meta(meta)
+
+        # ``Versus.*`` is a wildcard documentation row. Dynamic forms such as
+        # ``Versus.f_viper`` and ``Versus.defense.PassiveAcquire`` already have more
+        # specific metadata synthesized from the real key structure. Keep that specific
+        # label/value type and only append the hard-code-unlock note; otherwise the
+        # wildcard percent row would incorrectly turn behavior flags into percentages.
+        folded = meta.name.casefold()
+        if folded.startswith("versus."):
+            unlock_help = self._unlock_help(row)
+            base_help = meta.help_text.strip()
+            help_text = f"{base_help}\n\n{unlock_help}" if base_help else unlock_help
+            return audit_ares_meta(replace(meta, help_text=help_text))
+
+        return self._apply_unlock_row(meta, row)
 
     def is_hardcode_unlock(self, key: str) -> bool:
         return self._row_for_key(key) is not None
