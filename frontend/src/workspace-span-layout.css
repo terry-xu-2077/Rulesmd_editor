@@ -12,6 +12,8 @@
   --editor-identity-width:210px;
   --editor-nav-width:206px;
   --editor-filter-width:136px;
+  --editor-search-width:160px;
+  --editor-query-gap:8px;
   grid-template-columns:var(--left-pane,230px) 5px minmax(0,1fr) 5px var(--right-pane,390px)!important;
   grid-template-rows:54px minmax(0,1fr)!important;
   min-width:0!important;
@@ -52,14 +54,13 @@
 }
 
 /*
- * The shared command strip is three functional groups after the fixed identity block:
+ * Three functional command groups after the fixed identity block:
  *
- *   navigation | filter + elastic search | add parameter
+ *   navigation | filter + search | add parameter
  *
- * The first grid cell is a reserved slot for the navigation overlay. Filter and search
- * then occupy the middle command group, with search taking every spare pixel. The final
- * 92px cell belongs to the shared Button integration layer, which keeps “参数” permanently
- * attached to the far-right edge of the spanning strip.
+ * Control widths stay fixed. Only the empty space around the filter/search group is
+ * elastic, so the group can settle naturally inside the spanning strip while the
+ * parameter action remains attached to the far-right edge.
  */
 .app .editorControls{
   grid-column:1!important;
@@ -73,7 +74,14 @@
   min-height:54px!important;
   padding:0 12px 0 calc(var(--editor-identity-width) + 8px)!important;
   display:grid!important;
-  grid-template-columns:var(--editor-nav-width) var(--editor-filter-width) minmax(64px,1fr) 92px!important;
+  grid-template-columns:
+    var(--editor-nav-width)
+    minmax(0,1fr)
+    var(--editor-filter-width)
+    var(--editor-query-gap)
+    var(--editor-search-width)
+    minmax(0,1fr)
+    92px!important;
   grid-template-rows:32px!important;
   align-content:center!important;
   align-items:center!important;
@@ -84,7 +92,7 @@
   background:var(--theme-surface-1)!important;
 }
 
-/* Reserve column one for .entityNavigation, which visually sits in this same strip. */
+/* Reserve the first command column for .entityNavigation, which sits in the same strip. */
 .app .editorControls::before{
   content:"";
   grid-column:1!important;
@@ -96,26 +104,34 @@
 
 .app .editorFilterSelect{
   order:1!important;
-  grid-column:2!important;
+  grid-column:3!important;
   grid-row:1!important;
-  width:100%!important;
-  min-width:0!important;
-  max-width:none!important;
+  width:var(--editor-filter-width)!important;
+  min-width:var(--editor-filter-width)!important;
+  max-width:var(--editor-filter-width)!important;
   height:32px!important;
   margin:0!important;
 }
 .app .editorControls .editorSearch{
   order:2!important;
-  grid-column:3!important;
+  grid-column:5!important;
   grid-row:1!important;
-  width:100%!important;
-  min-width:64px!important;
-  max-width:none!important;
+  width:var(--editor-search-width)!important;
+  min-width:var(--editor-search-width)!important;
+  max-width:var(--editor-search-width)!important;
   height:32px!important;
   min-height:32px!important;
   margin:0!important;
   padding-top:0!important;
   padding-bottom:0!important;
+}
+
+/* The last direct child is the business action Button host. Only its grid slot is owned
+ * here; component geometry remains in ui-library-integration.css. */
+.app .editorControls>:last-child{
+  grid-column:7!important;
+  grid-row:1!important;
+  justify-self:end!important;
 }
 
 /* Compact identity block: less empty space at the far left, but a larger safe gap
@@ -171,12 +187,14 @@
   grid-row:1 / 3!important;
 }
 
-/* The three-group structure never changes at narrow widths; only fixed footprints shrink. */
+/* The layout stays identical at narrow widths. Existing compact control footprints are
+ * preserved; the middle spacing absorbs the remaining width instead of stretching them. */
 @media(max-width:1100px){
   .app .workspace{
     --editor-identity-width:194px;
     --editor-nav-width:184px;
     --editor-filter-width:124px;
+    --editor-search-width:128px;
   }
   .app .entityNavigation button{padding:0 5px!important}
 }
