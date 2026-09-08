@@ -14,7 +14,7 @@
 .parameterManualEntry input::placeholder{color:color-mix(in srgb,var(--theme-text) 36%,var(--theme-base))}
 .parameterManualEntry small{min-height:13px;padding-left:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb,var(--theme-text) 44%,var(--theme-base));font-size:9.5px}
 .parameterManualEntry.matched small{color:color-mix(in srgb,var(--theme-accent) 64%,var(--theme-text))}
-.parameterManualEntry.invalid label{border-color:color-mix(in srgb,var(--theme-danger,#e56b78) 54%,var(--theme-border))}
-.parameterManualEntry.invalid small{color:var(--theme-danger,#e56b78)}
+.parameterManualEntry.invalid label{border-color:color-mix(in srgb,var(--theme-warning) 54%,var(--theme-border))}
+.parameterManualEntry.invalid small{color:var(--theme-warning)}
 .parameterExplorerFooter>button{height:34px!important;min-width:126px;border-radius:7px}
 @media(max-width:720px){.parameterExplorerFooter{grid-template-columns:minmax(0,1fr)}.parameterExplorerFooter>button{justify-self:end}}
