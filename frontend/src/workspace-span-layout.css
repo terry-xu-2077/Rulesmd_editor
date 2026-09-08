@@ -1,7 +1,7 @@
 /*
  * Permanent cross-column editor command strip.
  *
- * The editor identity/navigation/filter/search/action row spans the center editor and
+ * The editor identity/navigation/filter-search/action row spans the center editor and
  * right help column at every window width. The inspector starts below that shared strip;
  * this is the normal desktop layout, not a narrow-window fallback.
  *
@@ -54,27 +54,26 @@
 }
 
 /*
- * Three functional command groups after the fixed identity block:
+ * Four fixed-size groups share the same spanning grid:
  *
- *   navigation | filter + search | add parameter
+ *   identity | 1fr | navigation | 1fr | filter + search | 1fr | parameter
  *
- * Control widths stay fixed. Only the empty space around the filter/search group is
- * elastic, so the group can settle naturally inside the spanning strip while the
- * parameter action remains attached to the far-right edge.
+ * Only the three 1fr gaps are elastic. No control is stretched to consume spare width.
+ * entityHeaderHost and editorControls intentionally use the exact same grid template so
+ * their children line up even though they are separate React containers.
  */
+.app .entityHeaderHost,
 .app .editorControls{
-  grid-column:1!important;
-  grid-row:1!important;
-  position:relative!important;
-  z-index:20!important;
   box-sizing:border-box!important;
   width:calc(100% + 5px + var(--right-pane,390px))!important;
   max-width:none!important;
   height:54px!important;
   min-height:54px!important;
-  padding:0 12px 0 calc(var(--editor-identity-width) + 8px)!important;
+  padding:0 12px!important;
   display:grid!important;
   grid-template-columns:
+    var(--editor-identity-width)
+    minmax(0,1fr)
     var(--editor-nav-width)
     minmax(0,1fr)
     var(--editor-filter-width)
@@ -82,67 +81,39 @@
     var(--editor-search-width)
     minmax(0,1fr)
     92px!important;
-  grid-template-rows:32px!important;
-  align-content:center!important;
-  align-items:center!important;
+  grid-template-rows:54px!important;
   column-gap:0!important;
   row-gap:0!important;
-  overflow:visible!important;
-  border-bottom:1px solid var(--theme-line)!important;
-  background:var(--theme-surface-1)!important;
+  align-items:center!important;
+  align-content:center!important;
 }
 
-/* Reserve the first command column for .entityNavigation, which sits in the same strip. */
-.app .editorControls::before{
-  content:"";
+/* Identity/navigation is an overlay on the same command strip. The host itself ignores
+ * pointer events so its transparent grid cells cannot cover filter/search/action below. */
+.app .entityHeaderHost{
+  position:absolute!important;
+  left:0!important;
+  right:auto!important;
+  top:0!important;
+  transform:none!important;
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+  z-index:24!important;
+  pointer-events:none!important;
+}
+.app .entityHeaderHost>header{
   grid-column:1!important;
   grid-row:1!important;
-  min-width:0;
-  width:100%;
-  height:1px;
-}
-
-.app .editorFilterSelect{
-  order:1!important;
-  grid-column:3!important;
-  grid-row:1!important;
-  width:var(--editor-filter-width)!important;
-  min-width:var(--editor-filter-width)!important;
-  max-width:var(--editor-filter-width)!important;
-  height:32px!important;
-  margin:0!important;
-}
-.app .editorControls .editorSearch{
-  order:2!important;
-  grid-column:5!important;
-  grid-row:1!important;
-  width:var(--editor-search-width)!important;
-  min-width:var(--editor-search-width)!important;
-  max-width:var(--editor-search-width)!important;
-  height:32px!important;
-  min-height:32px!important;
-  margin:0!important;
-  padding-top:0!important;
-  padding-bottom:0!important;
-}
-
-/* The last direct child is the business action Button host. Only its grid slot is owned
- * here; component geometry remains in ui-library-integration.css. */
-.app .editorControls>:last-child{
-  grid-column:7!important;
-  grid-row:1!important;
-  justify-self:end!important;
-}
-
-/* Compact identity block: less empty space at the far left, but a larger safe gap
- * between the unit image/flag overlay and the title/subtitle text. */
-.app .entityHeaderHost{
-  left:4px!important;
-  top:27px!important;
+  position:relative!important;
   width:var(--editor-identity-width)!important;
+  min-width:var(--editor-identity-width)!important;
+  max-width:var(--editor-identity-width)!important;
   height:46px!important;
   min-height:46px!important;
-  z-index:24!important;
+  align-self:center!important;
+  justify-self:start!important;
+  pointer-events:auto!important;
 }
 .app .entityHeaderHost>header>div:nth-child(2){
   width:54px!important;
@@ -155,15 +126,74 @@
   flex:1 1 auto!important;
 }
 .app .entityNavigation{
-  left:calc(var(--editor-identity-width) + 8px)!important;
+  grid-column:3!important;
+  grid-row:1!important;
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  transform:none!important;
   width:var(--editor-nav-width)!important;
+  min-width:var(--editor-nav-width)!important;
   max-width:var(--editor-nav-width)!important;
+  height:32px!important;
+  margin:0!important;
+  align-self:center!important;
+  justify-self:start!important;
   z-index:25!important;
+  pointer-events:auto!important;
 }
 .app .entityNavigation button{
   width:calc((var(--editor-nav-width) - 8px) / 2)!important;
   min-width:calc((var(--editor-nav-width) - 8px) / 2)!important;
   max-width:calc((var(--editor-nav-width) - 8px) / 2)!important;
+}
+
+/* The shared command-strip surface physically extends across the former inspector top row. */
+.app .editorControls{
+  grid-column:1!important;
+  grid-row:1!important;
+  position:relative!important;
+  z-index:20!important;
+  overflow:visible!important;
+  border-bottom:1px solid var(--theme-line)!important;
+  background:var(--theme-surface-1)!important;
+}
+.app .editorFilterSelect{
+  order:1!important;
+  grid-column:5!important;
+  grid-row:1!important;
+  width:var(--editor-filter-width)!important;
+  min-width:var(--editor-filter-width)!important;
+  max-width:var(--editor-filter-width)!important;
+  height:32px!important;
+  margin:0!important;
+  align-self:center!important;
+  justify-self:start!important;
+}
+.app .editorControls .editorSearch{
+  order:2!important;
+  grid-column:7!important;
+  grid-row:1!important;
+  width:var(--editor-search-width)!important;
+  min-width:var(--editor-search-width)!important;
+  max-width:var(--editor-search-width)!important;
+  height:32px!important;
+  min-height:32px!important;
+  margin:0!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  align-self:center!important;
+  justify-self:start!important;
+}
+
+/* The last direct child is the business action Button host. Only its grid slot is owned
+ * here; component geometry remains in ui-library-integration.css. */
+.app .editorControls>:last-child{
+  grid-column:9!important;
+  grid-row:1!important;
+  justify-self:end!important;
+  align-self:center!important;
 }
 
 /* Keep the country flag entirely inside the icon footprint. The extra icon-to-title
@@ -185,16 +215,4 @@
 .app .editor>.emptyPane{
   grid-column:1!important;
   grid-row:1 / 3!important;
-}
-
-/* The layout stays identical at narrow widths. Existing compact control footprints are
- * preserved; the middle spacing absorbs the remaining width instead of stretching them. */
-@media(max-width:1100px){
-  .app .workspace{
-    --editor-identity-width:194px;
-    --editor-nav-width:184px;
-    --editor-filter-width:124px;
-    --editor-search-width:128px;
-  }
-  .app .entityNavigation button{padding:0 5px!important}
 }
