@@ -71,7 +71,7 @@ export function VersesControl({ value, rawValue, onChange, disabled = false }: {
     <button className="versesTrigger" type="button" disabled={disabled} onClick={openEditor} title={value}>
       <SlidersVertical size={15}/><span>{value}</span><b>调整</b>
     </button>
-    <Dialog open={open} title="伤害百分比调整 · Verses" icon={<SlidersVertical size={18}/>} size="wide" onClose={() => setOpen(false)}>
+    <Dialog open={open} title="伤害百分比调整 · Verses" icon={<SlidersVertical size={18}/>} size="default" onClose={() => setOpen(false)}>
       <div className="versesDialog">
         <div className="versesHint">原版 11 种护甲的伤害倍率。滑轨用于 0–100%，数值框可输入最高 1000%。</div>
         <div className="versesEqualizer" role="group" aria-label="Verses 伤害倍率">
