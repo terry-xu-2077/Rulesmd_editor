@@ -68,7 +68,7 @@ def test_weapon_without_name_can_inherit_parent_unit_relationship_label() -> Non
     )
 
     assert workspace._section_label("TechWeapon") == "测试单位 · 主武器"
-    assert workspace._section_label("TechWH") == "测试单位 · 主武器 · 弹头"
+    assert workspace._section_label("TechWH") == "TechWeapon · 弹头"
 
 
 def test_curated_chinese_weapon_label_still_beats_relationship_inference() -> None:
