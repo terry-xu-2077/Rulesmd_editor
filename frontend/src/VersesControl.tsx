@@ -48,9 +48,11 @@ export function VersesControl({ value, rawValue, onChange, disabled = false }: {
     return <TextField value={value} rawValue={rawValue} onChange={onChange} placeholder="Verses=100%,...（需要 11 项）" disabled={disabled}/>
   }
 
+  const parsedValues = parsed
+
   function openEditor() {
     if (disabled) return
-    setDraft([...parsed])
+    setDraft([...parsedValues])
     setOpen(true)
   }
 
