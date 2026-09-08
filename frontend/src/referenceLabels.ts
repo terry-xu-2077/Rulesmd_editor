@@ -69,7 +69,7 @@ const TOKEN_ZH: Record<string, string> = {
   Spawn: '生成', Special: '特殊', Normal: '普通', Small: '小型', Large: '大型', Heavy: '重型', Light: '轻型',
   Armor: '装甲', Piercing: '穿甲', High: '高', Explosive: '爆炸', Gas: '毒气', Radiation: '辐射', Electric: '电击',
   Shell: '炮弹', Bullet: '子弹', Torpedo: '鱼雷', Invisible: '隐形', Low: '低空', Medium: '中型', Homing: '追踪',
-  Sonic: '声波', SonicWave: '声波', Neutron: '中子', EMP: 'EMP', Bio: '生化', Plasma: '等离子', Wave: '波',
+  Sonic: '声波', Neutron: '中子', EMP: 'EMP', Bio: '生化', Plasma: '等离子', Wave: '波',
   Impact: '命中', Launch: '发射', Reload: '装填', Activate: '启动', Deactivate: '关闭', Ambient: '环境', Loop: '循环',
 }
 
