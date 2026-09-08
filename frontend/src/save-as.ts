@@ -8,6 +8,9 @@ type Snapshot = { document: { path: string | null; dirty: boolean } }
 let binding: SaveBinding | null = null
 let cachedDocumentPath: string | null = null
 let installed = false
+let bypassNextSave = false
+let installAttempts = 0
+const MAX_INSTALL_ATTEMPTS = 60
 
 async function backendCall<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>('backend_call', { method, params })
@@ -69,8 +72,6 @@ function chooseMode(): Promise<SaveMode | null> {
     overlay.querySelectorAll<HTMLButtonElement>('.saveModeChoice').forEach(button => {
       button.addEventListener('click', () => finish(button.dataset.mode as SaveMode))
     })
-    // Theme variables are scoped on .app.tc-theme. Mounting the chooser on body made
-    // every var(--theme-*) declaration invalid and left the dialog visually transparent.
     const themeHost = document.querySelector<HTMLElement>('.app.tc-theme') ?? document.body
     themeHost.appendChild(overlay)
   })
@@ -109,6 +110,11 @@ async function saveWithPrompt() {
 }
 
 async function handleSaveClick(event: MouseEvent) {
+  if (bypassNextSave) {
+    bypassNextSave = false
+    return
+  }
+
   if (binding) {
     event.preventDefault()
     event.stopImmediatePropagation()
@@ -125,7 +131,13 @@ async function handleSaveClick(event: MouseEvent) {
     const snapshot = await backendCall<Snapshot>('snapshot')
     cachedDocumentPath = snapshot.document.path
     if (cachedDocumentPath) {
-      await saveTo('full', cachedDocumentPath)
+      // We had no reliable cached path (typically just after Open). Re-dispatch one
+      // normal Save click so React's own save handler refreshes its snapshot/dirty state.
+      const save = document.querySelector<HTMLButtonElement>('.toolbar .iconButton[title="保存"]')
+      if (save) {
+        bypassNextSave = true
+        save.click()
+      }
       return
     }
   } catch {
@@ -165,23 +177,38 @@ function install() {
   return true
 }
 
-function resetBindingForDocumentChange() {
-  binding = null
-  cachedDocumentPath = null
-  queueMicrotask(() => { void refreshDocumentPath() })
+function retryInstall() {
+  if (install() || installAttempts >= MAX_INSTALL_ATTEMPTS) return
+  installAttempts += 1
+  window.setTimeout(retryInstall, 50)
 }
 
-// Event-driven hooks only: no MutationObserver and no continuous DOM polling.
+function resetBindingForDocumentChange(kind: 'new' | 'open') {
+  binding = null
+  cachedDocumentPath = null
+  bypassNextSave = false
+
+  // A newly-created document deliberately has no path, so never repopulate the cache
+  // from the document that existed just before the async New action completed.
+  if (kind === 'new') return
+
+  // Opening is asynchronous. A few bounded refreshes cover both fast and slow loads;
+  // handleSaveClick still verifies the current backend snapshot if the cache is empty.
+  for (const delay of [100, 300, 800, 1500]) {
+    window.setTimeout(() => { void refreshDocumentPath() }, delay)
+  }
+}
+
 document.addEventListener('click', event => {
   const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>('.toolbar .iconButton')
   if (!button) return
-  if (button.title === '新建' || button.title === '打开') resetBindingForDocumentChange()
+  if (button.title === '新建') resetBindingForDocumentChange('new')
+  else if (button.title === '打开') resetBindingForDocumentChange('open')
 }, true)
 
 function start() {
-  if (install()) return
-  // React commits the toolbar immediately after root render; one next-frame retry is enough.
-  requestAnimationFrame(() => { install() })
+  installAttempts = 0
+  retryInstall()
 }
 
 if (document.readyState === 'loading') {
