@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { SlidersVertical } from 'lucide-react'
-import { Button, Dialog, Slider, TextField } from 'terry-react-ui-library'
+import { SlidersVertical, X } from 'lucide-react'
+import { Button, Slider, TextField } from 'terry-react-ui-library'
 import './verses-control.css'
 
 const ARMOR_LABELS = [
@@ -71,18 +71,26 @@ export function VersesControl({ value, rawValue, onChange, disabled = false }: {
     <button className="versesTrigger" type="button" disabled={disabled} onClick={openEditor} title={value}>
       <SlidersVertical size={15}/><span>{value}</span><b>调整</b>
     </button>
-    <Dialog open={open} title="伤害百分比调整 · Verses" icon={<SlidersVertical size={18}/>} size="default" onClose={() => setOpen(false)}>
-      <div className="versesDialog">
-        <div className="versesHint">原版 11 种护甲的伤害倍率。滑轨用于 0–100%，数值框可输入最高 1000%。</div>
-        <div className="versesEqualizer" role="group" aria-label="Verses 伤害倍率">
-          {ARMOR_LABELS.map((label, index) => <div className="versesBand" key={label}>
-            <strong>{formatValue(draft[index] ?? 0)}%</strong>
-            <Slider orientation="vertical" value={draft[index] ?? 0} min={0} max={100} step={1} allowOutOfRangeInput onChange={next => update(index, next)}/>
-            <span>{label}</span>
-          </div>)}
+    {open && <div className="versesDialogLayer" role="presentation" onMouseDown={event => {
+      if (event.currentTarget === event.target) setOpen(false)
+    }}>
+      <section className="versesDialogShell" role="dialog" aria-modal="true" aria-label="伤害百分比调整 · Verses">
+        <header className="versesDialogHeader">
+          <div><SlidersVertical size={18}/><strong>伤害百分比调整 · Verses</strong></div>
+          <button type="button" onClick={() => setOpen(false)} aria-label="关闭"><X size={18}/></button>
+        </header>
+        <div className="versesDialog">
+          <div className="versesHint">原版 11 种护甲的伤害倍率。滑轨用于 0–100%，数值框可输入最高 1000%。</div>
+          <div className="versesEqualizer" role="group" aria-label="Verses 伤害倍率">
+            {ARMOR_LABELS.map((label, index) => <div className="versesBand" key={label}>
+              <strong>{formatValue(draft[index] ?? 0)}%</strong>
+              <Slider orientation="vertical" value={draft[index] ?? 0} min={0} max={100} step={1} allowOutOfRangeInput onChange={next => update(index, next)}/>
+              <span>{label}</span>
+            </div>)}
+          </div>
+          <div className="versesDialogActions"><Button className="quietButton" onClick={() => setOpen(false)}>取消</Button><Button variant="accent" onClick={confirm}>确定</Button></div>
         </div>
-        <div className="versesDialogActions"><Button className="quietButton" onClick={() => setOpen(false)}>取消</Button><Button variant="accent" onClick={confirm}>确定</Button></div>
-      </div>
-    </Dialog>
+      </section>
+    </div>}
   </>
 }
