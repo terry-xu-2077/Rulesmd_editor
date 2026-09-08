@@ -156,6 +156,16 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
     setSelectedKey(match.key)
   }
 
+  function chooseOption(option: CatalogOption) {
+    setSelectedKey(option.key)
+    setQuery('')
+    setManualEntry(`${option.key}=${option.default || ''}`)
+    const source = sourceName(option)
+    setExpanded(current => ({ ...current, [source]: true }))
+    setActiveSource(source)
+    setActiveCategory(categoryName(option))
+  }
+
   function addSelected() {
     if (!selected) return
     const manualTargetsSelected = manualMatch?.key.toLowerCase() === selected.key.toLowerCase()
@@ -201,7 +211,7 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
         <section className="parameterListPane">
           <header><div><strong>{manual.active ? '参数匹配' : query ? '搜索结果' : activeCategory || (activeSource ? sourceLabel(activeSource) : '参数')}</strong><span>{list.length} 项</span></div></header>
           <div className="parameterList">
-            {list.map(option => <button key={option.key} className={selected?.key === option.key ? 'active' : ''} onClick={() => setSelectedKey(option.key)}>
+            {list.map(option => <button key={option.key} className={selected?.key === option.key ? 'active' : ''} onClick={() => chooseOption(option)}>
               <div><strong>{option.label || option.key}</strong>{sourceName(option) === 'Ares' && <span className="parameterAresBadge">ARES</span>}</div>
               <code>{option.key}</code>
             </button>)}
