@@ -44,6 +44,7 @@ import { localizedReferenceLabel } from './referenceLabels'
 import { buildRulesNavigation } from './rulesNavigation'
 import { sliderRangeFor } from './sliderRanges'
 import { UnitIcon, UnitTree } from './UnitTree'
+import { VersesControl } from './VersesControl'
 import './styles.css'
 import './polish.css'
 
@@ -259,6 +260,8 @@ function FieldControl({
 }) {
   const raw = option.raw_value ?? undefined
   const referenceKind = referenceKindForOption(option)
+
+  if (option.key.trim().toLowerCase() === 'verses') return <VersesControl value={option.value} rawValue={raw} onChange={onChange} disabled={disabled}/>
 
   if (option.widget === 'boolean') return <BoolSwitch width={180} value={option.value} rawValue={raw} onChange={onChange} trueValue="yes" falseValue="no" disabled={disabled}/>
 
@@ -850,7 +853,7 @@ function App() {
                     setParameterMenu({ lineId: option.line_id, x: event.clientX, y: event.clientY })
                   }}
                 >
-                  <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge">ARES</span>}{option.disabled && <span className="disabledBadge">禁用</span>}</div>
+                  <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge"><Sparkles size={10}/>ARES</span>}{option.disabled && <span className="disabledBadge">禁用</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
                   <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} disabled={Boolean(option.disabled)} referenceRows={candidates} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{!option.disabled && target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
