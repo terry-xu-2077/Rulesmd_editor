@@ -844,7 +844,6 @@ function App() {
                 return <div
                   className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''} ${option.disabled ? 'disabled' : ''}`}
                   key={option.line_id}
-                  title="右键：禁用 / 还原 / 删除参数"
                   onClick={() => setSelectedOptionId(option.line_id)}
                   onContextMenu={event => {
                     event.preventDefault()
