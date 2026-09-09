@@ -103,7 +103,8 @@ function installDescriptionEditing(initial: UserDescriptions) {
 
   function applyHelpLabel() {
     const focused = document.querySelector('.fieldsPane .parameterTableRow.focused') as HTMLElement | null
-    const key = focused?.querySelector('.parameterKeyCell code')?.textContent?.trim() || ''
+    if (!focused) return
+    const key = focused.querySelector('.parameterKeyCell code')?.textContent?.trim() || ''
     if (!key) return
     const label = focused.querySelector('.parameterLabelCell strong')?.textContent?.trim() || ''
     const title = document.querySelector('.helpDescriptionCard h3') as HTMLElement | null
