@@ -56,6 +56,22 @@ function parseManualParameter(raw: string): ManualParameter {
   }
 }
 
+function manualCatalogOption(manual: ManualParameter): CatalogOption {
+  return {
+    key: manual.key,
+    label: manual.key,
+    description: '未在当前参数目录中登记。将按手动输入原样添加。',
+    category: '自定义',
+    source: '自定义',
+    value_type: 'text',
+    applies_to: [],
+    default: manual.hasEquals ? manual.value : '',
+    values: [],
+    docs: '',
+    compatible: true,
+  }
+}
+
 export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: Props) {
   const [query, setQuery] = useState('')
   const [manualEntry, setManualEntry] = useState('')
@@ -158,18 +174,20 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
   const manualTargetsSelected = Boolean(selected && manualMatch?.key.toLowerCase() === selected.key.toLowerCase())
 
   function addSelected() {
-    if (!selected) return
-    if (manual.active && !manualTargetsSelected) return
-    if (manualTargetsSelected && manual.hasEquals) {
-      void onAdd({ ...selected, default: manual.value })
+    if (manual.active) {
+      if (manualMatch) {
+        void onAdd({ ...manualMatch, default: manual.hasEquals ? manual.value : manualMatch.default })
+      } else {
+        void onAdd(manualCatalogOption(manual))
+      }
       return
     }
-    void onAdd(selected)
+    if (selected) void onAdd(selected)
   }
 
   const manualMissing = manual.active && !manualMatch
   const manualHint = manualMissing
-    ? `未找到参数 Key：${manual.key}`
+    ? `目录中未找到 ${manual.key}，仍会按手动输入原样添加`
     : manual.active && manualMatch
       ? `${manualMatch.label || manualMatch.key} · ${manualMatch.key}`
       : `可直接粘贴 Key=Value${objectLabel ? ` 到 ${objectLabel}` : ''}`
@@ -232,11 +250,11 @@ export function ParameterPicker({ open, options, objectLabel, onClose, onAdd }: 
       </div>
 
       <footer className="parameterExplorerFooter">
-        <div className={`parameterManualEntry ${manualMissing ? 'invalid' : manual.active ? 'matched' : ''}`}>
+        <div className={`parameterManualEntry ${manual.active && manualMatch ? 'matched' : ''}`}>
           <label><span>手动填写</span><input value={manualEntry} onChange={event => changeManualEntry(event.target.value)} placeholder="Option=Value" spellCheck={false}/></label>
           <small>{manualHint}</small>
         </div>
-        <Button variant="accent" disabled={!selected || (manual.active && !manualTargetsSelected)} onClick={addSelected}><ListPlus size={16}/>添加此参数</Button>
+        <Button variant="accent" disabled={!manual.active && !selected} onClick={addSelected}><ListPlus size={16}/>添加此参数</Button>
       </footer>
     </div>
   </Dialog>
