@@ -4,6 +4,12 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 static LOG_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn unix_millis() -> u128 {
@@ -11,6 +17,32 @@ fn unix_millis() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|value| value.as_millis())
         .unwrap_or(0)
+}
+
+fn platform_version_detail() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let output = std::process::Command::new("cmd.exe")
+            .args(["/C", "ver"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+        return match output {
+            Ok(output) => {
+                let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if text.is_empty() {
+                    format!("cmd-ver-empty status={}", output.status)
+                } else {
+                    text
+                }
+            }
+            Err(err) => format!("cmd-ver-unavailable error={err}"),
+        };
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::env::consts::OS.to_string()
+    }
 }
 
 fn candidate_log_dir() -> PathBuf {
@@ -101,6 +133,7 @@ pub fn initialize() {
     startup("=== Rulesmd Editor startup ===");
     startup(format!("version={}", env!("CARGO_PKG_VERSION")));
     startup(format!("os={} arch={}", std::env::consts::OS, std::env::consts::ARCH));
+    startup(format!("platform_version={}", platform_version_detail()));
     startup(format!("debug_build={}", cfg!(debug_assertions)));
     startup(format!("log_dir={}", dir.display()));
 
