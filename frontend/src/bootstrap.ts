@@ -41,10 +41,14 @@ function configFromLocalStorage(): LocalConfigFields {
   }
 }
 
+function normalizeDescription(value: string) {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
 function foldedLookup(rows: UserDescriptions, key: string) {
   const folded = key.trim().toLowerCase()
   const entry = Object.entries(rows).find(([name]) => name.toLowerCase() === folded)
-  return entry?.[1]?.trim() || ''
+  return normalizeDescription(entry?.[1] || '')
 }
 
 function installDescriptionEditing(initial: UserDescriptions) {
@@ -52,31 +56,79 @@ function installDescriptionEditing(initial: UserDescriptions) {
   let applying = false
 
   async function saveDescription(key: string, value: string, element: HTMLElement) {
+    const builtin = normalizeDescription(element.dataset.builtinLabel || key)
+    const previousOverride = foldedLookup(descriptions, key)
+    const normalizedValue = normalizeDescription(value)
+
+    // 只有真正偏离内置描述时才产生用户覆盖；点一下、双击后不改、改回原文都不算“自定义”。
+    if (normalizedValue === builtin) {
+      element.textContent = builtin
+      if (!previousOverride || previousOverride === builtin) {
+        applyOverrides()
+        return
+      }
+      try {
+        descriptions = await workspaceApi.setUserDescription(key, '')
+        applyOverrides()
+      } catch (error) {
+        element.textContent = previousOverride || builtin
+        element.title = `保存自定义描述失败：${String(error)}`
+      }
+      return
+    }
+
+    if (normalizedValue === previousOverride) {
+      element.textContent = previousOverride || builtin
+      applyOverrides()
+      return
+    }
+
     try {
-      descriptions = await workspaceApi.setUserDescription(key, value)
+      descriptions = await workspaceApi.setUserDescription(key, normalizedValue)
       applyOverrides()
     } catch (error) {
-      const builtin = element.dataset.builtinLabel || key
-      element.textContent = foldedLookup(descriptions, key) || builtin
+      element.textContent = previousOverride || builtin
       element.title = `保存自定义描述失败：${String(error)}`
     }
   }
 
+  function beginEditing(element: HTMLElement) {
+    if (element.dataset.editingMode === '1') return
+    element.dataset.editingMode = '1'
+    element.dataset.editStart = element.textContent || ''
+    element.contentEditable = 'true'
+    element.classList.add('editing')
+    element.focus()
+
+    const selection = window.getSelection()
+    if (selection) {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+  }
+
+  function endEditing(element: HTMLElement) {
+    delete element.dataset.editingMode
+    element.contentEditable = 'false'
+    element.classList.remove('editing')
+  }
+
   function prepareEditableLabel(element: HTMLElement, key: string) {
-    if (!element.dataset.builtinLabel) element.dataset.builtinLabel = (element.textContent || key).trim()
+    if (!element.dataset.builtinLabel) element.dataset.builtinLabel = normalizeDescription(element.textContent || key)
     if (!element.dataset.userDescriptionBound) {
       element.dataset.userDescriptionBound = '1'
-      element.contentEditable = 'true'
+      element.contentEditable = 'false'
       element.spellcheck = false
-      element.setAttribute('role', 'textbox')
-      element.setAttribute('aria-label', `${key} 中文描述`)
-      element.addEventListener('pointerdown', event => event.stopPropagation())
-      element.addEventListener('click', event => event.stopPropagation())
-      element.addEventListener('focus', () => {
-        element.dataset.editStart = element.textContent || ''
-        element.classList.add('editing')
+      element.setAttribute('aria-label', `${key} 中文描述，双击编辑`)
+      element.addEventListener('dblclick', event => {
+        event.preventDefault()
+        event.stopPropagation()
+        beginEditing(element)
       })
       element.addEventListener('keydown', event => {
+        if (element.dataset.editingMode !== '1') return
         if (event.key === 'Enter') {
           event.preventDefault()
           element.blur()
@@ -88,17 +140,24 @@ function installDescriptionEditing(initial: UserDescriptions) {
         }
       })
       element.addEventListener('blur', () => {
-        element.classList.remove('editing')
+        if (element.dataset.editingMode !== '1') return
+        endEditing(element)
         if (element.dataset.cancelEdit === '1') {
           delete element.dataset.cancelEdit
           applyOverrides()
           return
         }
-        const value = (element.textContent || '').replace(/\s+/g, ' ').trim()
+        const value = normalizeDescription(element.textContent || '')
+        const start = normalizeDescription(element.dataset.editStart || '')
+        delete element.dataset.editStart
+        if (value === start) {
+          applyOverrides()
+          return
+        }
         void saveDescription(key, value, element)
       })
     }
-    element.title = '可修改中文描述；修改内容保存到 resources/user-descriptions.json'
+    element.title = '双击修改中文描述；仅与内置描述不同时才保存到 resources/user-descriptions.json'
   }
 
   function applyHelpLabel() {
@@ -121,12 +180,13 @@ function installDescriptionEditing(initial: UserDescriptions) {
         const label = row.querySelector('.parameterLabelCell strong') as HTMLElement | null
         if (!key || !label) return
         prepareEditableLabel(label, key)
-        if (document.activeElement === label) return
-        const builtin = label.dataset.builtinLabel || key
+        if (label.dataset.editingMode === '1') return
+        const builtin = normalizeDescription(label.dataset.builtinLabel || key)
         const override = foldedLookup(descriptions, key)
-        const wanted = override || builtin
+        const hasRealOverride = Boolean(override && override !== builtin)
+        const wanted = hasRealOverride ? override : builtin
         if (label.textContent !== wanted) label.textContent = wanted
-        label.classList.toggle('userDescriptionOverride', Boolean(override))
+        label.classList.toggle('userDescriptionOverride', hasRealOverride)
       })
       applyHelpLabel()
     } finally {
