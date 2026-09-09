@@ -176,6 +176,7 @@ function installDescriptionEditing(initial: UserDescriptions) {
     try {
       const rows = document.querySelectorAll('.fieldsPane .parameterTableRow')
       rows.forEach(row => {
+        row.removeAttribute('title')
         const key = row.querySelector('.parameterKeyCell code')?.textContent?.trim() || ''
         const label = row.querySelector('.parameterLabelCell strong') as HTMLElement | null
         if (!key || !label) return
