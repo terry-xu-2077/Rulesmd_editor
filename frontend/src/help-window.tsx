@@ -137,7 +137,6 @@ function HelpDialogRoot() {
     open={open}
     title="帮助文档"
     icon={<CircleHelp size={18}/>} 
-    size="wide"
     closeOnBackdrop
     onClose={() => setOpen(false)}
   >
