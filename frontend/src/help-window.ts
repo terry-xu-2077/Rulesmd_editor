@@ -116,10 +116,22 @@ function closeIconSvg() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>'
 }
 
-export function installHelpWindow() {
-  if (document.querySelector('[data-rulesmd-help-button]')) return
+function installWhenToolbarReady(attempt = 0) {
   const toolbar = document.querySelector('.toolbar')
-  if (!toolbar) return
+  if (toolbar) {
+    installHelpWindow(toolbar)
+    return
+  }
+  if (attempt < 20) window.setTimeout(() => installWhenToolbarReady(attempt + 1), 50)
+}
+
+export function installHelpWindow(toolbarElement?: Element) {
+  if (document.querySelector('[data-rulesmd-help-button]')) return
+  const toolbar = toolbarElement ?? document.querySelector('.toolbar')
+  if (!toolbar) {
+    installWhenToolbarReady()
+    return
+  }
 
   const parsed = parseMarkdown(helpMarkdown)
   const button = document.createElement('button')
