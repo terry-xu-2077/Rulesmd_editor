@@ -139,7 +139,7 @@ impl BackendProcess {
         match self.child.try_wait().map_err(|e| e.to_string())? {
             Some(status) => {
                 diagnostics::backend(format!("backend exited before rpc method={method} status={status}"));
-                return Err("Python 后端已经退出，请重新启动编辑器。详情请查看 logs/backend.log。".to_string());
+                return Err("Python 后端已经退出，请重新启动编辑器。详情请查看 resources/logs/backend.log。".to_string());
             }
             None => {}
         }
@@ -179,7 +179,7 @@ impl BackendProcess {
             diagnostics::backend(format!(
                 "rpc empty response id={id} method={method} backend_status={status}"
             ));
-            return Err("Python 后端没有返回数据。详情请查看 logs/backend.log。".to_string());
+            return Err("Python 后端没有返回数据。详情请查看 resources/logs/backend.log。".to_string());
         }
         let response: Value = serde_json::from_str(&response_line).map_err(|e| {
             diagnostics::backend(format!("rpc invalid json id={id} method={method}: {e}"));
