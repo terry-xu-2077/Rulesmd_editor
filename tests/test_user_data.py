@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from rulesmd_editor.export_bridge import ExportBridge
+import rulesmd_editor.export_bridge as export_bridge
 import rulesmd_editor.user_data as user_data
 
 
@@ -43,3 +45,14 @@ def test_user_description_is_separate_case_insensitive_override(tmp_path, monkey
 
     rows = user_data.set_user_description("SIGHT", "")
     assert rows == {}
+
+
+def test_bridge_persists_ares_setting_to_app_config(monkeypatch):
+    saved: list[dict] = []
+    monkeypatch.setattr(export_bridge, "save_app_config", lambda values: saved.append(values) or values)
+    bridge = ExportBridge()
+
+    result = bridge.rpc_set_settings(ares_enabled=False)
+
+    assert result["ares_enabled"] is False
+    assert saved == [{"aresEnabled": False}]
