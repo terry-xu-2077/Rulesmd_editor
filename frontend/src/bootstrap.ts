@@ -1,4 +1,5 @@
 import { workspaceApi, type AppConfig, type UserDescriptions } from './backend'
+import { installHelpWindow } from './help-window'
 import './user-descriptions.css'
 
 const CONFIG_KEYS = {
@@ -221,6 +222,7 @@ async function bootstrap() {
 
   await import('./main')
   installDescriptionEditing(descriptions)
+  installHelpWindow()
 
   let lastSerialized = JSON.stringify(configFromLocalStorage())
   window.setInterval(() => {
