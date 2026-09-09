@@ -16,6 +16,10 @@ fn unix_millis() -> u128 {
 fn candidate_log_dir() -> PathBuf {
     if let Ok(executable) = std::env::current_exe() {
         if let Some(parent) = executable.parent() {
+            let packaged_resources = parent.join("resources");
+            if packaged_resources.is_dir() {
+                return packaged_resources.join("logs");
+            }
             return parent.join("logs");
         }
     }
