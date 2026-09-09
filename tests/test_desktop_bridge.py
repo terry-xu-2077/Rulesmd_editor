@@ -49,3 +49,20 @@ def test_serve_binary_unicode_round_trip_is_utf8() -> None:
     assert response["id"] == 2
     assert response["ok"] is True
     assert response["result"]["unicode"] == "测试版"
+
+
+def test_serve_binary_rpc_failure_writes_traceback(capsys) -> None:
+    request = '{"id":3,"method":"missing_method","params":{}}\n'
+    stdin = BytesIO(request.encode("utf-8"))
+    stdout = BytesIO()
+
+    serve_binary(stdin, stdout)
+
+    response = json.loads(stdout.getvalue().decode("utf-8"))
+    assert response["id"] == 3
+    assert response["ok"] is False
+    assert response["error"]["type"] == "ValueError"
+
+    captured = capsys.readouterr()
+    assert "Traceback (most recent call last)" in captured.err
+    assert "Unknown method: missing_method" in captured.err
