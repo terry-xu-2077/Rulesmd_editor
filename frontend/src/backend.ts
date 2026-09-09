@@ -102,6 +102,17 @@ export type CreateUnitResult = {
   root: string
 }
 
+export type AppConfig = {
+  gamePath: string
+  appearance: 'dark' | 'light' | 'system'
+  leftPane: number
+  rightPane: number
+  lastFile: string
+  aresEnabled: boolean
+}
+
+export type UserDescriptions = Record<string, string>
+
 async function call<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>('backend_call', { method, params })
 }
@@ -196,6 +207,10 @@ export const workspaceApi = {
   pickSaveFile: (defaultName = 'rulesmd.ini') => invoke<string | null>('pick_save_file', { defaultName }),
   pickGameExecutable: () => invoke<string | null>('pick_game_executable'),
   launchGame: (path: string) => invoke<void>('launch_game', { path }),
+  getAppConfig: () => call<AppConfig>('get_app_config'),
+  setAppConfig: (values: Partial<AppConfig>) => call<AppConfig>('set_app_config', { values }),
+  getUserDescriptions: () => call<UserDescriptions>('get_user_descriptions'),
+  setUserDescription: (key: string, value: string) => call<UserDescriptions>('set_user_description', { key, value }),
   openFile: async (path: string) => {
     await flushPendingValues()
     const snapshot = await call<WorkspaceSnapshot>('open_file', { path })

@@ -50,3 +50,62 @@ def test_name_value_beats_non_chinese_catalog_label() -> None:
     )
 
     assert workspace._section_label("UserWeapon") == "用户填写名称"
+
+
+def test_weapon_without_name_can_inherit_parent_unit_relationship_label() -> None:
+    workspace = workspace_for(
+        "[InfantryTypes]\n"
+        "0=TESTUNIT\n"
+        "[TESTUNIT]\n"
+        "Name=测试单位\n"
+        "Primary=TechWeapon\n"
+        "[TechWeapon]\n"
+        "Damage=100\n"
+        "Warhead=TechWH\n"
+        "[TechWH]\n"
+        "Verses=100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%\n",
+        {"TechWeapon": "TechWeapon"},
+    )
+
+    assert workspace._section_label("TechWeapon") == "测试单位 · 主武器"
+    assert workspace._section_label("TechWH") == "TechWeapon · 弹头"
+
+
+def test_projectile_without_name_can_inherit_weapon_relationship_label() -> None:
+    workspace = workspace_for(
+        "[VehicleTypes]\n"
+        "0=TESTTANK\n"
+        "[TESTTANK]\n"
+        "Name=测试坦克\n"
+        "Primary=TankWeapon\n"
+        "[TankWeapon]\n"
+        "Damage=100\n"
+        "Warhead=TankWH\n"
+        "Projectile=TankShell\n"
+        "[TankWH]\n"
+        "Verses=100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%\n"
+        "[TankShell]\n"
+        "Image=120MM\n"
+        "Arcing=true\n"
+    )
+
+    assert workspace._section_label("TankWeapon") == "测试坦克 · 主武器"
+    assert workspace._section_label("TankShell") == "TankWeapon · 弹体"
+
+
+def test_curated_chinese_weapon_label_still_beats_relationship_inference() -> None:
+    workspace = workspace_for(
+        "[InfantryTypes]\n"
+        "0=TESTUNIT\n"
+        "[TESTUNIT]\n"
+        "Name=测试单位\n"
+        "Primary=TechWeapon\n"
+        "[TechWeapon]\n"
+        "Damage=100\n"
+        "Warhead=TechWH\n"
+        "[TechWH]\n"
+        "Verses=100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%\n",
+        {"TechWeapon": "已审校武器名"},
+    )
+
+    assert workspace._section_label("TechWeapon") == "已审校武器名"

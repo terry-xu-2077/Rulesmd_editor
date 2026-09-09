@@ -30,6 +30,11 @@ src/rulesmd_editor/resources/generated/*
 !src/rulesmd_editor/resources/generated/control_schema.json
 !src/rulesmd_editor/resources/generated/ares_schema.json
 
+# User-editable portable data. These are created at runtime inside resources and must
+# never be committed as bundled metadata, otherwise git pull/update could overwrite them.
+src/rulesmd_editor/resources/app-config.json
+src/rulesmd_editor/resources/user-descriptions.json
+
 # Local editor / OS noise
 .vscode/
 .idea/

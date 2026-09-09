@@ -5,6 +5,12 @@ from pathlib import Path
 from .bridge import Bridge
 from .line_actions import OptionLineState, option_line_state
 from .mix_workspace import MixRulesWorkspace
+from .user_data import (
+    load_app_config,
+    load_user_descriptions,
+    save_app_config,
+    set_user_description,
+)
 
 
 class ExportMixRulesWorkspace(MixRulesWorkspace):
@@ -25,12 +31,34 @@ class ExportMixRulesWorkspace(MixRulesWorkspace):
 
 
 class ExportBridge(Bridge):
-    """Bridge extensions for full-file vs changed-rule-fragment export."""
+    """Bridge extensions for export plus editable resource-side user data."""
 
     def rpc_ping(self, unicode: str | None = None) -> dict[str, str]:
         result = super().rpc_ping()
         if unicode is not None:
             result["unicode"] = unicode
+        return result
+
+    def rpc_get_app_config(self) -> dict:
+        return load_app_config()
+
+    def rpc_set_app_config(self, values: dict | None = None) -> dict:
+        if values is None:
+            values = {}
+        if not isinstance(values, dict):
+            raise ValueError("应用配置必须是对象")
+        return save_app_config(values)
+
+    def rpc_get_user_descriptions(self) -> dict[str, str]:
+        return load_user_descriptions()
+
+    def rpc_set_user_description(self, key: str, value: str) -> dict[str, str]:
+        return set_user_description(key, value)
+
+    def rpc_set_settings(self, ares_enabled: bool | None = None) -> dict:
+        result = super().rpc_set_settings(ares_enabled=ares_enabled)
+        if ares_enabled is not None:
+            save_app_config({"aresEnabled": bool(ares_enabled)})
         return result
 
     @staticmethod

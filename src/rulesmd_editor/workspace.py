@@ -38,6 +38,24 @@ UNIT_REGISTRATION_ROOTS = {
 UNREGISTERED_OBJECT_TYPES = {"Weapon", "Warhead", "Projectile"}
 SECTION_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 CJK_RE = re.compile(r"[\u3400-\u9fff]")
+REFERENCE_RELATION_LABELS = {
+    "primary": "主武器",
+    "secondary": "副武器",
+    "eliteprimary": "精英主武器",
+    "elitesecondary": "精英副武器",
+    "occupyweapon": "驻军武器",
+    "eliteoccupyweapon": "精英驻军武器",
+    "deathweapon": "死亡武器",
+    "warhead": "弹头",
+    "projectile": "弹体",
+}
+REFERENCE_RELATION_PRIORITY = {
+    key: index
+    for index, key in enumerate((
+        "primary", "secondary", "eliteprimary", "elitesecondary",
+        "occupyweapon", "eliteoccupyweapon", "deathweapon", "warhead", "projectile",
+    ))
+}
 
 
 @dataclass(frozen=True)
@@ -205,17 +223,54 @@ class RulesWorkspace:
                 return "neutral"
         return "neutral"
 
-    def _section_label(self, section: str) -> str:
+    def _source_display_name(self, section: str) -> str:
         folded = section.casefold()
         catalog = (self.schema.section_description(section) or "").strip()
-        # A curated Chinese catalog label is authoritative. Otherwise user-authored Name
-        # annotations are more useful than an English/internal catalog description.
         if catalog and CJK_RE.search(catalog):
             return catalog
         name_comment = self._last_comments.get((folded, "name"), "").strip()
         name_value = self._last_values.get((folded, "name"), "").strip()
+        return name_comment or name_value or section
+
+    def _reference_relationship_label(self, section: str) -> str:
+        refs = self._reference_index.get(section.casefold(), [])
+        if not refs:
+            return ""
+        ordered = sorted(
+            refs,
+            key=lambda pair: REFERENCE_RELATION_PRIORITY.get(pair[1].casefold(), 999),
+        )
+        target_type = self._section_types.get(section.casefold())
+        for source_section, source_key in ordered:
+            key = source_key.casefold()
+            relation = REFERENCE_RELATION_LABELS.get(key)
+            if not relation:
+                continue
+            source_type = self._section_types.get(source_section.casefold())
+            # Unit/building -> weapon references are the strongest relation, followed by
+            # weapon -> warhead/projectile. Ignore unrelated value coincidences.
+            if key in {"primary", "secondary", "eliteprimary", "elitesecondary", "occupyweapon", "eliteoccupyweapon", "deathweapon"}:
+                if target_type != "Weapon" or source_type not in TECHNO_TYPES:
+                    continue
+            elif key in {"warhead", "projectile"}:
+                expected = "Warhead" if key == "warhead" else "Projectile"
+                if target_type != expected or source_type != "Weapon":
+                    continue
+            return f"{self._source_display_name(source_section)} · {relation}"
+        return ""
+
+    def _section_label(self, section: str) -> str:
+        folded = section.casefold()
+        catalog = (self.schema.section_description(section) or "").strip()
+        # A curated Chinese catalog label is authoritative. Otherwise user-authored Name
+        # annotations are more useful than inferred parent relationships.
+        if catalog and CJK_RE.search(catalog):
+            return catalog
+        name_comment = self._last_comments.get((folded, "name"), "").strip()
+        name_value = self._last_values.get((folded, "name"), "").strip()
+        relationship = self._reference_relationship_label(section)
         fallback_catalog = catalog if catalog and catalog.casefold() != folded else ""
-        return name_comment or name_value or fallback_catalog or section
+        return name_comment or name_value or relationship or fallback_catalog or section
 
     def _map_visible_categories(
         self,
