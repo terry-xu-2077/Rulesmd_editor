@@ -1,3 +1,5 @@
+mod diagnostics;
+
 use serde_json::{json, Value};
 use std::env;
 use std::io::{BufRead, BufReader, Write};
@@ -35,6 +37,7 @@ fn packaged_layout_paths() -> Result<(PathBuf, PathBuf), String> {
 fn backend_command() -> Result<(Command, String), String> {
     if let Ok(python) = env::var("RULESMD_PYTHON") {
         if !python.trim().is_empty() {
+            diagnostics::backend(format!("using development Python backend: {python}"));
             let mut command = Command::new(&python);
             command.args(["-m", "rulesmd_editor.desktop_bridge"]);
             return Ok((command, format!("Python 后端 ({python})")));
@@ -42,6 +45,11 @@ fn backend_command() -> Result<(Command, String), String> {
     }
 
     let (backend, resources) = packaged_layout_paths()?;
+    diagnostics::backend(format!("packaged backend={}", backend.display()));
+    diagnostics::backend(format!("resources={}", resources.display()));
+    diagnostics::backend(format!("backend_exists={}", backend.is_file()));
+    diagnostics::backend(format!("resources_exists={}", resources.is_dir()));
+
     if !backend.is_file() {
         return Err(format!(
             "内置后端不存在：{}。绿色版可能没有完整解压，请保留 runtime 文件夹与主程序在同一目录。",
@@ -66,7 +74,8 @@ fn backend_command() -> Result<(Command, String), String> {
 fn configure_backend_environment(command: &mut Command) {
     command
         .env("PYTHONUTF8", "1")
-        .env("PYTHONIOENCODING", "utf-8");
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONFAULTHANDLER", "1");
 }
 
 fn suppress_console(command: &mut Command) {
@@ -85,18 +94,39 @@ struct BackendProcess {
 
 impl BackendProcess {
     fn spawn() -> Result<Self, String> {
-        let (mut command, backend_name) = backend_command()?;
+        diagnostics::backend("=== backend spawn ===");
+        let (mut command, backend_name) = backend_command().map_err(|err| {
+            diagnostics::backend(format!("backend command failed: {err}"));
+            err
+        })?;
         configure_backend_environment(&mut command);
         suppress_console(&mut command);
+        let stderr_log = diagnostics::open_backend_stderr().map_err(|err| {
+            diagnostics::backend(format!("unable to open backend stderr log: {err}"));
+            err
+        })?;
         let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::from(stderr_log))
             .spawn()
-            .map_err(|err| format!("无法启动 {backend_name}: {err}"))?;
+            .map_err(|err| {
+                let message = format!("无法启动 {backend_name}: {err}");
+                diagnostics::backend(format!("spawn failed: {message}"));
+                message
+            })?;
 
-        let stdin = child.stdin.take().ok_or("无法连接 Python 后端 stdin")?;
-        let stdout = child.stdout.take().ok_or("无法连接 Python 后端 stdout")?;
+        diagnostics::backend(format!("spawned pid={} name={backend_name}", child.id()));
+        let stdin = child.stdin.take().ok_or_else(|| {
+            let message = "无法连接 Python 后端 stdin".to_string();
+            diagnostics::backend(&message);
+            message
+        })?;
+        let stdout = child.stdout.take().ok_or_else(|| {
+            let message = "无法连接 Python 后端 stdout".to_string();
+            diagnostics::backend(&message);
+            message
+        })?;
         Ok(Self {
             child,
             stdin,
@@ -106,33 +136,70 @@ impl BackendProcess {
     }
 
     fn call(&mut self, method: &str, params: Value) -> Result<Value, String> {
-        if self.child.try_wait().map_err(|e| e.to_string())?.is_some() {
-            return Err("Python 后端已经退出，请重新启动编辑器。".to_string());
+        match self.child.try_wait().map_err(|e| e.to_string())? {
+            Some(status) => {
+                diagnostics::backend(format!("backend exited before rpc method={method} status={status}"));
+                return Err("Python 后端已经退出，请重新启动编辑器。详情请查看 logs/backend.log。".to_string());
+            }
+            None => {}
         }
 
         let id = self.next_id;
         self.next_id += 1;
+        diagnostics::backend(format!("rpc request id={id} method={method}"));
         let request = json!({"id": id, "method": method, "params": params});
-        let line = serde_json::to_string(&request).map_err(|e| e.to_string())?;
-        writeln!(self.stdin, "{line}").map_err(|e| format!("写入 Python 后端失败: {e}"))?;
-        self.stdin.flush().map_err(|e| e.to_string())?;
+        let line = serde_json::to_string(&request).map_err(|e| {
+            diagnostics::backend(format!("rpc encode failed id={id} method={method}: {e}"));
+            e.to_string()
+        })?;
+        writeln!(self.stdin, "{line}").map_err(|e| {
+            diagnostics::backend(format!("rpc write failed id={id} method={method}: {e}"));
+            format!("写入 Python 后端失败: {e}")
+        })?;
+        self.stdin.flush().map_err(|e| {
+            diagnostics::backend(format!("rpc flush failed id={id} method={method}: {e}"));
+            e.to_string()
+        })?;
 
         let mut response_line = String::new();
         self.stdout
             .read_line(&mut response_line)
-            .map_err(|e| format!("读取 Python 后端失败: {e}"))?;
+            .map_err(|e| {
+                diagnostics::backend(format!("rpc read failed id={id} method={method}: {e}"));
+                format!("读取 Python 后端失败: {e}")
+            })?;
         if response_line.trim().is_empty() {
-            return Err("Python 后端没有返回数据。".to_string());
+            let status = self
+                .child
+                .try_wait()
+                .ok()
+                .flatten()
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "still-running-or-unknown".to_string());
+            diagnostics::backend(format!(
+                "rpc empty response id={id} method={method} backend_status={status}"
+            ));
+            return Err("Python 后端没有返回数据。详情请查看 logs/backend.log。".to_string());
         }
-        let response: Value = serde_json::from_str(&response_line)
-            .map_err(|e| format!("Python 后端返回了无效 JSON: {e}"))?;
+        let response: Value = serde_json::from_str(&response_line).map_err(|e| {
+            diagnostics::backend(format!("rpc invalid json id={id} method={method}: {e}"));
+            format!("Python 后端返回了无效 JSON: {e}")
+        })?;
         if response.get("ok").and_then(Value::as_bool) == Some(true) {
+            diagnostics::backend(format!("rpc ok id={id} method={method}"));
             Ok(response.get("result").cloned().unwrap_or(Value::Null))
         } else {
+            let error_type = response
+                .pointer("/error/type")
+                .and_then(Value::as_str)
+                .unwrap_or("UnknownError");
             let message = response
                 .pointer("/error/message")
                 .and_then(Value::as_str)
                 .unwrap_or("未知后端错误");
+            diagnostics::backend(format!(
+                "rpc error id={id} method={method} type={error_type} message={message}"
+            ));
             Err(message.to_string())
         }
     }
@@ -144,14 +211,20 @@ type BackendState = Mutex<Option<BackendProcess>>;
 fn backend_status(state: State<'_, BackendState>) -> Value {
     let mut guard = state.lock().unwrap();
     if guard.is_none() {
-        *guard = BackendProcess::spawn().ok();
+        match BackendProcess::spawn() {
+            Ok(process) => *guard = Some(process),
+            Err(err) => diagnostics::backend(format!("backend_status spawn failed: {err}")),
+        }
     }
     json!({"desktop": "ok", "python": if guard.is_some() { "ok" } else { "unavailable" }})
 }
 
 #[tauri::command]
 fn backend_call(method: String, params: Option<Value>, state: State<'_, BackendState>) -> Result<Value, String> {
-    let mut guard = state.lock().map_err(|_| "后端状态锁定失败".to_string())?;
+    let mut guard = state.lock().map_err(|_| {
+        diagnostics::backend("backend state mutex poisoned");
+        "后端状态锁定失败".to_string()
+    })?;
     if guard.is_none() {
         *guard = Some(BackendProcess::spawn()?);
     }
@@ -325,8 +398,15 @@ fn launch_game(path: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    diagnostics::initialize();
+    diagnostics::startup("initializing Tauri runtime");
+
     tauri::Builder::default()
         .manage(Mutex::new(None::<BackendProcess>))
+        .setup(|_| {
+            diagnostics::startup("Tauri setup complete");
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             backend_status,
             backend_call,
