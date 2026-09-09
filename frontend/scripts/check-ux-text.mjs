@@ -5,7 +5,7 @@ import process from 'node:process'
 const root = process.cwd()
 const src = path.join(root, 'src')
 const banned = [
-  '右键：禁用 / 还原 / 删除参数',
+  ['右键：', '禁用', ' / ', '还原', ' / ', '删除参数'].join(''),
 ]
 const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.html'])
 const violations = []
