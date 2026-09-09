@@ -18,6 +18,30 @@ def _report_exception() -> None:
         pass
 
 
+class DiagnosticExportBridge(ExportBridge):
+    """Desktop dispatcher that preserves the normal RPC envelope and logs full failures."""
+
+    def dispatch(self, request: dict) -> dict:
+        request_id = request.get("id")
+        method = request.get("method")
+        params = request.get("params") or {}
+        try:
+            if not isinstance(method, str) or method.startswith("_"):
+                raise ValueError("Invalid method")
+            handler = getattr(self, f"rpc_{method}", None)
+            if handler is None:
+                raise ValueError(f"Unknown method: {method}")
+            result = handler(**params)
+            return {"id": request_id, "ok": True, "result": result}
+        except Exception as exc:
+            _report_exception()
+            return {
+                "id": request_id,
+                "ok": False,
+                "error": {"type": type(exc).__name__, "message": str(exc)},
+            }
+
+
 def _dispatch_raw(bridge: ExportBridge, raw: str) -> dict:
     raw = raw.strip().lstrip("\ufeff\x00")
     try:
@@ -63,7 +87,7 @@ def _decode_request_bytes(raw: bytes) -> str:
 
 
 def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
-    bridge = ExportBridge(ExportMixRulesWorkspace())
+    bridge = DiagnosticExportBridge(ExportMixRulesWorkspace())
     for raw in stdin:
         raw = raw.strip()
         if not raw:
@@ -74,7 +98,7 @@ def serve(stdin: TextIO = sys.stdin, stdout: TextIO = sys.stdout) -> None:
 
 
 def serve_binary(stdin: BinaryIO, stdout: BinaryIO) -> None:
-    bridge = ExportBridge(ExportMixRulesWorkspace())
+    bridge = DiagnosticExportBridge(ExportMixRulesWorkspace())
     for raw_bytes in stdin:
         raw_bytes = raw_bytes.strip()
         if not raw_bytes:
