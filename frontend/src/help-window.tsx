@@ -1,3 +1,7 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { CircleHelp } from 'lucide-react'
+import { Dialog } from 'terry-react-ui-library'
 import helpMarkdown from './help.md?raw'
 import './help-window.css'
 
@@ -112,92 +116,80 @@ function helpIconSvg() {
   return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 1 1 5.83 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg>'
 }
 
-function closeIconSvg() {
-  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>'
+const OPEN_HELP_EVENT = 'rulesmd:open-help'
+
+function HelpDialogRoot() {
+  const parsed = useMemo(() => parseMarkdown(helpMarkdown), [])
+  const [open, setOpen] = useState(false)
+  const contentRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const openHelp = () => setOpen(true)
+    window.addEventListener(OPEN_HELP_EVENT, openHelp)
+    return () => window.removeEventListener(OPEN_HELP_EVENT, openHelp)
+  }, [])
+
+  useEffect(() => {
+    if (open && contentRef.current) contentRef.current.scrollTop = 0
+  }, [open])
+
+  return <Dialog
+    open={open}
+    title="帮助文档"
+    icon={<CircleHelp size={18}/>} 
+    size="wide"
+    closeOnBackdrop
+    onClose={() => setOpen(false)}
+  >
+    <div className="helpDialogBody">
+      <aside className="helpDialogToc" aria-label="帮助目录">
+        <div className="helpDialogTocTitle">目录</div>
+        <nav>{parsed.headings.filter(item => item.level >= 2).map(item => <button
+          type="button"
+          key={item.id}
+          className={`level-${item.level}`}
+          onClick={() => {
+            const target = contentRef.current?.querySelector<HTMLElement>(`#${CSS.escape(item.id)}`)
+            target?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+          }}
+        >{item.text}</button>)}</nav>
+      </aside>
+      <article ref={contentRef} className="helpDialogContent" dangerouslySetInnerHTML={{ __html: parsed.html }}/>
+    </div>
+  </Dialog>
 }
 
 function installWhenToolbarReady(attempt = 0) {
   const toolbar = document.querySelector('.toolbar')
-  if (toolbar) {
-    installHelpWindow(toolbar)
+  const app = document.querySelector('.app')
+  if (toolbar && app) {
+    installHelpWindow(toolbar, app)
     return
   }
   if (attempt < 20) window.setTimeout(() => installWhenToolbarReady(attempt + 1), 50)
 }
 
-export function installHelpWindow(toolbarElement?: Element) {
+export function installHelpWindow(toolbarElement?: Element, appElement?: Element) {
   if (document.querySelector('[data-rulesmd-help-button]')) return
   const toolbar = toolbarElement ?? document.querySelector('.toolbar')
-  if (!toolbar) {
+  const app = appElement ?? document.querySelector('.app')
+  if (!toolbar || !app) {
     installWhenToolbarReady()
     return
   }
 
-  const parsed = parseMarkdown(helpMarkdown)
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'iconButton'
   button.dataset.rulesmdHelpButton = '1'
-  button.title = '帮助'
   button.setAttribute('aria-label', '帮助')
   button.innerHTML = `${helpIconSvg()}<span class="iconButtonLabel">帮助</span>`
   toolbar.appendChild(button)
 
-  const overlay = document.createElement('div')
-  overlay.className = 'helpWindowOverlay'
-  overlay.hidden = true
-  overlay.innerHTML = `
-    <section class="helpWindow" role="dialog" aria-modal="true" aria-labelledby="rulesmd-help-title">
-      <header class="helpWindowHeader">
-        <div><strong id="rulesmd-help-title">帮助文档</strong><span>Rulesmd Editor 使用说明</span></div>
-        <button type="button" class="helpWindowClose" aria-label="关闭帮助">${closeIconSvg()}</button>
-      </header>
-      <div class="helpWindowBody">
-        <aside class="helpWindowToc" aria-label="帮助目录">
-          <div class="helpWindowTocTitle">目录</div>
-          <nav>${parsed.headings.filter(item => item.level >= 2).map(item => `<button type="button" data-help-target="${item.id}" class="level-${item.level}">${escapeHtml(item.text)}</button>`).join('')}</nav>
-        </aside>
-        <article class="helpWindowContent">${parsed.html}</article>
-      </div>
-    </section>`
-  document.body.appendChild(overlay)
+  const mount = document.createElement('div')
+  mount.dataset.rulesmdHelpRoot = '1'
+  app.appendChild(mount)
+  createRoot(mount).render(<HelpDialogRoot/>)
 
-  const closeButton = overlay.querySelector('.helpWindowClose') as HTMLButtonElement
-  const content = overlay.querySelector('.helpWindowContent') as HTMLElement
-  let previousFocus: HTMLElement | null = null
-
-  const close = () => {
-    if (overlay.hidden) return
-    overlay.hidden = true
-    document.body.classList.remove('helpWindowOpen')
-    previousFocus?.focus()
-  }
-
-  const open = () => {
-    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    overlay.hidden = false
-    document.body.classList.add('helpWindowOpen')
-    content.scrollTop = 0
-    closeButton.focus()
-  }
-
-  button.addEventListener('click', open)
-  closeButton.addEventListener('click', close)
-  overlay.addEventListener('mousedown', event => {
-    if (event.target === overlay) close()
-  })
-  overlay.querySelectorAll<HTMLButtonElement>('[data-help-target]').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = item.dataset.helpTarget
-      if (!id) return
-      const target = content.querySelector<HTMLElement>(`#${CSS.escape(id)}`)
-      target?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    })
-  })
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !overlay.hidden) {
-      event.preventDefault()
-      close()
-    }
-  })
+  button.addEventListener('click', () => window.dispatchEvent(new Event(OPEN_HELP_EVENT)))
 }
