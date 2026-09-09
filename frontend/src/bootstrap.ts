@@ -18,6 +18,8 @@ const DEFAULT_CONFIG: AppConfig = {
   aresEnabled: true,
 }
 
+type LocalConfigFields = Pick<AppConfig, 'gamePath' | 'appearance' | 'leftPane' | 'rightPane' | 'lastFile'>
+
 function applyConfigToLocalStorage(config: AppConfig) {
   localStorage.setItem(CONFIG_KEYS.gamePath, config.gamePath || '')
   localStorage.setItem(CONFIG_KEYS.appearance, config.appearance || 'dark')
@@ -26,12 +28,11 @@ function applyConfigToLocalStorage(config: AppConfig) {
   localStorage.setItem(CONFIG_KEYS.lastFile, config.lastFile || '')
 }
 
-function configFromLocalStorage(base: AppConfig): AppConfig {
+function configFromLocalStorage(): LocalConfigFields {
   const leftPane = Number.parseInt(localStorage.getItem(CONFIG_KEYS.leftPane) || '', 10)
   const rightPane = Number.parseInt(localStorage.getItem(CONFIG_KEYS.rightPane) || '', 10)
   const appearance = localStorage.getItem(CONFIG_KEYS.appearance)
   return {
-    ...base,
     gamePath: localStorage.getItem(CONFIG_KEYS.gamePath) || '',
     appearance: appearance === 'light' || appearance === 'system' ? appearance : 'dark',
     leftPane: Number.isFinite(leftPane) ? leftPane : 230,
@@ -53,7 +54,6 @@ function installDescriptionEditing(initial: UserDescriptions) {
   async function saveDescription(key: string, value: string, element: HTMLElement) {
     try {
       descriptions = await workspaceApi.setUserDescription(key, value)
-      element.dataset.savedLabel = value.trim()
       applyOverrides()
     } catch (error) {
       const builtin = element.dataset.builtinLabel || key
@@ -160,17 +160,13 @@ async function bootstrap() {
   await import('./main')
   installDescriptionEditing(descriptions)
 
-  let lastSerialized = JSON.stringify(configFromLocalStorage(config))
+  let lastSerialized = JSON.stringify(configFromLocalStorage())
   window.setInterval(() => {
-    const next = configFromLocalStorage(config)
+    const next = configFromLocalStorage()
     const serialized = JSON.stringify(next)
     if (serialized === lastSerialized) return
     lastSerialized = serialized
-    config = next
-    void workspaceApi.setAppConfig(next).then(saved => {
-      config = saved
-      lastSerialized = JSON.stringify(configFromLocalStorage(saved))
-    }).catch(error => console.warn('Unable to persist resources/app-config.json', error))
+    void workspaceApi.setAppConfig(next).catch(error => console.warn('Unable to persist resources/app-config.json', error))
   }, 250)
 }
 
