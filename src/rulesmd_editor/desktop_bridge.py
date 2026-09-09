@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+import faulthandler
 import json
 import sys
+import traceback
 from typing import BinaryIO, TextIO
 
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
+
+
+def _report_exception() -> None:
+    """Write the full traceback to stderr without breaking the JSON RPC channel."""
+    try:
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.flush()
+    except Exception:
+        pass
 
 
 def _dispatch_raw(bridge: ExportBridge, raw: str) -> dict:
@@ -15,6 +26,7 @@ def _dispatch_raw(bridge: ExportBridge, raw: str) -> dict:
             raise ValueError("Request must be a JSON object")
         return bridge.dispatch(request)
     except Exception as exc:
+        _report_exception()
         return {
             "id": None,
             "ok": False,
@@ -71,6 +83,7 @@ def serve_binary(stdin: BinaryIO, stdout: BinaryIO) -> None:
             raw = _decode_request_bytes(raw_bytes)
             response = _dispatch_raw(bridge, raw)
         except Exception as exc:
+            _report_exception()
             response = {
                 "id": None,
                 "ok": False,
@@ -82,6 +95,21 @@ def serve_binary(stdin: BinaryIO, stdout: BinaryIO) -> None:
 
 
 def main() -> None:
+    try:
+        faulthandler.enable()
+    except Exception:
+        pass
+
+    try:
+        print(
+            f"[rulesmd-backend] python={sys.version.split()[0]} "
+            f"frozen={bool(getattr(sys, 'frozen', False))} executable={sys.executable}",
+            file=sys.stderr,
+            flush=True,
+        )
+    except Exception:
+        pass
+
     stdin_buffer = getattr(sys.stdin, "buffer", None)
     stdout_buffer = getattr(sys.stdout, "buffer", None)
     if stdin_buffer is not None and stdout_buffer is not None:
