@@ -1,4 +1,5 @@
 import { workspaceApi, type AppConfig, type UserDescriptions } from './backend'
+import { installHelpWindow } from './help-window'
 import './user-descriptions.css'
 
 const CONFIG_KEYS = {
@@ -176,6 +177,7 @@ function installDescriptionEditing(initial: UserDescriptions) {
     try {
       const rows = document.querySelectorAll('.fieldsPane .parameterTableRow')
       rows.forEach(row => {
+        row.removeAttribute('title')
         const key = row.querySelector('.parameterKeyCell code')?.textContent?.trim() || ''
         const label = row.querySelector('.parameterLabelCell strong') as HTMLElement | null
         if (!key || !label) return
@@ -220,6 +222,7 @@ async function bootstrap() {
 
   await import('./main')
   installDescriptionEditing(descriptions)
+  installHelpWindow()
 
   let lastSerialized = JSON.stringify(configFromLocalStorage())
   window.setInterval(() => {

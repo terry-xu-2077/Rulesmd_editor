@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { SlidersVertical, X } from 'lucide-react'
 import { Button, Slider, TextField } from 'terry-react-ui-library'
 import './verses-control.css'
@@ -67,11 +68,8 @@ export function VersesControl({ value, rawValue, onChange, disabled = false }: {
     setOpen(false)
   }
 
-  return <>
-    <button className="versesTrigger" type="button" disabled={disabled} onClick={openEditor} title={value}>
-      <SlidersVertical size={15}/><span>{value}</span><b>调整</b>
-    </button>
-    {open && <div className="versesDialogLayer" role="presentation" onMouseDown={event => {
+  const dialog = open ? createPortal(
+    <div className="versesDialogLayer" role="presentation" onMouseDown={event => {
       if (event.currentTarget === event.target) setOpen(false)
     }}>
       <section className="versesDialogShell" role="dialog" aria-modal="true" aria-label="伤害百分比调整 · Verses">
@@ -91,6 +89,14 @@ export function VersesControl({ value, rawValue, onChange, disabled = false }: {
           <div className="versesDialogActions"><Button className="quietButton" onClick={() => setOpen(false)}>取消</Button><Button variant="accent" onClick={confirm}>确定</Button></div>
         </div>
       </section>
-    </div>}
+    </div>,
+    document.body,
+  ) : null
+
+  return <>
+    <button className="versesTrigger" type="button" disabled={disabled} onClick={openEditor} title={value}>
+      <SlidersVertical size={15}/><span>{value}</span><b>调整</b>
+    </button>
+    {dialog}
   </>
 }
