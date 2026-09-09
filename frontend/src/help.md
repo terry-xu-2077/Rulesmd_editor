@@ -155,6 +155,24 @@ resources/app-config.json
 
 编辑器会按 Windows Shell 启动方式打开 BAT / CMD，并使用脚本所在目录作为工作目录。
 
+## 故障诊断日志
+
+便携版启动后会自动生成诊断日志：
+
+```text
+resources/logs/
+```
+
+其中：
+
+- `startup.log`：记录编辑器版本、程序位置、运行环境和 Tauri 启动阶段信息。
+- `backend.log`：记录 Python 后端启动情况、RPC 方法执行结果，以及 Python 异常的完整 traceback。
+- `crash.log`：记录 Rust / Tauri 层出现的 panic；该文件不会在每次启动时清空，便于保留崩溃记录。
+
+`startup.log` 和 `backend.log` 每次启动会重新生成，默认只保留最近一次运行的信息。日志不会记录规则文件正文或 RPC 参数内容。
+
+如果编辑器无法正常启动、后端异常退出或某台电脑出现难以复现的问题，可将 `resources/logs` 文件夹一并提供用于排查。
+
 ## 使用建议
 
 - 目录和中文说明用于提高可读性，不是参数白名单。
