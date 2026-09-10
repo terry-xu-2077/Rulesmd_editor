@@ -1,17 +1,17 @@
 .toolbar [data-rulesmd-help-button] svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .helpDialogBody{width:min(700px,calc(90vw - 28px));height:min(620px,calc(80vh - 66px));min-height:360px;display:grid;grid-template-columns:200px minmax(0,1fr);overflow:hidden}
 .helpDialogToc{min-width:0;overflow:auto;padding:10px 10px 10px 0;border-right:1px solid var(--theme-border)}
-.helpDialogTocTitle{margin:0 6px 9px;padding:6px 9px 9px;border-bottom:1px solid color-mix(in srgb,var(--theme-accent) 22%,var(--theme-border));font-size:10px;font-weight:800;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-accent));letter-spacing:.13em}
+.helpDialogTocTitle{margin:0 6px 9px;padding:6px 9px 9px;border-bottom:1px solid color-mix(in srgb,var(--theme-accent) 22%,var(--theme-border));font-size:10px;font-weight:800;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-accent));letter-spacing:.13em;filter:saturate(1.15)}
 .helpDialogToc nav{display:grid;gap:2px}
 .helpDialogToc button{min-width:0;width:100%;padding:7px 9px;border:0;border-radius:6px;background:transparent;color:color-mix(in srgb,var(--theme-text-muted) 90%,var(--theme-accent));font:inherit;font-size:12px;text-align:left;white-space:normal;cursor:pointer;transition:background .12s ease,color .12s ease,box-shadow .12s ease}
 .helpDialogToc button.level-3{padding-left:20px;font-size:11px;color:var(--theme-text-muted)}
 .helpDialogToc button:hover,.helpDialogToc button:focus-visible{background:var(--theme-surface-soft);color:var(--theme-text);outline:none}
-.helpDialogToc button.active{background:color-mix(in srgb,var(--theme-accent) 12%,var(--theme-surface-soft));color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-accent));box-shadow:inset 2px 0 0 color-mix(in srgb,var(--theme-accent) 70%,var(--theme-text))}
+.helpDialogToc button.active{background:color-mix(in srgb,var(--theme-accent) 12%,var(--theme-surface-soft));color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-accent));box-shadow:inset 2px 0 0 color-mix(in srgb,var(--theme-accent) 70%,var(--theme-text));filter:saturate(1.15)}
 .helpDialogToc button.level-3.active{color:color-mix(in srgb,var(--theme-text) 72%,var(--theme-accent))}
 .helpDialogContent{min-width:0;overflow:auto;padding:10px 8px 24px 24px;scroll-behavior:smooth;color:color-mix(in srgb,var(--theme-text) 88%,var(--theme-text-muted))}
-.helpDialogContent h1{margin:0 0 10px;font-size:24px;line-height:1.25;color:color-mix(in srgb,var(--theme-text) 88%,var(--theme-accent))}
-.helpDialogContent h2{margin:28px 0 10px;padding-top:2px;font-size:18px;line-height:1.35;scroll-margin-top:12px;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-accent))}
-.helpDialogContent h3{margin:20px 0 8px;font-size:14px;scroll-margin-top:12px;color:color-mix(in srgb,var(--theme-text) 84%,var(--theme-accent) 16%)}
+.helpDialogContent h1{margin:0 0 10px;font-size:24px;line-height:1.25;color:color-mix(in srgb,var(--theme-text) 88%,var(--theme-accent));filter:saturate(1.15)}
+.helpDialogContent h2{margin:28px 0 10px;padding-top:2px;font-size:18px;line-height:1.35;scroll-margin-top:12px;color:color-mix(in srgb,var(--theme-text) 76%,var(--theme-accent));filter:saturate(1.15)}
+.helpDialogContent h3{margin:20px 0 8px;font-size:14px;scroll-margin-top:12px;color:color-mix(in srgb,var(--theme-text) 84%,var(--theme-accent) 16%);filter:saturate(1.15)}
 .helpDialogContent p,.helpDialogContent li,.helpDialogContent blockquote{font-size:13px;line-height:1.72}
 .helpDialogContent p{margin:8px 0 12px;color:color-mix(in srgb,var(--theme-text) 84%,var(--theme-text-muted))}
 .helpDialogContent ul,.helpDialogContent ol{margin:7px 0 14px;padding-left:22px}
