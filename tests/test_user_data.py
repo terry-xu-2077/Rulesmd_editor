@@ -40,7 +40,8 @@ def test_user_description_is_separate_case_insensitive_override(tmp_path, monkey
     rows = user_data.set_user_description("sight", "新的中文描述")
     assert rows == {"sight": "新的中文描述"}
     assert json.loads(description_file.read_text(encoding="utf-8")) == {
-        "OptionDesc": {"sight": "新的中文描述"}
+        "OptionDesc": {"sight": "新的中文描述"},
+        "SectionName": {},
     }
 
     rows = user_data.set_user_description("SIGHT", "")
