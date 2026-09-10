@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CircleHelp } from 'lucide-react'
-import { Dialog } from 'terry-react-ui-library'
+import { AppDialog } from './AppDialog'
 import helpMarkdown from './help.md?raw'
 import './help-window.css'
 
@@ -133,7 +133,7 @@ function HelpDialogRoot() {
     if (open && contentRef.current) contentRef.current.scrollTop = 0
   }, [open])
 
-  return <Dialog
+  return <AppDialog
     open={open}
     title="帮助文档"
     icon={<CircleHelp size={18}/>} 
@@ -155,7 +155,7 @@ function HelpDialogRoot() {
       </aside>
       <article ref={contentRef} className="helpDialogContent" dangerouslySetInnerHTML={{ __html: parsed.html }}/>
     </div>
-  </Dialog>
+  </AppDialog>
 }
 
 function installWhenToolbarReady(attempt = 0) {
