@@ -120,7 +120,9 @@ const OPEN_HELP_EVENT = 'rulesmd:open-help'
 
 function HelpDialogRoot() {
   const parsed = useMemo(() => parseMarkdown(helpMarkdown), [])
+  const tocHeadings = useMemo(() => parsed.headings.filter(item => item.level >= 2), [parsed])
   const [open, setOpen] = useState(false)
+  const [activeHeadingId, setActiveHeadingId] = useState(tocHeadings[0]?.id ?? '')
   const contentRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -130,8 +132,28 @@ function HelpDialogRoot() {
   }, [])
 
   useEffect(() => {
-    if (open && contentRef.current) contentRef.current.scrollTop = 0
-  }, [open])
+    if (!open || !contentRef.current) return
+    contentRef.current.scrollTop = 0
+    setActiveHeadingId(tocHeadings[0]?.id ?? '')
+  }, [open, tocHeadings])
+
+  function syncActiveHeading() {
+    const content = contentRef.current
+    if (!content || !tocHeadings.length) return
+
+    const contentTop = content.getBoundingClientRect().top
+    let active = tocHeadings[0].id
+    for (const item of tocHeadings) {
+      const heading = content.querySelector<HTMLElement>(`#${CSS.escape(item.id)}`)
+      if (!heading) continue
+      if (heading.getBoundingClientRect().top - contentTop <= 30) active = item.id
+      else break
+    }
+    if (content.scrollTop + content.clientHeight >= content.scrollHeight - 6) {
+      active = tocHeadings[tocHeadings.length - 1].id
+    }
+    setActiveHeadingId(active)
+  }
 
   return <AppDialog
     open={open}
@@ -143,17 +165,22 @@ function HelpDialogRoot() {
     <div className="helpDialogBody">
       <aside className="helpDialogToc" aria-label="帮助目录">
         <div className="helpDialogTocTitle">目录</div>
-        <nav>{parsed.headings.filter(item => item.level >= 2).map(item => <button
-          type="button"
-          key={item.id}
-          className={`level-${item.level}`}
-          onClick={() => {
-            const target = contentRef.current?.querySelector<HTMLElement>(`#${CSS.escape(item.id)}`)
-            target?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-          }}
-        >{item.text}</button>)}</nav>
+        <nav>{tocHeadings.map(item => {
+          const active = activeHeadingId === item.id
+          return <button
+            type="button"
+            key={item.id}
+            className={`level-${item.level} ${active ? 'active' : ''}`}
+            aria-current={active ? 'location' : undefined}
+            onClick={() => {
+              setActiveHeadingId(item.id)
+              const target = contentRef.current?.querySelector<HTMLElement>(`#${CSS.escape(item.id)}`)
+              target?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+            }}
+          >{item.text}</button>
+        })}</nav>
       </aside>
-      <article ref={contentRef} className="helpDialogContent" dangerouslySetInnerHTML={{ __html: parsed.html }}/>
+      <article ref={contentRef} className="helpDialogContent" onScroll={syncActiveHeading} dangerouslySetInnerHTML={{ __html: parsed.html }}/>
     </div>
   </AppDialog>
 }
