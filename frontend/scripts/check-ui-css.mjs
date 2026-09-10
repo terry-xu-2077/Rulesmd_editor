@@ -190,13 +190,42 @@ containsAny(integrationOwner, integration, [
   '--tc-row-hover:',
 ], 'UI Library integration must consume the theme contract, not define its own palette')
 
+// RED LINE 7: modal/subwindow rendering has one architecture. New modals must use
+// AppDialog, which portals the UI Library Dialog to document.body and bridges the theme.
+// A few root-level legacy files still render Dialog directly and are intentionally
+// allow-listed until they are migrated; no new direct Dialog consumers are permitted.
+const appDialogFile = 'AppDialog.tsx'
+if (!fs.existsSync(path.join(src, appDialogFile))) {
+  fail(appDialogFile, 'central modal portal must exist', 'missing AppDialog.tsx')
+}
+
+const legacyDirectDialogFiles = new Set(['main.tsx', 'AddUnitDialog.tsx', 'ParameterPicker.tsx'])
+const tsxFiles = fs.readdirSync(src).filter(file => file.endsWith('.tsx')).sort()
+for (const file of tsxFiles) {
+  const text = read(file)
+
+  if (file !== appDialogFile && /\brole\s*=\s*["']dialog["']|\baria-modal\s*=/i.test(text)) {
+    fail(file, 'do not hand-roll modal shells; use AppDialog', 'found manual dialog accessibility markup')
+  }
+
+  const uiImports = [...text.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*['"]terry-react-ui-library['"]/g)]
+  const importsDialog = uiImports.some(match => match[1]
+    .split(',')
+    .map(item => item.trim().split(/\s+as\s+/i)[0])
+    .includes('Dialog'))
+
+  if (importsDialog && file !== appDialogFile && !legacyDirectDialogFiles.has(file)) {
+    fail(file, 'new modals must use AppDialog instead of importing Dialog directly', 'direct Dialog import')
+  }
+}
+
 if (violations.length) {
   console.error('\n[UI CSS RED LINE] Boundary violations found:\n')
   for (const item of violations) {
     console.error(`- ${item.file}: ${item.rule}`)
     console.error(`  ${item.detail}`)
   }
-  console.error('\nSee docs/UI_DEVELOPMENT_RULES.md before changing shared-control CSS.\n')
+  console.error('\nSee docs/UI_DEVELOPMENT_RULES.md and docs/UI_SUBWINDOW_RULES.md before changing UI.\n')
   process.exit(1)
 }
 
