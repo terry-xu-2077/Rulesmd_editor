@@ -26,7 +26,14 @@ function isColorsView() {
   return /(?:^|\W)Colors(?:\W|$)/i.test(headerText)
 }
 
+function colorKeyForRow(row: HTMLElement) {
+  return row.querySelector<HTMLElement>('.parameterKeyCell code')?.textContent?.trim() || ''
+}
+
 function isColorRow(row: HTMLElement) {
+  // Any parameter whose key contains Color/Colour and whose current value is valid RGB
+  // should use the color control, regardless of which Section/group it lives in.
+  if (/colou?r/i.test(colorKeyForRow(row))) return true
   if (isColorsView()) return true
   const group = row.closest<HTMLElement>('.parameterTableGroup')
   const groupTitle = group?.querySelector<HTMLElement>('.fieldGroupHeader > span')?.textContent?.trim() || ''
@@ -68,7 +75,7 @@ function createColorControl(row: HTMLElement, host: HTMLElement, input: HTMLInpu
   picker.type = 'color'
   picker.className = 'rulesRgbPicker'
   picker.value = rgbToHex(rgb)
-  const key = row.querySelector('.parameterKeyCell code')?.textContent?.trim() || '颜色'
+  const key = colorKeyForRow(row) || '颜色'
   picker.setAttribute('aria-label', `选择 ${key} 颜色`)
   picker.title = `${key}：点击选择颜色`
   picker.addEventListener('input', () => {
