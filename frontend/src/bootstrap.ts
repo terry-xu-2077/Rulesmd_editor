@@ -221,7 +221,7 @@ function installSectionNameEditing() {
 
   function beginEditing(element: HTMLElement) {
     const section = currentSectionId()
-    if (!section || section.toLowerCase() === 'general' || element.dataset.sectionNameEditing === '1') return
+    if (!section || section.toLowerCase() === 'general' || document.querySelector('.rawEditorPane') || element.dataset.sectionNameEditing === '1') return
     element.dataset.sectionNameEditing = '1'
     element.dataset.editSection = section
     element.dataset.editStart = element.textContent || ''
@@ -316,7 +316,7 @@ function installSectionNameEditing() {
     }
 
     const section = currentSectionId()
-    if (!section || section.toLowerCase() === 'general') {
+    if (!section || section.toLowerCase() === 'general' || document.querySelector('.rawEditorPane')) {
       element.classList.remove('sectionNameEditable')
       element.removeAttribute('aria-label')
       if (element.dataset.sectionNameEditing !== '1') element.contentEditable = 'false'
@@ -347,8 +347,6 @@ function installSectionNameEditing() {
         if (!live) return
         const label = row.querySelector<HTMLElement>('.unitTreeLeafText b')
         if (label && label.textContent !== live) label.textContent = live
-        const small = row.querySelector<HTMLElement>('.unitTreeLeafText small')?.textContent?.trim() || id
-        row.title = `${live} · ${small}`
       })
     } finally {
       applying = false

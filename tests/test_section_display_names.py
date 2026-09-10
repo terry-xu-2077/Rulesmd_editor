@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from rulesmd_editor import user_data
-from rulesmd_editor.export_bridge import ExportMixRulesWorkspace
+from rulesmd_editor.export_bridge import ExportBridge, ExportMixRulesWorkspace
 
 
 def _write_rules(path) -> None:
@@ -67,3 +67,21 @@ def test_option_descriptions_and_section_names_share_user_file_without_clobberin
     stored = json.loads(user_file.read_text(encoding="utf-8"))
     assert stored["OptionDesc"]["Strength"] == "耐久"
     assert stored["SectionName"]["E1"] == "自定义大兵"
+
+
+def test_fragment_export_keeps_changed_section_name_marker(tmp_path, monkeypatch):
+    user_file = tmp_path / "user-descriptions.json"
+    monkeypatch.setattr(user_data, "USER_DESCRIPTIONS_FILE", user_file)
+
+    rules = tmp_path / "rulesmd.ini"
+    _write_rules(rules)
+
+    bridge = ExportBridge(ExportMixRulesWorkspace())
+    bridge.rpc_open_file(str(rules))
+    bridge.rpc_set_section_display_name("E1", "片段里的大兵")
+
+    fragment = tmp_path / "rules-fragment.ini"
+    bridge.rpc_save_fragment(str(fragment))
+    text = fragment.read_text(encoding="utf-8")
+    assert "[E1]" in text
+    assert ";@rulesmd-name=片段里的大兵" in text

@@ -214,7 +214,19 @@ class ExportBridge(Bridge):
         # 这样它不会影响游戏运行时规则，但下次重新打开片段时仍可恢复。
         changed_by_section: dict[str, list[OptionLineState]] = {}
         section_order: list[str] = []
+        marker_by_section: dict[str, str] = {}
+        baseline_structure = set(self._baseline_structure)
+
         for line in doc.lines:
+            if line.kind == "comment" and line.section and _SECTION_NAME_MARKER_RE.match(line.raw):
+                folded = line.section.casefold()
+                marker_by_section[folded] = line.raw
+                signature = ("line", line.line_id, line.kind, line.section or "", line.raw)
+                if signature not in baseline_structure and not any(
+                    name.casefold() == folded for name in section_order
+                ):
+                    section_order.append(line.section)
+
             state = option_line_state(line)
             if state is None:
                 continue
@@ -233,9 +245,12 @@ class ExportBridge(Bridge):
         parts: list[str] = []
         for section in section_order:
             states = changed_by_section.get(section, [])
-            if not states:
+            marker = marker_by_section.get(section.casefold(), "")
+            if not states and not marker:
                 continue
             parts.append(f"[{section}]")
+            if marker:
+                parts.append(marker)
             for state in states:
                 if state.disabled:
                     parts.append(
