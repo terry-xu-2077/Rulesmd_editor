@@ -21,12 +21,16 @@ function hexToRgb(value: string) {
   return `${Number.parseInt(normalized.slice(0, 2), 16)},${Number.parseInt(normalized.slice(2, 4), 16)},${Number.parseInt(normalized.slice(4, 6), 16)}`
 }
 
-function currentSectionId() {
-  return document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-watermark')?.textContent?.trim() || ''
+function isColorsView() {
+  const headerText = document.querySelector<HTMLElement>('.entityHeaderHost')?.textContent || ''
+  return /(?:^|\W)Colors(?:\W|$)/i.test(headerText)
 }
 
-function isColorSection() {
-  return /^(?:colors?|colours?)$/i.test(currentSectionId())
+function isColorRow(row: HTMLElement) {
+  if (isColorsView()) return true
+  const group = row.closest<HTMLElement>('.parameterTableGroup')
+  const groupTitle = group?.querySelector<HTMLElement>('.fieldGroupHeader > span')?.textContent?.trim() || ''
+  return groupTitle === '颜色主题'
 }
 
 function setReactInputValue(input: HTMLInputElement, value: string) {
@@ -37,47 +41,71 @@ function setReactInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
-function syncPicker(picker: HTMLInputElement, input: HTMLInputElement) {
+function updateVisualControl(control: HTMLElement, input: HTMLInputElement, picker: HTMLInputElement) {
   const rgb = parseRgb(input.value)
   if (!rgb) return
   const hex = rgbToHex(rgb)
   if (picker.value !== hex) picker.value = hex
+  control.style.setProperty('--rules-rgb-preview', hex)
+  const valueLabel = control.querySelector<HTMLElement>('.rulesRgbValue')
+  if (valueLabel) valueLabel.textContent = rgb.join(',')
+}
+
+function createColorControl(row: HTMLElement, host: HTMLElement, input: HTMLInputElement, rgb: Rgb) {
+  const control = document.createElement('div')
+  control.className = 'rulesRgbControl'
+  control.style.setProperty('--rules-rgb-preview', rgbToHex(rgb))
+
+  const swatch = document.createElement('span')
+  swatch.className = 'rulesRgbSwatch'
+  swatch.setAttribute('aria-hidden', 'true')
+
+  const valueLabel = document.createElement('span')
+  valueLabel.className = 'rulesRgbValue'
+  valueLabel.textContent = rgb.join(',')
+
+  const picker = document.createElement('input')
+  picker.type = 'color'
+  picker.className = 'rulesRgbPicker'
+  picker.value = rgbToHex(rgb)
+  const key = row.querySelector('.parameterKeyCell code')?.textContent?.trim() || '颜色'
+  picker.setAttribute('aria-label', `选择 ${key} 颜色`)
+  picker.title = `${key}：点击选择颜色`
+  picker.addEventListener('input', () => {
+    const next = hexToRgb(picker.value)
+    valueLabel.textContent = next
+    control.style.setProperty('--rules-rgb-preview', picker.value)
+    setReactInputValue(input, next)
+  })
+
+  control.append(swatch, valueLabel, picker)
+  host.classList.add('hasRgbColorPicker')
+  host.appendChild(control)
+  return control
 }
 
 function enhanceColorRows() {
-  const colorSection = isColorSection()
-
   document.querySelectorAll<HTMLElement>('.parameterTableRow').forEach(row => {
     const host = row.querySelector<HTMLElement>('.rulesControlHost')
     if (!host) return
 
-    const existing = host.querySelector<HTMLInputElement>('.rulesRgbPicker')
     const input = host.querySelector<HTMLInputElement>('input:not([type="color"]):not([type="checkbox"]):not([type="range"])')
     const rgb = input ? parseRgb(input.value) : null
+    const existing = host.querySelector<HTMLElement>('.rulesRgbControl')
 
-    if (!colorSection || !input || !rgb) {
+    if (!isColorRow(row) || !input || !rgb) {
       existing?.remove()
       host.classList.remove('hasRgbColorPicker')
       return
     }
 
     if (existing) {
-      host.classList.add('hasRgbColorPicker')
-      syncPicker(existing, input)
+      const picker = existing.querySelector<HTMLInputElement>('.rulesRgbPicker')
+      if (picker) updateVisualControl(existing, input, picker)
       return
     }
 
-    const picker = document.createElement('input')
-    picker.type = 'color'
-    picker.className = 'rulesRgbPicker'
-    picker.value = rgbToHex(rgb)
-    const key = row.querySelector('.parameterKeyCell code')?.textContent?.trim() || '颜色'
-    picker.setAttribute('aria-label', `选择 ${key} 颜色`)
-    picker.title = '颜色选择器；右侧仍可直接输入 R,G,B'
-    picker.addEventListener('input', () => setReactInputValue(input, hexToRgb(picker.value)))
-
-    host.classList.add('hasRgbColorPicker')
-    host.insertBefore(picker, host.firstChild)
+    createColorControl(row, host, input, rgb)
   })
 }
 
@@ -85,7 +113,7 @@ let enhancementQueued = false
 function queueEnhancement() {
   if (enhancementQueued) return
   enhancementQueued = true
-  queueMicrotask(() => {
+  requestAnimationFrame(() => {
     enhancementQueued = false
     enhanceColorRows()
   })
