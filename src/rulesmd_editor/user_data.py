@@ -19,6 +19,11 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "aresEnabled": True,
 }
 
+USER_DESCRIPTION_BUCKETS = {
+    "OptionDesc": {},
+    "SectionName": {},
+}
+
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
     try:
@@ -80,16 +85,19 @@ def save_app_config(values: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def ensure_user_data_files() -> None:
-    if not APP_CONFIG_FILE.exists():
-        _write_json(APP_CONFIG_FILE, load_app_config())
-    if not USER_DESCRIPTIONS_FILE.exists():
-        _write_json(USER_DESCRIPTIONS_FILE, {"OptionDesc": {}})
+def _load_user_description_payload() -> dict[str, Any]:
+    stored = _read_json(USER_DESCRIPTIONS_FILE, USER_DESCRIPTION_BUCKETS)
+    # Preserve unknown future buckets instead of rewriting the file down to only the
+    # fields understood by this version of the editor.
+    payload = dict(stored)
+    for bucket in USER_DESCRIPTION_BUCKETS:
+        if not isinstance(payload.get(bucket), dict):
+            payload[bucket] = {}
+    return payload
 
 
-def load_user_descriptions() -> dict[str, str]:
-    stored = _read_json(USER_DESCRIPTIONS_FILE, {"OptionDesc": {}})
-    rows = stored.get("OptionDesc", {})
+def _load_user_description_bucket(bucket: str) -> dict[str, str]:
+    rows = _load_user_description_payload().get(bucket, {})
     if not isinstance(rows, dict):
         return {}
     return {
@@ -99,22 +107,56 @@ def load_user_descriptions() -> dict[str, str]:
     }
 
 
-def set_user_description(key: str, value: str) -> dict[str, str]:
+def _set_user_description_bucket(bucket: str, key: str, value: str, *, key_label: str) -> dict[str, str]:
     clean_key = key.strip()
     if not clean_key:
-        raise ValueError("参数 Key 不能为空")
-    rows = load_user_descriptions()
+        raise ValueError(f"{key_label} 不能为空")
+
+    payload = _load_user_description_payload()
+    current = payload.get(bucket, {})
+    rows = {
+        str(row_key): str(row_value)
+        for row_key, row_value in current.items()
+        if str(row_key).strip() and str(row_value).strip()
+    } if isinstance(current, dict) else {}
+
     # Preserve a single canonical spelling per case-insensitive key.
     for existing in tuple(rows):
         if existing.casefold() == clean_key.casefold() and existing != clean_key:
             rows.pop(existing, None)
+
     clean_value = value.strip()
     if clean_value:
         rows[clean_key] = clean_value
     else:
         rows.pop(clean_key, None)
-    _write_json(USER_DESCRIPTIONS_FILE, {"OptionDesc": rows})
+
+    payload[bucket] = rows
+    _write_json(USER_DESCRIPTIONS_FILE, payload)
     return rows
+
+
+def ensure_user_data_files() -> None:
+    if not APP_CONFIG_FILE.exists():
+        _write_json(APP_CONFIG_FILE, load_app_config())
+    if not USER_DESCRIPTIONS_FILE.exists():
+        _write_json(USER_DESCRIPTIONS_FILE, deepcopy(USER_DESCRIPTION_BUCKETS))
+
+
+def load_user_descriptions() -> dict[str, str]:
+    return _load_user_description_bucket("OptionDesc")
+
+
+def set_user_description(key: str, value: str) -> dict[str, str]:
+    return _set_user_description_bucket("OptionDesc", key, value, key_label="参数 Key")
+
+
+def load_user_section_names() -> dict[str, str]:
+    return _load_user_description_bucket("SectionName")
+
+
+def set_user_section_name(section: str, value: str) -> dict[str, str]:
+    return _set_user_description_bucket("SectionName", section, value, key_label="Section")
 
 
 ensure_user_data_files()

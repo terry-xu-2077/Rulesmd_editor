@@ -102,6 +102,16 @@ export type CreateUnitResult = {
   root: string
 }
 
+export type SetSectionDisplayNameResult = {
+  section: string
+  name: string
+  custom: boolean
+  changed: boolean
+  dirty: boolean
+  auto_save_safe: boolean
+  snapshot: WorkspaceSnapshot
+}
+
 export type AppConfig = {
   gamePath: string
   appearance: 'dark' | 'light' | 'system'
@@ -211,6 +221,12 @@ export const workspaceApi = {
   setAppConfig: (values: Partial<AppConfig>) => call<AppConfig>('set_app_config', { values }),
   getUserDescriptions: () => call<UserDescriptions>('get_user_descriptions'),
   setUserDescription: (key: string, value: string) => call<UserDescriptions>('set_user_description', { key, value }),
+  setSectionDisplayName: async (section: string, value: string) => {
+    await flushPendingValues()
+    const result = await call<SetSectionDisplayNameResult>('set_section_display_name', { section, value })
+    applyDocumentMode(result.snapshot)
+    return result
+  },
   openFile: async (path: string) => {
     await flushPendingValues()
     const snapshot = await call<WorkspaceSnapshot>('open_file', { path })

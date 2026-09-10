@@ -202,6 +202,176 @@ function installDescriptionEditing(initial: UserDescriptions) {
   applyOverrides()
 }
 
+function installSectionNameEditing() {
+  const liveNames = new Map<string, string>()
+  let applying = false
+
+  function currentSectionId() {
+    return document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-watermark')?.textContent?.trim() || ''
+  }
+
+  function markExternalDirty() {
+    const label = document.querySelector<HTMLElement>('.toolbar .iconButton[title="保存"] .iconButtonLabel')
+    if (!label || label.querySelector('.saveDirtyDot')) return
+    const dot = document.createElement('i')
+    dot.className = 'saveDirtyDot sectionNameDirtyDot'
+    dot.setAttribute('aria-label', '单位中文名有未保存修改')
+    label.appendChild(dot)
+  }
+
+  function beginEditing(element: HTMLElement) {
+    const section = currentSectionId()
+    if (!section || section.toLowerCase() === 'general' || element.dataset.sectionNameEditing === '1') return
+    element.dataset.sectionNameEditing = '1'
+    element.dataset.editSection = section
+    element.dataset.editStart = element.textContent || ''
+    element.contentEditable = 'true'
+    element.classList.add('editing', 'sectionNameEditing')
+    element.focus()
+
+    const selection = window.getSelection()
+    if (selection) {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+  }
+
+  function endEditing(element: HTMLElement) {
+    delete element.dataset.sectionNameEditing
+    element.contentEditable = 'false'
+    element.classList.remove('editing', 'sectionNameEditing')
+  }
+
+  async function saveSectionName(section: string, value: string, previous: string, element: HTMLElement) {
+    try {
+      const result = await workspaceApi.setSectionDisplayName(section, value)
+      liveNames.set(result.section.toLowerCase(), result.name)
+      element.textContent = result.name
+      element.classList.toggle('sectionNameOverride', result.custom)
+      applyOverrides()
+
+      // If the backend was clean and the document already has a path, using the normal
+      // Save action is safe and also refreshes App's React snapshot/cache immediately.
+      // Never do this while the raw editor is open because it may contain a local draft
+      // that has not been committed to the backend yet.
+      if (result.dirty) markExternalDirty()
+      if (result.auto_save_safe && !document.querySelector('.rawEditorPane')) {
+        window.setTimeout(() => {
+          document.querySelector<HTMLButtonElement>('.toolbar .iconButton[title="保存"]')?.click()
+        }, 0)
+      }
+    } catch (error) {
+      element.textContent = previous
+      element.title = `保存单位中文名失败：${String(error)}`
+    }
+  }
+
+  function prepareEditableTitle(element: HTMLElement) {
+    if (!element.dataset.sectionNameBound) {
+      element.dataset.sectionNameBound = '1'
+      element.contentEditable = 'false'
+      element.spellcheck = false
+
+      element.addEventListener('dblclick', event => {
+        const section = currentSectionId()
+        if (!section || section.toLowerCase() === 'general') return
+        event.preventDefault()
+        event.stopPropagation()
+        beginEditing(element)
+      })
+
+      element.addEventListener('keydown', event => {
+        if (element.dataset.sectionNameEditing !== '1') return
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          element.blur()
+        } else if (event.key === 'Escape') {
+          event.preventDefault()
+          element.textContent = element.dataset.editStart || ''
+          element.dataset.cancelSectionNameEdit = '1'
+          element.blur()
+        }
+      })
+
+      element.addEventListener('blur', () => {
+        if (element.dataset.sectionNameEditing !== '1') return
+        const section = element.dataset.editSection || currentSectionId()
+        const previous = normalizeDescription(element.dataset.editStart || '')
+        const value = normalizeDescription(element.textContent || '')
+        const cancelled = element.dataset.cancelSectionNameEdit === '1'
+
+        delete element.dataset.editSection
+        delete element.dataset.editStart
+        delete element.dataset.cancelSectionNameEdit
+        endEditing(element)
+
+        if (cancelled || !section || value === previous) {
+          applyOverrides()
+          return
+        }
+        void saveSectionName(section, value, previous, element)
+      })
+    }
+
+    const section = currentSectionId()
+    if (!section || section.toLowerCase() === 'general') {
+      element.classList.remove('sectionNameEditable')
+      element.removeAttribute('aria-label')
+      if (element.dataset.sectionNameEditing !== '1') element.contentEditable = 'false'
+      return
+    }
+    element.classList.add('sectionNameEditable')
+    element.setAttribute('aria-label', `${section} 中文名，双击编辑`)
+    element.title = '双击修改中文名；自定义名称会写入当前 INI，并同步到 resources/user-descriptions.json'
+  }
+
+  function applyOverrides() {
+    if (applying) return
+    applying = true
+    try {
+      const title = document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-title strong')
+      if (title) {
+        prepareEditableTitle(title)
+        if (title.dataset.sectionNameEditing !== '1') {
+          const section = currentSectionId().toLowerCase()
+          const live = liveNames.get(section)
+          if (live && title.textContent !== live) title.textContent = live
+        }
+      }
+
+      document.querySelectorAll<HTMLElement>('.unitTreeLeaf[data-unit-id]').forEach(row => {
+        const id = row.dataset.unitId || ''
+        const live = liveNames.get(id)
+        if (!live) return
+        const label = row.querySelector<HTMLElement>('.unitTreeLeafText b')
+        if (label && label.textContent !== live) label.textContent = live
+        const small = row.querySelector<HTMLElement>('.unitTreeLeafText small')?.textContent?.trim() || id
+        row.title = `${live} · ${small}`
+      })
+    } finally {
+      applying = false
+    }
+  }
+
+  const observer = new MutationObserver(() => queueMicrotask(applyOverrides))
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+  document.addEventListener('click', () => queueMicrotask(applyOverrides), true)
+
+  document.addEventListener('click', event => {
+    const save = (event.target as HTMLElement | null)?.closest?.('.toolbar .iconButton[title="保存"]')
+    if (!save) return
+    window.setTimeout(() => {
+      void workspaceApi.snapshot().then(snapshot => {
+        if (!snapshot.document.dirty) document.querySelector('.sectionNameDirtyDot')?.remove()
+      }).catch(() => undefined)
+    }, 350)
+  }, true)
+
+  applyOverrides()
+}
+
 async function bootstrap() {
   let config = DEFAULT_CONFIG
   let descriptions: UserDescriptions = {}
@@ -222,6 +392,7 @@ async function bootstrap() {
 
   await import('./main')
   installDescriptionEditing(descriptions)
+  installSectionNameEditing()
   installHelpWindow()
 
   let lastSerialized = JSON.stringify(configFromLocalStorage())
