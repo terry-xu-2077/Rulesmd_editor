@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { workspaceApi, type CatalogOption, type CreateUnitResult, type LineActionResult, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { AddUnitDialog } from './AddUnitDialog'
+import { AppDialog } from './AppDialog'
 import { legacyGeneralGroup, orderedGeneralGroups } from './generalGroups'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
 import { ParameterContextMenu, type ParameterContextMenuState } from './ParameterContextMenu'
@@ -345,6 +346,7 @@ function App() {
   const sectionCache = useRef(new Map<string, SectionData>())
   const sectionRequest = useRef(0)
   const allowWindowClose = useRef(false)
+  const unsavedChangesRef = useRef(false)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
   const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
@@ -389,20 +391,55 @@ function App() {
   const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
   const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
   const headerSectionReady = Boolean(selected && sectionData.section && sectionData.section.toLowerCase() === selected.id.toLowerCase())
+  const hasUnsavedChanges = Boolean(
+    snapshot?.document.dirty
+    || (viewMode === 'raw' && selected && rawDraft !== sectionData.raw)
+  )
+  unsavedChangesRef.current = hasUnsavedChanges
   const effectiveAppearance: 'dark' | 'light' = localSettings.appearance === 'system'
     ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
     : localSettings.appearance
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
+    let disposed = false
     let unlisten: (() => void) | undefined
-    void appWindow.onCloseRequested(event => {
-      if (allowWindowClose.current || !snapshot?.document.dirty) return
+
+    void appWindow.onCloseRequested(async event => {
+      if (allowWindowClose.current) return
+
+      // Always hold the native close until we know both React-local drafts and the
+      // backend document are clean. This also covers Section-name edits performed by
+      // bootstrap.ts, which can make the backend dirty before React receives a snapshot.
       event.preventDefault()
-      setShowClosePrompt(true)
-    }).then(fn => { unlisten = fn })
-    return () => unlisten?.()
-  }, [snapshot?.document.dirty])
+      let dirty = unsavedChangesRef.current
+      try {
+        dirty = dirty || (await workspaceApi.snapshot()).document.dirty
+      } catch (error) {
+        console.warn('Unable to verify backend dirty state during close', error)
+      }
+
+      if (dirty) {
+        setShowClosePrompt(true)
+        return
+      }
+
+      allowWindowClose.current = true
+      await appWindow.destroy()
+    }).then(fn => {
+      if (disposed) fn()
+      else unlisten = fn
+    }).catch(error => {
+      if (disposed) return
+      console.error('Unable to register window close guard', error)
+      setStatus(`关闭保护初始化失败：${String(error)}`)
+    })
+
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [])
 
   function referenceRows(option: SectionOption) {
     const category = referenceCategoryForOption(option)
@@ -647,6 +684,7 @@ function App() {
 
   async function setValue(option: SectionOption, value: string) {
     if (!snapshot || option.line_id <= 0 || option.disabled) return
+    unsavedChangesRef.current = true
     setSelectedOptionId(option.line_id)
     setObservedValues(current => mergeObservedValue(current, option, value))
     setSectionData(current => {
@@ -796,7 +834,7 @@ function App() {
       <nav className="toolbar">
         <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={18}/></IconButton>
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
-        <IconButton title="保存" disabled={!snapshot} dirty={Boolean(snapshot?.document.dirty)} onClick={() => void saveRules()}><Save size={18}/></IconButton>
+        <IconButton title="保存" disabled={!snapshot} dirty={hasUnsavedChanges} onClick={() => void saveRules()}><Save size={18}/></IconButton>
         <span className="divider"/>
         <IconButton title="启动游戏" disabled={busy} onClick={() => void launchGame()}><Gamepad2 size={18}/></IconButton>
         <IconButton title="设置" onClick={() => setShowSettings(true)}><Settings size={18}/></IconButton>
@@ -914,9 +952,9 @@ function App() {
       </div>
     </Dialog>
 
-    <Dialog open={showClosePrompt} title="保存修改" icon={<Save size={18}/>} onClose={() => setShowClosePrompt(false)}>
+    <AppDialog open={showClosePrompt} title="保存修改" icon={<Save size={18}/>} onClose={() => setShowClosePrompt(false)}>
       <div className="closePrompt"><p>当前文件还有未保存修改。关闭前是否保存？</p><div className="closePromptActions"><Button onClick={() => void saveAndClose()}>保存并退出</Button><Button className="quietDanger" onClick={() => void closeWithoutSaving()}>不保存</Button><Button className="quietButton" onClick={() => setShowClosePrompt(false)}>取消</Button></div></div>
-    </Dialog>
+    </AppDialog>
   </div>
 }
 
