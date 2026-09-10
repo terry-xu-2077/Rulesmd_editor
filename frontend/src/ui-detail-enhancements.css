@@ -9,6 +9,9 @@
   display: none !important;
 }
 
+.app .entityHeaderHost,
+.app .entityHeaderHost > header,
+.app .entityHeaderHost > header > div:nth-child(3),
 .app .entityHeaderHost .tc-entity-title,
 .app .entityHeaderHost .tc-entity-title strong,
 .app .entityHeaderHost .sectionNameEditable {
