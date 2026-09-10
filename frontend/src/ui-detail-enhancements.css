@@ -1,46 +1,4 @@
-/* Detail-level fixes that must load after the main workspace styles. */
-
-/* Unit display-name editing: no pencil affordance, and never clip the live editor. */
-.app .entityHeaderHost .sectionNameEditable::before,
-.app .entityHeaderHost .sectionNameEditable::after,
-.app .entityHeaderHost .sectionNameEditable ~ button,
-.app .entityHeaderHost .sectionNameEditable ~ svg {
-  content: none !important;
-  display: none !important;
-}
-
-.app .entityHeaderHost,
-.app .entityHeaderHost > header,
-.app .entityHeaderHost > header > div:nth-child(3),
-.app .entityHeaderHost .tc-entity-title,
-.app .entityHeaderHost .tc-entity-title strong,
-.app .entityHeaderHost .sectionNameEditable {
-  overflow: visible !important;
-}
-
-.app .entityHeaderHost .sectionNameEditable {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.app .entityHeaderHost .sectionNameEditable.sectionNameEditing {
-  position: relative;
-  z-index: 65;
-  width: clamp(150px, 22vw, 260px);
-  max-width: min(260px, calc(100vw - 520px));
-  margin: -4px -7px;
-  padding: 4px 7px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: visible !important;
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 52%, var(--theme-border));
-  border-radius: 6px;
-  background: var(--theme-surface-1);
-  color: var(--theme-text);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--theme-shadow) 48%, transparent);
-  outline: none;
-}
+/* App-owned detail enhancements. Shared .tc-* integration stays in ui-library-integration.css. */
 
 /* Ares labels belong in the card corner and must not alter card centering. */
 .objectWizardCards > button {
