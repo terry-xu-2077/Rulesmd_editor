@@ -1,0 +1,107 @@
+/* Detail-level fixes that must load after the main workspace styles. */
+
+/* Unit display-name editing: no pencil affordance, and never clip the live editor. */
+.app .entityHeaderHost .sectionNameEditable::before,
+.app .entityHeaderHost .sectionNameEditable::after,
+.app .entityHeaderHost .sectionNameEditable ~ button,
+.app .entityHeaderHost .sectionNameEditable ~ svg {
+  content: none !important;
+  display: none !important;
+}
+
+.app .entityHeaderHost .tc-entity-title,
+.app .entityHeaderHost .tc-entity-title strong,
+.app .entityHeaderHost .sectionNameEditable {
+  overflow: visible !important;
+}
+
+.app .entityHeaderHost .sectionNameEditable {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app .entityHeaderHost .sectionNameEditable.sectionNameEditing {
+  position: relative;
+  z-index: 65;
+  width: clamp(150px, 22vw, 260px);
+  max-width: min(260px, calc(100vw - 520px));
+  margin: -4px -7px;
+  padding: 4px 7px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: visible !important;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 52%, var(--theme-border));
+  border-radius: 6px;
+  background: var(--theme-surface-1);
+  color: var(--theme-text);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--theme-shadow) 48%, transparent);
+  outline: none;
+}
+
+/* Ares labels belong in the card corner and must not alter card centering. */
+.objectWizardCards > button {
+  position: relative;
+}
+
+.objectWizardCards > button > small {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+  padding: 3px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-surface-2));
+  color: color-mix(in srgb, var(--theme-text) 72%, var(--theme-accent));
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.objectWizardCards > button > small svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+
+/* RGB parameters keep the exact R,G,B field and gain a native visual picker. */
+.rulesControlHost.hasRgbColorPicker {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.rulesControlHost.hasRgbColorPicker > .rulesRgbPicker {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--theme-border-strong, var(--theme-border));
+  border-radius: 5px;
+  background: var(--theme-control-bg, var(--theme-surface-2));
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.rulesControlHost.hasRgbColorPicker > .rulesRgbPicker:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--theme-accent) 68%, var(--theme-text));
+  outline-offset: 1px;
+}
+
+.rulesControlHost.hasRgbColorPicker > .rulesRgbPicker::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.rulesControlHost.hasRgbColorPicker > .rulesRgbPicker::-webkit-color-swatch {
+  border: 0;
+  border-radius: 3px;
+}
+
+.rulesControlHost.hasRgbColorPicker > :not(.rulesRgbPicker) {
+  min-width: 0;
+}
