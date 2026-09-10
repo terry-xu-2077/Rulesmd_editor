@@ -25,12 +25,13 @@
 .entityHeaderHost .tc-entity-title span{font-size:10.5px}
 
 /* App-owned editable label behavior for the EntityHeader title slot. */
-.entityHeaderHost .tc-entity-title strong.sectionNameEditable{display:inline-block;position:relative;max-width:min(520px,42vw);padding:2px 26px 2px 5px;margin:-3px -5px;border:1px solid transparent;border-radius:5px;cursor:text;outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}
+.entityHeaderHost .tc-entity-title strong.sectionNameEditable{display:inline-block;position:relative;max-width:min(520px,42vw);padding:2px 5px;margin:-3px -5px;border:1px solid transparent;border-radius:5px;cursor:text;outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}
 .entityHeaderHost .tc-entity-title strong.sectionNameEditable:hover{border-color:color-mix(in srgb,var(--theme-accent) 28%,transparent);background:color-mix(in srgb,var(--theme-accent) 6%,transparent)}
-.entityHeaderHost .tc-entity-title strong.sectionNameEditable::after{content:"✎";position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:500;line-height:1;color:color-mix(in srgb,var(--theme-text) 50%,transparent);opacity:.38;transition:opacity .12s ease;pointer-events:none}
-.entityHeaderHost .tc-entity-title strong.sectionNameEditable:hover::after{opacity:.9}
+.entityHeaderHost .tc-entity-title strong.sectionNameEditable::after{content:none;display:none}
 .entityHeaderHost .tc-entity-title strong.sectionNameEditable.editing{min-width:120px;max-width:min(620px,50vw);overflow:visible;text-overflow:clip;border-color:color-mix(in srgb,var(--theme-accent) 68%,var(--theme-border));background:var(--theme-surface-soft);box-shadow:0 0 0 2px color-mix(in srgb,var(--theme-accent) 11%,transparent);cursor:text}
-.entityHeaderHost .tc-entity-title strong.sectionNameEditable.editing::after{display:none}
+.entityHeaderHost:has(.sectionNameEditable.editing),
+.entityHeaderHost:has(.sectionNameEditable.editing) .tc-entity-header,
+.entityHeaderHost:has(.sectionNameEditable.editing) .tc-entity-title{overflow:visible}
 
 .entityHeaderActions{
   position:absolute;
