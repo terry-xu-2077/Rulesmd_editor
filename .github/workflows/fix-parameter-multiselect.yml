@@ -1,0 +1,31 @@
+name: Fix parameter multi-select implementation
+
+on:
+  push:
+    branches: [parameter-multiselect-menu]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: parameter-multiselect-menu
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python tools/fix_parameter_multiselect_newline.py
+      - name: Commit fix and remove temporary files
+        shell: bash
+        run: |
+          rm tools/fix_parameter_multiselect_newline.py
+          rm .github/workflows/fix-parameter-multiselect.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix parameter clipboard newline serialization"
+          git push origin HEAD:parameter-multiselect-menu
