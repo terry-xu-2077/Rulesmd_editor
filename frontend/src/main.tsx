@@ -845,8 +845,7 @@ function App() {
       disabled: Boolean(option.disabled),
     }))
     setParameterClipboard({ sourceSection: sectionData.section, items })
-    const plainText = items.map(item => `${item.disabled ? ';@rulesmd-disabled ' : ''}${item.key}=${item.value}${item.suffix}`).join('
-')
+    const plainText = items.map(item => `${item.disabled ? ';@rulesmd-disabled ' : ''}${item.key}=${item.value}${item.suffix}`).join('\n')
     void navigator.clipboard?.writeText(plainText).catch(() => undefined)
     setStatus(`已复制 ${items.length} 个参数，可切换到其他单位后右键粘贴`)
   }
