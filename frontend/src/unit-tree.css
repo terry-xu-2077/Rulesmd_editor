@@ -1,7 +1,8 @@
+:root{--unit-icon-width:28px;--unit-icon-height:22px;--unit-icon-compact-width:24px;--unit-icon-compact-height:19px}
 .sidebar{grid-template-rows:auto auto minmax(0,1fr) auto}
 .sidebar>.typeTabs{display:none}
 .sidebar .treeList{padding:0;overflow:hidden!important}
-.unitHierarchy{--unit-icon-width:28px;--unit-icon-height:22px;--unit-icon-compact-width:24px;--unit-icon-compact-height:19px;height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:6px 6px 0}
+.unitHierarchy{height:100%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:6px 6px 0}
 .unitGlobalBlock{padding:0 0 7px;margin-bottom:1px}
 .unitGlobalRule{width:100%;min-height:43px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--theme-effect) 28%,var(--theme-border));border-radius:7px;display:flex;align-items:center;gap:8px;text-align:left;color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base));background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 18%,var(--theme-surface-1)),var(--theme-surface-1));cursor:pointer;box-shadow:none}
 .unitGlobalRule:hover{color:var(--theme-text);border-color:color-mix(in srgb,var(--theme-accent) 48%,var(--theme-border));background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 24%,var(--theme-surface-hover)),var(--theme-surface-hover))}
