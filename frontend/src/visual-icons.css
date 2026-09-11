@@ -86,10 +86,10 @@
   align-items:center;
   justify-content:center;
   overflow:hidden;
-  border:1px solid color-mix(in srgb,#fff 34%,transparent);
+  border:1px solid color-mix(in srgb,var(--theme-text-bright) 34%,transparent);
   border-radius:6px;
   background:color-mix(in srgb,var(--theme-surface-strong) 76%,transparent);
-  color:#fff;
+  color:var(--theme-text-bright);
   box-shadow:0 2px 5px color-mix(in srgb,var(--theme-shadow) 76%,transparent);
   font:700 10px/1 "Cascadia Code",Consolas,sans-serif;
   white-space:nowrap;
