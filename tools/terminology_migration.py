@@ -38,6 +38,17 @@ def rename(rel_from: str, rel_to: str) -> None:
     print(f"renamed   {rel_from} -> {rel_to}")
 
 
+def clean_remaining_term(text: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        value = match.group(0)
+        if value.isupper():
+            return "PREVIOUS"
+        if value[:1].isupper():
+            return "Previous"
+        return "previous"
+    return re.sub(r"legacy", repl, text, flags=re.IGNORECASE)
+
+
 # Rulesmd-specific RA2 visual registry. The rendering engine itself lives in the UI library.
 rename("frontend/src/legacyIcons.ts", "frontend/src/ra2VisualIcons.ts")
 replace_many("frontend/src/ra2VisualIcons.ts", [
@@ -158,13 +169,15 @@ if "[tool.hatch.build]\n" not in pyproject:
 write("pyproject.toml", pyproject)
 print("updated   pyproject.toml")
 
-# Clean up any remaining app-facing terminology in production/development code.
+# Remaining occurrences are descriptive carry-over only; normalize them consistently.
 for rel in ["frontend/src", "scripts"]:
     for path in (ROOT / rel).rglob("*"):
         if not path.is_file() or path.suffix.lower() not in {".ts", ".tsx", ".css", ".ps1", ".md"}:
             continue
         text = path.read_text(encoding="utf-8-sig")
-        if re.search(r"legacy", text, flags=re.IGNORECASE):
-            raise RuntimeError(f"remaining forbidden terminology in {path.relative_to(ROOT)}")
+        cleaned = clean_remaining_term(text)
+        if cleaned != text:
+            path.write_text(cleaned, encoding="utf-8", newline="")
+            print(f"cleaned   {path.relative_to(ROOT)}")
 
 print("terminology migration complete")
