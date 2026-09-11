@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, ArrowRight, Bomb, Box, Building2, ChevronDown, ChevronRight, Crosshair, Flag, Plane, Rocket, SlidersHorizontal, Sparkles, Truck, Users } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { SemanticIcon, SimpleIcon, type SemanticIconKind } from 'terry-react-ui-library'
 import { workspaceApi } from './backend'
 import { isLegacyGlobalSubsection } from './generalGroups'
 import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
@@ -48,19 +49,22 @@ function jumpReferenceCategory(key: string): string | null {
   return null
 }
 
-export function FallbackTypeIcon({ category, size = 15 }: { category: string; size?: number }) {
+function semanticKindForCategory(category: string): SemanticIconKind {
   const type = normalizedType(category)
-  const Icon = type === '步兵' ? Users
-    : type === '载具' ? Truck
-      : type === '飞机' ? Plane
-        : type === '建筑' ? Building2
-          : type === '超级武器' ? Sparkles
-            : type === '国家' ? Flag
-              : type === '武器' ? Crosshair
-                : type === '弹头' ? Bomb
-                  : type === '弹体' ? Rocket
-                    : Box
-  return <Icon size={size}/>
+  if (type === '步兵') return 'infantry'
+  if (type === '载具') return 'vehicle'
+  if (type === '飞机') return 'aircraft'
+  if (type === '建筑') return 'building'
+  if (type === '超级武器') return 'superweapon'
+  if (type === '国家') return 'flag'
+  if (type === '武器') return 'weapon'
+  if (type === '弹头') return 'warhead'
+  if (type === '弹体') return 'projectile'
+  return 'generic'
+}
+
+export function FallbackTypeIcon({ category, size = 15 }: { category: string; size?: number }) {
+  return <SemanticIcon kind={semanticKindForCategory(category)} size={size} surface={false}/>
 }
 
 export function UnitIcon({ unit, compact = false }: { unit: UnitTreeRow; compact?: boolean }) {
@@ -68,6 +72,7 @@ export function UnitIcon({ unit, compact = false }: { unit: UnitTreeRow; compact
   if (normalizedType(unit.category) === '国家') {
     const flag = countryIconStyle(unit.id, size)
     if (flag) return <span className={`unitTreeIcon ${compact ? 'compact' : ''}`} style={flag}/>
+    return <SimpleIcon text={unit.label || unit.id} kind="flag" className={`unitTreeCountryTextIcon ${compact ? 'compact' : ''}`}/>
   }
   if (hasLegacyIcon(unit.id)) return <span className={`unitTreeIcon ${compact ? 'compact' : ''}`} style={{ ...legacyIconStyle(unit.id, size) }}/>
   return <span className={`unitTreeIcon fallback semantic ${compact ? 'compact' : ''}`}><FallbackTypeIcon category={unit.category} size={compact ? 13 : 15}/></span>
@@ -317,7 +322,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
         const sideKey = `side:${group.side}`
         const sideOpen = isOpen(sideKey)
         return <section className="unitSideGroup" key={group.side}>
-          <button className={`unitTreeLevel sideLevel side-${group.side}`} onClick={() => toggle(sideKey, sideOpen)}>{sideOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<strong>{group.label}</strong><em>{group.types.reduce((count, item) => count + item.units.length, 0)}</em></button>
+          <button className={`unitTreeLevel sideLevel side-${group.side}`} onClick={() => toggle(sideKey, sideOpen)}>{sideOpen ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<SemanticIcon kind="flag" size={14} surface={false}/><strong>{group.label}</strong><em>{group.types.reduce((count, item) => count + item.units.length, 0)}</em></button>
           {sideOpen && <div className="unitSideChildren">{group.types.map(type => {
             const typeKey = `${sideKey}:${type.name}`
             const open = isOpen(typeKey)
@@ -332,7 +337,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
         const key = 'weapons'
         const open = isOpen(key)
         return <section className="unitSideGroup weaponRoot">
-          <button className="unitTreeLevel sideLevel weaponLevel" onClick={() => toggle(key, open)}>{open ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<Crosshair size={15}/><strong>武器类</strong><em>{weaponGroups.reduce((count, item) => count + item.units.length, 0)}</em></button>
+          <button className="unitTreeLevel sideLevel weaponLevel" onClick={() => toggle(key, open)}>{open ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<SemanticIcon kind="weapon" size={15} surface={false}/><strong>武器类</strong><em>{weaponGroups.reduce((count, item) => count + item.units.length, 0)}</em></button>
           {open && <div className="unitSideChildren">{weaponGroups.map(type => {
             const typeKey = `weapon:${type.name}`
             const typeOpen = isOpen(typeKey)
