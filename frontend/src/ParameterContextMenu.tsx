@@ -1,23 +1,38 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { Ban, CheckCircle2, RotateCcw, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle2, ClipboardPaste, Copy, RotateCcw, Trash2 } from 'lucide-react'
 import type { SectionOption } from './backend'
 
 export type ParameterContextMenuState = {
-  lineId: number
+  lineId: number | null
   x: number
   y: number
 }
 
 type Props = {
   state: ParameterContextMenuState | null
-  option: SectionOption | null
+  options: SectionOption[]
+  section: string
+  clipboardCount: number
   onClose: () => void
-  onToggleDisabled: (option: SectionOption) => void
-  onRestore: (option: SectionOption) => void
-  onDelete: (option: SectionOption) => void
+  onSetDisabled: (options: SectionOption[], disabled: boolean) => void
+  onRestore: (options: SectionOption[]) => void
+  onDelete: (options: SectionOption[]) => void
+  onCopy: (options: SectionOption[]) => void
+  onPaste: () => void
 }
 
-export function ParameterContextMenu({ state, option, onClose, onToggleDisabled, onRestore, onDelete }: Props) {
+export function ParameterContextMenu({
+  state,
+  options,
+  section,
+  clipboardCount,
+  onClose,
+  onSetDisabled,
+  onRestore,
+  onDelete,
+  onCopy,
+  onPaste,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,32 +56,50 @@ export function ParameterContextMenu({ state, option, onClose, onToggleDisabled,
 
   const position = useMemo(() => {
     if (!state) return { left: 0, top: 0 }
-    const width = 220
-    const height = 174
+    const width = 236
+    const estimatedItems = (options.length ? 4 : 0) + (clipboardCount ? 1 : 0)
+    const height = 62 + estimatedItems * 44 + 20
     return {
       left: Math.max(8, Math.min(state.x, window.innerWidth - width - 8)),
       top: Math.max(8, Math.min(state.y, window.innerHeight - height - 8)),
     }
-  }, [state])
+  }, [clipboardCount, options.length, state])
 
-  if (!state || !option) return null
-  const disabled = Boolean(option.disabled)
+  if (!state) return null
 
-  return <div ref={ref} className="parameterContextMenu" style={position} role="menu" aria-label={`${option.key} 参数操作`} onContextMenu={event => event.preventDefault()}>
+  const first = options[0]
+  const multi = options.length > 1
+  const allDisabled = options.length > 0 && options.every(option => Boolean(option.disabled))
+  const nextDisabled = !allDisabled
+
+  return <div ref={ref} className="parameterContextMenu" style={position} role="menu" aria-label={`${section || '当前 Section'} 参数操作`} onContextMenu={event => event.preventDefault()}>
     <div className="parameterContextTitle">
-      <strong>{option.label || option.key}</strong>
-      <code>{option.key}</code>
+      <strong>{multi ? `已选择 ${options.length} 个参数` : first ? (first.label || first.key) : '参数操作'}</strong>
+      <code>{multi ? `${first?.key ?? ''} 等 ${options.length} 项` : first?.key ?? `[${section}]`}</code>
     </div>
-    <button type="button" role="menuitem" onClick={() => { onToggleDisabled(option); onClose() }}>
-      {disabled ? <CheckCircle2 size={15}/> : <Ban size={15}/>}<span>{disabled ? '启用参数' : '停用参数'}</span>
-      <small>{disabled ? '恢复为活动参数' : '转为编辑器注释，便于调试与后续恢复'}</small>
-    </button>
-    <button type="button" role="menuitem" onClick={() => { onRestore(option); onClose() }}>
-      <RotateCcw size={15}/><span>还原参数</span><small>恢复到打开文件时的状态</small>
-    </button>
-    <div className="parameterContextSeparator"/>
-    <button type="button" role="menuitem" className="danger" onClick={() => { onDelete(option); onClose() }}>
-      <Trash2 size={15}/><span>删除参数…</span><small>从当前 Section 中移除</small>
-    </button>
+
+    {options.length > 0 && <>
+      <button type="button" role="menuitem" onClick={() => { onSetDisabled(options, nextDisabled); onClose() }}>
+        {allDisabled ? <CheckCircle2 size={15}/> : <Ban size={15}/>}<span>{allDisabled ? (multi ? '启用所选参数' : '启用参数') : (multi ? '停用所选参数' : '停用参数')}</span>
+        <small>{allDisabled ? '恢复为活动参数' : '转为编辑器注释，便于调试与后续恢复'}</small>
+      </button>
+      <button type="button" role="menuitem" onClick={() => { onRestore(options); onClose() }}>
+        <RotateCcw size={15}/><span>{multi ? '还原所选参数' : '还原参数'}</span><small>恢复到打开文件时的状态</small>
+      </button>
+      <button type="button" role="menuitem" onClick={() => { onCopy(options); onClose() }}>
+        <Copy size={15}/><span>{multi ? `复制 ${options.length} 个参数` : '复制参数'}</span><small>可切换到其他单位后粘贴</small>
+      </button>
+    </>}
+
+    {clipboardCount > 0 && <button type="button" role="menuitem" onClick={() => { onPaste(); onClose() }}>
+      <ClipboardPaste size={15}/><span>粘贴参数</span><small>{clipboardCount} 项；同名参数将覆盖当前值</small>
+    </button>}
+
+    {options.length > 0 && <>
+      <div className="parameterContextSeparator"/>
+      <button type="button" role="menuitem" className="danger" onClick={() => { onDelete(options); onClose() }}>
+        <Trash2 size={15}/><span>{multi ? `删除所选 ${options.length} 项…` : '删除参数…'}</span><small>从当前 Section 中移除</small>
+      </button>
+    </>}
   </div>
 }
