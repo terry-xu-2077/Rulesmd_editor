@@ -1,5 +1,5 @@
 /* Desktop parameter-row actions. This is application chrome, not shared-control CSS. */
-.parameterContextMenu{position:fixed;z-index:1000;width:220px;padding:6px;border:1px solid color-mix(in srgb,var(--theme-effect) 30%,var(--theme-border));border-radius:8px;background:color-mix(in srgb,var(--theme-surface-0) 98%,transparent);color:var(--theme-text);box-shadow:0 14px 34px var(--theme-shadow),inset 0 1px 0 color-mix(in srgb,var(--theme-text) 4%,transparent);backdrop-filter:blur(8px)}
+.parameterContextMenu{position:fixed;z-index:1000;width:236px;padding:6px;border:1px solid color-mix(in srgb,var(--theme-effect) 30%,var(--theme-border));border-radius:8px;background:color-mix(in srgb,var(--theme-surface-0) 98%,transparent);color:var(--theme-text);box-shadow:0 14px 34px var(--theme-shadow),inset 0 1px 0 color-mix(in srgb,var(--theme-text) 4%,transparent);backdrop-filter:blur(8px)}
 .parameterContextTitle{padding:6px 8px 7px;border-bottom:1px solid var(--theme-line);margin-bottom:4px;min-width:0}
 .parameterContextTitle strong,.parameterContextTitle code{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .parameterContextTitle strong{color:var(--theme-text);font-size:11.5px;font-weight:700}
@@ -14,3 +14,6 @@
 .parameterContextSeparator{height:1px;margin:4px 5px;background:var(--theme-line)}
 .parameterTableRow.disabled{opacity:.58}.parameterTableRow.disabled:hover{opacity:.74}.parameterTableRow.disabled .parameterValueCell{pointer-events:none}.parameterTableRow.disabled .parameterKeyCell code,.parameterTableRow.disabled .parameterLabelCell strong{color:color-mix(in srgb,var(--theme-text) 48%,var(--theme-base))!important}
 .disabledBadge{flex:0 0 auto;padding:1px 4px;border:1px solid var(--theme-border);border-radius:4px;color:color-mix(in srgb,var(--theme-text) 54%,var(--theme-base));background:var(--theme-surface-soft);font-size:8px;font-weight:700;letter-spacing:.25px}
+
+.parameterTableRow.selected{background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 17%,var(--theme-surface-1)),color-mix(in srgb,var(--theme-effect) 8%,var(--theme-surface-1)))!important;box-shadow:inset 3px 0 0 color-mix(in srgb,var(--theme-effect) 74%,transparent)!important}
+.parameterTableRow.selected.focused{background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 26%,var(--theme-surface-1)),color-mix(in srgb,var(--theme-effect) 13%,var(--theme-surface-1)) 58%,var(--theme-accent-soft))!important;box-shadow:inset 4px 0 0 var(--theme-effect),0 4px 13px var(--theme-shadow)!important}

@@ -64,3 +64,32 @@ def test_disabled_parameter_survives_save_and_reopen_and_can_be_deleted(tmp_path
     deleted = reopened.rpc_remove_line(disabled["line_id"])
     assert deleted["section"]["options"] == []
     assert deleted["dirty"] is True
+
+
+
+def test_paste_options_adds_overwrites_and_preserves_disabled_state(tmp_path):
+    path = tmp_path / "rulesmd.ini"
+    path.write_text(
+        "[Source]\nCost=100 ; copied\nSpeed=7\n[Target]\nCost=50 ; old\nName=Target\n",
+        encoding="utf-8",
+    )
+
+    bridge = Bridge()
+    bridge.rpc_open_file(str(path))
+    result = bridge.rpc_paste_options("Target", [
+        {"key": "Cost", "value": "100", "suffix": " ; copied", "disabled": False},
+        {"key": "Speed", "value": "7", "suffix": "", "disabled": True},
+    ])
+
+    assert result["added"] == 1
+    assert result["overwritten"] == 1
+    assert len(result["line_ids"]) == 2
+    rows = {row["key"]: row for row in result["section"]["options"]}
+    assert rows["Cost"]["value"] == "100"
+    assert rows["Cost"]["suffix"] == " ; copied"
+    assert rows["Speed"]["value"] == "7"
+    assert rows["Speed"]["disabled"] is True
+    raw = bridge.rpc_raw_text()
+    assert "Cost=100 ; copied" in raw
+    assert ";@rulesmd-disabled Speed=7" in raw
+    assert result["dirty"] is True

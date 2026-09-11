@@ -55,6 +55,8 @@ type NavigationState = { items: SectionRow[]; index: number }
 type EditorViewMode = 'table' | 'raw'
 type ReferenceKind = 'generic' | 'weapon' | 'audio' | 'warhead' | 'projectile' | 'debris'
 type ObservedValueIndex = { byKey: Record<string, string[]>; audio: string[] }
+type CopiedParameter = { key: string; value: string; suffix: string; disabled: boolean }
+type ParameterClipboard = { sourceSection: string; items: CopiedParameter[] }
 type LocalEditorSettings = {
   gamePath: string
   appearance: 'dark' | 'light' | 'system'
@@ -320,6 +322,8 @@ function App() {
   const [selected, setSelected] = useState<SectionRow | null>(null)
   const [sectionData, setSectionData] = useState<SectionData>(EMPTY_SECTION)
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null)
+  const [selectedOptionIds, setSelectedOptionIds] = useState<Set<number>>(() => new Set())
+  const [selectionAnchorId, setSelectionAnchorId] = useState<number | null>(null)
   const [unitSearch, setUnitSearch] = useState('')
   const [fieldSearch, setFieldSearch] = useState('')
   const [activeGroup, setActiveGroup] = useState('全部')
@@ -335,7 +339,8 @@ function App() {
   const [navigation, setNavigation] = useState<NavigationState>({ items: [], index: -1 })
   const [viewMode, setViewMode] = useState<EditorViewMode>('table')
   const [parameterMenu, setParameterMenu] = useState<ParameterContextMenuState | null>(null)
-  const [pendingDeleteLineId, setPendingDeleteLineId] = useState<number | null>(null)
+  const [parameterClipboard, setParameterClipboard] = useState<ParameterClipboard | null>(null)
+  const [pendingDeleteLineIds, setPendingDeleteLineIds] = useState<number[]>([])
   const [leftPane, setLeftPane] = useState(() => storedPaneWidth('rulesmd.leftPane', 230))
   const [rightPane, setRightPane] = useState(() => storedPaneWidth('rulesmd.rightPane', 390))
   const [localSettings, setLocalSettings] = useState<LocalEditorSettings>(() => ({
@@ -387,9 +392,19 @@ function App() {
       return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi)
     })
   }, [groups, sectionData.section, visibleFields])
+  const selectableOptions = useMemo(() => groupedFields.flatMap(([group, list]) =>
+    activeGroup !== '全部' || !collapsed[group] ? list : []
+  ), [activeGroup, collapsed, groupedFields])
   const selectedOption = sectionData.options.find(option => option.line_id === selectedOptionId) ?? sectionData.options[0]
-  const contextOption = parameterMenu ? sectionData.options.find(option => option.line_id === parameterMenu.lineId) ?? null : null
-  const pendingDeleteOption = pendingDeleteLineId == null ? null : sectionData.options.find(option => option.line_id === pendingDeleteLineId) ?? null
+  const selectedOptions = sectionData.options.filter(option => selectedOptionIds.has(option.line_id))
+  const contextOption = parameterMenu?.lineId != null ? sectionData.options.find(option => option.line_id === parameterMenu.lineId) ?? null : null
+  const contextOptions = parameterMenu
+    ? (contextOption && selectedOptionIds.has(contextOption.line_id) ? selectedOptions : contextOption ? [contextOption] : [])
+    : []
+  const pendingDeleteOptions = pendingDeleteLineIds
+    .map(lineId => sectionData.options.find(option => option.line_id === lineId) ?? null)
+    .filter((option): option is SectionOption => option !== null)
+  const pendingDeleteOption = pendingDeleteOptions[0] ?? null
   const previousSection = navigation.index > 0 ? navigation.items[navigation.index - 1] : null
   const nextSection = navigation.index >= 0 && navigation.index < navigation.items.length - 1 ? navigation.items[navigation.index + 1] : null
   const headerSectionReady = Boolean(selected && sectionData.section && sectionData.section.toLowerCase() === selected.id.toLowerCase())
@@ -501,6 +516,59 @@ function App() {
     }
   }
 
+  function setSingleParameterSelection(lineId: number | null) {
+    setSelectedOptionId(lineId)
+    setSelectedOptionIds(lineId == null ? new Set() : new Set([lineId]))
+    setSelectionAnchorId(lineId)
+  }
+
+  function selectParameterRow(event: React.MouseEvent, option: SectionOption) {
+    const lineId = option.line_id
+    setSelectedOptionId(lineId)
+
+    if (event.shiftKey && selectionAnchorId != null) {
+      const anchorIndex = selectableOptions.findIndex(item => item.line_id === selectionAnchorId)
+      const currentIndex = selectableOptions.findIndex(item => item.line_id === lineId)
+      if (anchorIndex >= 0 && currentIndex >= 0) {
+        const start = Math.min(anchorIndex, currentIndex)
+        const end = Math.max(anchorIndex, currentIndex)
+        const range = selectableOptions.slice(start, end + 1).map(item => item.line_id)
+        setSelectedOptionIds(current => (event.ctrlKey || event.metaKey) ? new Set([...current, ...range]) : new Set(range))
+        return
+      }
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      setSelectedOptionIds(current => {
+        const next = new Set(current)
+        if (next.has(lineId)) next.delete(lineId)
+        else next.add(lineId)
+        return next
+      })
+      setSelectionAnchorId(lineId)
+      return
+    }
+
+    setSingleParameterSelection(lineId)
+  }
+
+  function openParameterRowMenu(event: React.MouseEvent, option: SectionOption) {
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedOptionId(option.line_id)
+    if (!selectedOptionIds.has(option.line_id)) {
+      setSelectedOptionIds(new Set([option.line_id]))
+      setSelectionAnchorId(option.line_id)
+    }
+    setParameterMenu({ lineId: option.line_id, x: event.clientX, y: event.clientY })
+  }
+
+  function openParameterPaneMenu(event: React.MouseEvent) {
+    if ((event.target as HTMLElement).closest('.parameterTableRow')) return
+    event.preventDefault()
+    setParameterMenu({ lineId: null, x: event.clientX, y: event.clientY })
+  }
+
   async function loadSection(row: SectionRow) {
     const requestId = ++sectionRequest.current
     setSelected(row)
@@ -510,7 +578,7 @@ function App() {
     if (cached) {
       setSectionData(cached)
       setRawDraft(cached.raw)
-      setSelectedOptionId(cached.options[0]?.line_id ?? null)
+      setSingleParameterSelection(cached.options[0]?.line_id ?? null)
       setStatus(`已载入 [${row.id}] · ${cached.options.length} 个参数`)
       return
     }
@@ -520,7 +588,7 @@ function App() {
       sectionCache.current.set(row.id, data)
       setSectionData(data)
       setRawDraft(data.raw)
-      setSelectedOptionId(data.options[0]?.line_id ?? null)
+      setSingleParameterSelection(data.options[0]?.line_id ?? null)
       setStatus(`已载入 [${row.id}] · ${data.options.length} 个参数`)
     } catch (error) {
       if (requestId === sectionRequest.current) setStatus(`读取 Section 失败：${String(error)}`)
@@ -611,12 +679,13 @@ function App() {
     setFieldSearch('')
     setActiveGroup('全部')
     setParameterMenu(null)
-    setPendingDeleteLineId(null)
+    setParameterClipboard(null)
+    setPendingDeleteLineIds([])
     setNavigation({ items: [], index: -1 })
     setSelected(null)
     setSectionData(EMPTY_SECTION)
     setRawDraft('')
-    setSelectedOptionId(null)
+    setSingleParameterSelection(null)
     setDocumentEpoch(value => value + 1)
     await refreshObservedValues()
     setStatus(message)
@@ -728,39 +797,83 @@ function App() {
       if (current != null && result.section.options.some(option => option.line_id === current)) return current
       return result.section.options[0]?.line_id ?? null
     })
+    setSelectedOptionIds(current => {
+      const valid = new Set(result.section.options.map(option => option.line_id))
+      return new Set([...current].filter(lineId => valid.has(lineId)))
+    })
+    setSelectionAnchorId(current => current != null && result.section.options.some(option => option.line_id === current) ? current : null)
     const next = await workspaceApi.snapshot()
     setSnapshot(next)
     await refreshObservedValues()
   }
 
-  async function toggleParameterDisabled(option: SectionOption) {
+  async function setParametersDisabled(options: SectionOption[], disabled: boolean) {
+    if (!options.length) return
     try {
-      const result = await workspaceApi.setLineDisabled(option.line_id, !option.disabled)
-      await applyLineActionResult(result, option.line_id)
-      setStatus(`${option.disabled ? '已启用' : '已禁用'} ${sectionData.section}.${option.key}`)
+      let result: LineActionResult | null = null
+      for (const option of options) {
+        if (Boolean(option.disabled) === disabled) continue
+        result = await workspaceApi.setLineDisabled(option.line_id, disabled)
+      }
+      if (result) await applyLineActionResult(result, options[0]?.line_id ?? null)
+      setStatus(`${disabled ? '已禁用' : '已启用'} ${options.length} 个参数`)
     } catch (error) {
       setStatus(`参数状态修改失败：${String(error)}`)
     }
   }
 
-  async function restoreParameter(option: SectionOption) {
+  async function restoreParameters(options: SectionOption[]) {
+    if (!options.length) return
     try {
-      const result = await workspaceApi.restoreLine(option.line_id)
-      await applyLineActionResult(result, option.line_id)
-      setStatus(`已还原 ${sectionData.section}.${option.key} 到打开文件时的状态`)
+      let result: LineActionResult | null = null
+      for (const option of options) result = await workspaceApi.restoreLine(option.line_id)
+      if (result) await applyLineActionResult(result, null)
+      setStatus(`已还原 ${options.length} 个参数到打开文件时的状态`)
     } catch (error) {
       setStatus(`还原参数失败：${String(error)}`)
     }
   }
 
-  async function deletePendingParameter() {
-    const option = pendingDeleteOption
-    if (!option) return
+  function copyParameters(options: SectionOption[]) {
+    if (!options.length) return
+    const ids = new Set(options.map(option => option.line_id))
+    const ordered = sectionData.options.filter(option => ids.has(option.line_id))
+    const items = ordered.map(option => ({
+      key: option.key,
+      value: option.value,
+      suffix: option.suffix || '',
+      disabled: Boolean(option.disabled),
+    }))
+    setParameterClipboard({ sourceSection: sectionData.section, items })
+    const plainText = items.map(item => `${item.disabled ? ';@rulesmd-disabled ' : ''}${item.key}=${item.value}${item.suffix}`).join('
+')
+    void navigator.clipboard?.writeText(plainText).catch(() => undefined)
+    setStatus(`已复制 ${items.length} 个参数，可切换到其他单位后右键粘贴`)
+  }
+
+  async function pasteParameters() {
+    if (!selected || !parameterClipboard?.items.length) return
     try {
-      const result = await workspaceApi.removeLine(option.line_id)
-      setPendingDeleteLineId(null)
-      await applyLineActionResult(result, null)
-      setStatus(`已删除 ${sectionData.section}.${option.key}`)
+      const result = await workspaceApi.pasteOptions(selected.id, parameterClipboard.items)
+      await applyLineActionResult(result, result.line_ids[0] ?? null)
+      setSelectedOptionIds(new Set(result.line_ids))
+      setSelectionAnchorId(result.line_ids[0] ?? null)
+      if (result.line_ids[0] != null) setSelectedOptionId(result.line_ids[0])
+      setStatus(`已从 [${parameterClipboard.sourceSection}] 粘贴 ${result.line_ids.length} 个参数：新增 ${result.added}，覆盖 ${result.overwritten}`)
+    } catch (error) {
+      setStatus(`粘贴参数失败：${String(error)}`)
+    }
+  }
+
+  async function deletePendingParameters() {
+    if (!pendingDeleteLineIds.length) return
+    try {
+      let result: LineActionResult | null = null
+      for (const lineId of pendingDeleteLineIds) result = await workspaceApi.removeLine(lineId)
+      const count = pendingDeleteLineIds.length
+      setPendingDeleteLineIds([])
+      if (result) await applyLineActionResult(result, null)
+      setStatus(`已删除 ${count} 个参数`)
     } catch (error) {
       setStatus(`删除参数失败：${String(error)}`)
     }
@@ -785,7 +898,7 @@ function App() {
       setSectionData(data)
       setRawDraft(data.raw)
       const added = [...data.options].reverse().find(item => item.key === option.key)
-      setSelectedOptionId(added?.line_id ?? data.options[0]?.line_id ?? null)
+      setSingleParameterSelection(added?.line_id ?? data.options[0]?.line_id ?? null)
       const next = await workspaceApi.snapshot()
       setSnapshot(next)
       await refreshObservedValues()
@@ -810,7 +923,7 @@ function App() {
       sectionCache.current.set(row.id, result.section)
       setSectionData(result.section)
       setRawDraft(result.section.raw)
-      setSelectedOptionId(result.section.options[0]?.line_id ?? null)
+      setSingleParameterSelection(result.section.options[0]?.line_id ?? null)
       setActiveGroup('全部')
     }
     await refreshObservedValues()
@@ -869,7 +982,7 @@ function App() {
             <div className="editorFilterSelect"><Select value={activeGroup} options={groups.map(group => ({ value: group, label: group }))} onChange={setActiveGroup}/></div>
             <Button variant="accent" onClick={() => void openOptionPicker()}><ListPlus size={16}/> 参数</Button>
           </section>
-          {viewMode === 'table' ? <section className="fieldsPane parameterTablePane" onContextMenu={event => { if (!(event.target as HTMLElement).closest('.parameterTableRow')) event.preventDefault() }}>
+          {viewMode === 'table' ? <section className="fieldsPane parameterTablePane" onContextMenu={openParameterPaneMenu}>
             <div className="parameterTableHeader"><span>Key</span><span>参数名</span><span>值</span></div>
             {groupedFields.length === 0 && (activeGroup !== '全部' || countryExclusiveRows.length === 0) && <div className="emptyPane"><strong>当前 Section 没有可显示参数</strong><span>可点击“参数”添加参数。</span></div>}
             {groupedFields.map(([group, list]) => <div className="fieldGroup parameterTableGroup" key={group}>
@@ -879,18 +992,14 @@ function App() {
                   ? true
                   : option.value !== option.raw_value || Boolean(option.disabled) !== Boolean(option.raw_disabled)
                 const focused = selectedOption?.line_id === option.line_id
+                const selectedRow = selectedOptionIds.has(option.line_id)
                 const target = referenceTarget(option)
                 const candidates = referenceRows(option)
                 return <div
-                  className={`parameterTableRow ${focused ? 'focused' : ''} ${changed ? 'changed' : ''} ${option.disabled ? 'disabled' : ''}`}
+                  className={`parameterTableRow ${selectedRow ? 'selected' : ''} ${focused ? 'focused' : ''} ${changed ? 'changed' : ''} ${option.disabled ? 'disabled' : ''}`}
                   key={option.line_id}
-                  onClick={() => setSelectedOptionId(option.line_id)}
-                  onContextMenu={event => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    setSelectedOptionId(option.line_id)
-                    setParameterMenu({ lineId: option.line_id, x: event.clientX, y: event.clientY })
-                  }}
+                  onClick={event => selectParameterRow(event, option)}
+                  onContextMenu={event => openParameterRowMenu(event, option)}
                 >
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge"><Sparkles size={10}/>ARES</span>}{option.disabled && <span className="disabledBadge">禁用</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
@@ -930,18 +1039,22 @@ function App() {
 
     <ParameterContextMenu
       state={parameterMenu}
-      option={contextOption}
+      options={contextOptions}
+      section={sectionData.section}
+      clipboardCount={parameterClipboard?.items.length ?? 0}
       onClose={() => setParameterMenu(null)}
-      onToggleDisabled={option => void toggleParameterDisabled(option)}
-      onRestore={option => void restoreParameter(option)}
-      onDelete={option => setPendingDeleteLineId(option.line_id)}
+      onSetDisabled={(options, disabled) => void setParametersDisabled(options, disabled)}
+      onRestore={options => void restoreParameters(options)}
+      onDelete={options => setPendingDeleteLineIds(options.map(option => option.line_id))}
+      onCopy={copyParameters}
+      onPaste={() => void pasteParameters()}
     />
 
     <AddUnitDialog open={showAddUnit} rows={rows} initialCategory={selected?.category} onClose={() => setShowAddUnit(false)} onCreated={unitCreated}/>
     <ParameterPicker open={showPicker} options={catalog} objectLabel={selected ? `${selected.label} [${selected.id}]` : ''} onClose={() => setShowPicker(false)} onAdd={addOption}/>
 
-    <Dialog open={Boolean(pendingDeleteOption)} title="删除参数" icon={<Trash2 size={18}/>} onClose={() => setPendingDeleteLineId(null)}>
-      <div className="closePrompt"><p>确定从 [{sectionData.section}] 删除参数 <strong>{pendingDeleteOption?.label || pendingDeleteOption?.key}</strong>（{pendingDeleteOption?.key}）吗？</p><div className="closePromptActions"><Button className="quietDanger" onClick={() => void deletePendingParameter()}>删除</Button><Button className="quietButton" onClick={() => setPendingDeleteLineId(null)}>取消</Button></div></div>
+    <Dialog open={pendingDeleteLineIds.length > 0} title="删除参数" icon={<Trash2 size={18}/>} onClose={() => setPendingDeleteLineIds([])}>
+      <div className="closePrompt"><p>{pendingDeleteOptions.length > 1 ? <>确定从 [{sectionData.section}] 删除所选 <strong>{pendingDeleteOptions.length}</strong> 个参数吗？</> : <>确定从 [{sectionData.section}] 删除参数 <strong>{pendingDeleteOption?.label || pendingDeleteOption?.key}</strong>（{pendingDeleteOption?.key}）吗？</>}</p><div className="closePromptActions"><Button className="quietDanger" onClick={() => void deletePendingParameters()}>删除</Button><Button className="quietButton" onClick={() => setPendingDeleteLineIds([])}>取消</Button></div></div>
     </Dialog>
 
     <Dialog open={showSettings} title="设置" icon={<Settings size={18}/>} onClose={() => setShowSettings(false)}>

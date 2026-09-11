@@ -74,6 +74,19 @@ export type LineActionResult = {
   dirty: boolean
 }
 
+export type CopiedParameterPayload = {
+  key: string
+  value: string
+  suffix?: string
+  disabled?: boolean
+}
+
+export type PasteOptionsResult = LineActionResult & {
+  added: number
+  overwritten: number
+  line_ids: number[]
+}
+
 export type CatalogOption = {
   key: string
   label: string
@@ -253,6 +266,10 @@ export const workspaceApi = {
   addOption: async (section: string, key: string, value?: string) => {
     await flushPendingValues()
     return call('add_option', { section, key, value })
+  },
+  pasteOptions: async (section: string, items: CopiedParameterPayload[]) => {
+    await flushPendingValues()
+    return call<PasteOptionsResult>('paste_options', { section, items })
   },
   createUnit: async (request: CreateUnitRequest) => {
     await flushPendingValues()

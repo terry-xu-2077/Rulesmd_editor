@@ -382,6 +382,77 @@ class Bridge:
     def rpc_add_option(self, section: str, key: str, value: str | None = None) -> dict:
         return self.workspace.add_option(section, key, value)
 
+    def rpc_paste_options(self, section: str, items: list[dict] | None = None) -> dict:
+        target = section.strip()
+        if not target:
+            raise ValueError("Section 不能为空")
+        if is_global_rule_section(target):
+            raise ValueError("全局规则暂不支持参数批量粘贴")
+
+        doc = self.workspace._doc()
+        actual = doc._section_name(target)
+        if actual is None:
+            raise KeyError(f"Unknown section: {section}")
+
+        states = {state.key.casefold(): state for state in section_option_states(doc, actual)}
+        added = 0
+        overwritten = 0
+        line_ids: list[int] = []
+
+        for payload in items or []:
+            key = str(payload.get("key") or "").strip()
+            if not key:
+                continue
+            value = str(payload.get("value") or "")
+            suffix = str(payload.get("suffix") or "")
+            disabled = bool(payload.get("disabled", False))
+            existing = states.get(key.casefold())
+
+            if existing is None:
+                line_id = doc.set(actual, key, value)
+                line = doc.line(line_id)
+                if line is None:
+                    raise KeyError(f"Unable to create parameter: {key}")
+                line.suffix = suffix
+                if disabled:
+                    set_line_disabled(doc, line_id, True)
+                added += 1
+            else:
+                line_id = existing.line_id
+                apply_option_state(doc, line_id, OptionLineState(
+                    line_id=line_id,
+                    section=actual,
+                    key=key,
+                    value=value,
+                    prefix=existing.prefix,
+                    separator=existing.separator,
+                    suffix=suffix,
+                    disabled=disabled,
+                ))
+                overwritten += 1
+
+            line_ids.append(line_id)
+            refreshed = option_line_state(doc.line(line_id)) if doc.line(line_id) is not None else None
+            if refreshed is not None:
+                states[key.casefold()] = refreshed
+
+        self.workspace._changed_value_ids = {
+            line.line_id
+            for line in doc.lines
+            if line.kind == "key"
+            and line.line_id in self.workspace._original_values
+            and (line.value or "") != self.workspace._original_values[line.line_id]
+        }
+        self.workspace._rebuild_indexes()
+        self._sync_structural_dirty()
+        result = self._line_action_result(actual)
+        result.update({
+            "added": added,
+            "overwritten": overwritten,
+            "line_ids": line_ids,
+        })
+        return result
+
     def rpc_create_unit(
         self,
         template: str,
