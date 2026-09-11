@@ -4,7 +4,7 @@ on:
   push:
     branches: [terminology-migration-stage]
     paths:
-      - tools/terminology_migration.py
+      - tools/post_migration_fix.py
 
 permissions:
   contents: write
@@ -20,23 +20,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Apply terminology migration
-        run: python tools/terminology_migration.py
+      - name: Apply post-migration fixes
+        run: python tools/post_migration_fix.py
       - name: Verify terminology boundary
         shell: bash
         run: |
           if git grep -niE 'legacy' -- frontend/src scripts tools/build_rule_resources.py tools/import_source_resources.py; then
-            echo 'Forbidden legacy terminology remains in production/development code.' >&2
+            echo 'Forbidden terminology remains in production/development code.' >&2
             exit 1
           fi
           test ! -e frontend/src/legacyIcons.ts
           test -e frontend/src/ra2VisualIcons.ts
-      - name: Commit migration
+          test ! -e tools/import_legacy_resources.py
+          test -e tools/import_source_resources.py
+      - name: Commit fixes
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m 'Remove legacy terminology and source INIs from package'
+          git commit -m 'Fix post-migration references'
           git push origin HEAD:terminology-migration-stage
