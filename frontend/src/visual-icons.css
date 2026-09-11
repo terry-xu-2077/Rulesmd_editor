@@ -1,0 +1,102 @@
+/* Unified visual icon system: tile sprites, Lucide semantic icons and text-card fallbacks. */
+
+.rulesGeneratedOpenIcon{
+  width:28px;
+  height:24px;
+  display:inline-grid;
+  place-items:center;
+  border-radius:5px;
+  flex:none;
+  color:var(--theme-effect);
+  background:linear-gradient(145deg,var(--theme-surface-strong),var(--theme-surface-2));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--theme-effect) 18%,var(--theme-border));
+}
+.rulesGeneratedOpenIcon>svg{display:block;transform:none!important}
+.rulesGeneratedOpenIcon.rulesSimpleIconElement{width:15px;height:15px;border-radius:3px;background:transparent;box-shadow:none}
+
+.rulesGeneratedSimpleIcon{
+  min-width:30px;
+  max-width:64px;
+  height:24px;
+  padding:0 6px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--theme-text) 15%,var(--theme-border));
+  border-radius:6px;
+  background:linear-gradient(145deg,var(--theme-surface-strong),var(--theme-surface-2));
+  color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base));
+  font:650 9px/1 "Cascadia Code",Consolas,sans-serif;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.rulesGeneratedSimpleIcon>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Top-level faction groups use one consistent flag marker, just like the weapon root has a crosshair. */
+.unitTreeLevel.sideLevel:not(.weaponLevel)::before{
+  content:"⚑";
+  order:1;
+  width:16px;
+  height:16px;
+  flex:0 0 16px;
+  display:grid;
+  place-items:center;
+  color:var(--theme-effect);
+  font-size:14px;
+  line-height:1;
+}
+.unitTreeLevel.sideLevel:not(.weaponLevel)>svg:first-child{order:0}
+.unitTreeLevel.sideLevel:not(.weaponLevel)>strong{order:2}
+.unitTreeLevel.sideLevel:not(.weaponLevel)>em{order:3}
+
+/* Country sections without a tile flag become a compact rounded name card instead of a generic flag glyph. */
+.unitTreeLeaf[data-country-fallback-label]>.unitTreeIconWrap{display:none!important}
+.unitTreeLeaf[data-country-fallback-label]::before{
+  content:attr(data-country-fallback-label);
+  min-width:30px;
+  max-width:58px;
+  height:22px;
+  padding:0 5px;
+  box-sizing:border-box;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--theme-text) 16%,var(--theme-border));
+  border-radius:5px;
+  background:linear-gradient(145deg,var(--theme-surface-strong),var(--theme-surface-2));
+  color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base));
+  font:650 9px/1 "Cascadia Code",Consolas,sans-serif;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.headerUnitComposite[data-country-fallback-label]>.unitTreeIconWrap{display:none!important}
+.headerUnitComposite[data-country-fallback-label]::before{
+  content:attr(data-country-fallback-label);
+  min-width:38px;
+  max-width:62px;
+  height:28px;
+  padding:0 6px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,#fff 34%,transparent);
+  border-radius:6px;
+  background:color-mix(in srgb,var(--theme-surface-strong) 76%,transparent);
+  color:#fff;
+  box-shadow:0 2px 5px color-mix(in srgb,var(--theme-shadow) 76%,transparent);
+  font:700 10px/1 "Cascadia Code",Consolas,sans-serif;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+/* Ares object cards all use the same short badge label. */
+.objectWizardCards>button>small{font-size:0!important}
+.objectWizardCards>button>small::after{content:"Ares";font-size:9.5px;line-height:1}
+.objectWizardCards>button>small>svg{transform:none!important}
