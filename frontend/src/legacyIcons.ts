@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { createElement, type CSSProperties, type ReactNode } from 'react'
 import {
   createOpenIcon,
   createSimpleIcon,
@@ -111,10 +111,10 @@ export function semanticOpenIconKind(value: string): SemanticIconKind | undefine
 export function resolveVisualIcon(value: string, options: VisualIconResolverOptions = {}): ReactNode | undefined {
   const size = options.size ?? 32
   const country = countryIconStyle(value, size)
-  if (country) return <span className="rulesCountryOptionIcon" style={country}/>
+  if (country) return createElement('span', { className: 'rulesCountryOptionIcon', style: country })
 
   const unit = legacyIconStyle(value, size)
-  if (unit) return <span className="rulesUnitOptionIcon" style={unit}/>
+  if (unit) return createElement('span', { className: 'rulesUnitOptionIcon', style: unit })
 
   const semantic = semanticOpenIconKind(value)
   if (semantic) return createOpenIcon(semantic, Math.max(14, Math.round(size * .48)))
