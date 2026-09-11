@@ -1,0 +1,35 @@
+name: Apply menu icon fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/apply_menu_icon_fallback_fix.py
+      - .github/workflows/apply-menu-icon-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Patch category-aware option icons
+        run: python tools/apply_menu_icon_fallback_fix.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/main.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'Use category icons for units without artwork'
+          git push origin HEAD:main
