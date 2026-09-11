@@ -38,7 +38,7 @@ import { workspaceApi, type CatalogOption, type CreateUnitResult, type LineActio
 import { AddUnitDialog } from './AddUnitDialog'
 import { AppDialog } from './AppDialog'
 import { generalGroupForOption, orderedGeneralGroups } from './generalGroups'
-import { countryIconStyle, hasUnitIcon, unitIconStyle } from './ra2VisualIcons'
+import { countryIconStyle, hasUnitIcon, resolveVisualIcon, unitIconStyle } from './ra2VisualIcons'
 import { ParameterContextMenu, type ParameterContextMenuState } from './ParameterContextMenu'
 import { ParameterPicker } from './ParameterPicker'
 import { localizedReferenceLabel } from './referenceLabels'
@@ -230,15 +230,12 @@ function UnitArtworkIcon({ id, size = 36, className = '' }: { id: string; size?:
   return <div className={`unitArtworkIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
 }
 
-function optionVisualIcon(value: string) {
-  const country = countryIconStyle(value, 32)
-  if (country) return <span className="rulesCountryOptionIcon" style={country}/>
-  if (hasUnitIcon(value)) return <span className="rulesUnitOptionIcon" style={unitIconStyle(value, 32)}/>
-  return undefined
+function optionVisualIcon(value: string, category?: string) {
+  return resolveVisualIcon(value, { category, size: 32 })
 }
 
-function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic') {
-  const visual = optionVisualIcon(value)
+function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic', category?: string) {
+  const visual = optionVisualIcon(value, category)
   if (visual) return visual
   const Icon = kind === 'weapon' ? Crosshair : kind === 'audio' ? Volume2 : kind === 'warhead' ? Bomb : kind === 'projectile' ? Rocket : kind === 'debris' ? Sparkles : Box
   return <span className={`unitArtworkIcon fallback referenceOptionFallback referenceTypeIcon referenceTypeIcon-${kind}`} style={{ width: 28, height: 24 }}><Icon size={15}/></span>
@@ -249,6 +246,7 @@ function FieldControl({
   onChange,
   disabled = false,
   referenceRows = [],
+  visualRows = [],
   observedKeyValues = [],
   audioValues = [],
 }: {
@@ -256,11 +254,15 @@ function FieldControl({
   onChange: (value: string) => void
   disabled?: boolean
   referenceRows?: SectionRow[]
+  visualRows?: SectionRow[]
   observedKeyValues?: string[]
   audioValues?: string[]
 }) {
   const raw = option.raw_value ?? undefined
   const referenceKind = referenceKindForOption(option)
+  const visualRowById = new Map(visualRows.map(row => [row.id.toLowerCase(), row]))
+  const visualCategory = (value: string) => visualRowById.get(value.toLowerCase())?.category
+  const visualIconForValue = (value: string) => optionVisualIcon(value, visualCategory(value))
 
   if (option.key.trim().toLowerCase() === 'verses') return <VersesControl value={option.value} rawValue={raw} onChange={onChange} disabled={disabled}/>
 
@@ -282,7 +284,7 @@ function FieldControl({
   if (option.widget === 'multi-select') {
     const values = option.value.split(',').map(value => value.trim()).filter(Boolean)
     const rawValues = option.raw_value == null ? undefined : option.raw_value.split(',').map(value => value.trim()).filter(Boolean)
-    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: optionVisualIcon(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key} disabled={disabled}/>
+    return <MultiSelect values={values} rawValues={rawValues} options={option.values.map(value => ({ value: value.value, label: value.label || value.value, icon: visualIconForValue(value.value) }))} onChange={next => onChange(next.join(','))} mode="menu" title={option.label || option.key} disabled={disabled}/>
   }
 
   if (option.widget === 'select') {
@@ -290,15 +292,15 @@ function FieldControl({
     const options = option.values.map(value => ({
       value: value.value,
       label: value.label ? `${value.label} · ${value.value}` : localizedReferenceLabel(value.value, referenceKind),
-      icon: semanticIcon ? referenceOptionIcon(value.value, referenceKind) : optionVisualIcon(value.value),
+      icon: semanticIcon ? referenceOptionIcon(value.value, referenceKind, visualCategory(value.value)) : visualIconForValue(value.value),
     }))
-    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind) : optionVisualIcon(option.value) })
+    if (option.value && !options.some(value => value.value === option.value)) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), icon: semanticIcon ? referenceOptionIcon(option.value, referenceKind, visualCategory(option.value)) : visualIconForValue(option.value) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable={options.length > 10} disabled={disabled}/>
   }
 
   if (referenceRows.length) {
-    const options = referenceRows.map(row => ({ value: row.id, label: row.label || localizedReferenceLabel(row.id, referenceKind), group: row.id, icon: referenceOptionIcon(row.id, referenceKind) }))
-    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), group: '', icon: referenceOptionIcon(option.value, referenceKind) })
+    const options = referenceRows.map(row => ({ value: row.id, label: row.label || localizedReferenceLabel(row.id, referenceKind), group: row.id, icon: referenceOptionIcon(row.id, referenceKind, row.category) }))
+    if (option.value && !options.some(item => item.value.toLowerCase() === option.value.toLowerCase())) options.unshift({ value: option.value, label: localizedReferenceLabel(option.value, referenceKind), group: '', icon: referenceOptionIcon(option.value, referenceKind, visualCategory(option.value)) })
     return <Select value={option.value} rawValue={raw} options={options} onChange={onChange} searchable searchPlaceholder="搜索名称或 Section" disabled={disabled}/>
   }
 
@@ -892,7 +894,7 @@ function App() {
                 >
                   <div className="parameterKeyCell"><code>{option.key}</code>{option.source.toLowerCase() === 'ares' && <span className="aresBadge"><Sparkles size={10}/>ARES</span>}{option.disabled && <span className="disabledBadge">禁用</span>}</div>
                   <div className="parameterLabelCell"><strong>{option.label || option.key}</strong></div>
-                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} disabled={Boolean(option.disabled)} referenceRows={candidates} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{!option.disabled && target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
+                  <div className="parameterValueCell" onPointerDown={() => setSelectedOptionId(option.line_id)} onClick={event => event.stopPropagation()}><div className="rulesControlHost"><FieldControl option={option} disabled={Boolean(option.disabled)} referenceRows={candidates} visualRows={rows} observedKeyValues={observedValues.byKey[option.key.toLowerCase()] ?? []} audioValues={observedValues.audio} onChange={value => void setValue(option, value)}/>{!option.disabled && target && target.id !== selected?.id && option.widget !== 'multi-select' && <button className="referenceJump" title={`跳转到 ${target.label} [${target.id}]`} onClick={() => void jumpToReference(target)}><ArrowRight size={15}/></button>}</div></div>
                 </div>
               })}
             </div>)}
