@@ -1,3 +1,4 @@
+import './app-ui-overrides.css'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
 import {
   createOpenIcon,
