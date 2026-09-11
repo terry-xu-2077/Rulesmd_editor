@@ -183,7 +183,7 @@ export function buildRulesNavigation(raw: string): RulesNavigation {
         const side = [...inherited][0]
         // If direct access spans multiple sides, a faction-specific prerequisite is
         // the useful discriminator.  If direct access was empty, inheritance also
-        // supplies the faction as in the legacy Qt/Web trees.
+        // supplies the faction as in the previous Qt/Web trees.
         if (directSides.size === 0 || directSides.has(side)) {
           resolving.delete(folded)
           sideMemo.set(folded, side)

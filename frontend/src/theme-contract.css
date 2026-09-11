@@ -9,7 +9,7 @@
  *   --theme-text-bright
  *
  * Components may derive hue/lightness/saturation/opacity from those inputs, but they
- * must never own an independent palette. Legacy aliases are mapped here so old
+ * must never own an independent palette. Previous aliases are mapped here so old
  * business CSS and Terry_React_UI_Library resolve to the same source colors.
  */
 .app.tc-theme {

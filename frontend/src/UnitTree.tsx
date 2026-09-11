@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { SemanticIcon, SimpleIcon, type SemanticIconKind } from 'terry-react-ui-library'
 import { workspaceApi } from './backend'
-import { isLegacyGlobalSubsection } from './generalGroups'
-import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
+import { isGlobalSubsection } from './generalGroups'
+import { countryIconStyle, hasUnitIcon, unitIconStyle } from './ra2VisualIcons'
 import { buildRulesNavigation, type NavigationSide } from './rulesNavigation'
 import './unit-tree.css'
 
@@ -74,7 +74,7 @@ export function UnitIcon({ unit, compact = false }: { unit: UnitTreeRow; compact
     if (flag) return <span className={`unitTreeIcon ${compact ? 'compact' : ''}`} style={flag}/>
     return <SimpleIcon text={unit.label || unit.id} kind="flag" className={`unitTreeCountryTextIcon ${compact ? 'compact' : ''}`}/>
   }
-  if (hasLegacyIcon(unit.id)) return <span className={`unitTreeIcon ${compact ? 'compact' : ''}`} style={{ ...legacyIconStyle(unit.id, size) }}/>
+  if (hasUnitIcon(unit.id)) return <span className={`unitTreeIcon ${compact ? 'compact' : ''}`} style={{ ...unitIconStyle(unit.id, size) }}/>
   return <span className={`unitTreeIcon fallback semantic ${compact ? 'compact' : ''}`}><FallbackTypeIcon category={unit.category} size={compact ? 13 : 15}/></span>
 }
 
@@ -259,7 +259,7 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   }, [selectedRow?.id])
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const base = rows.filter(row => row.id.toLowerCase() !== 'general' && !isLegacyGlobalSubsection(row.id))
+    const base = rows.filter(row => row.id.toLowerCase() !== 'general' && !isGlobalSubsection(row.id))
     return q ? base.filter(row => `${row.label} ${row.id} ${row.type} ${row.category}`.toLowerCase().includes(q)) : base
   }, [query, rows])
 
@@ -327,8 +327,8 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
             const typeKey = `${sideKey}:${type.name}`
             const open = isOpen(typeKey)
             return <section className="unitTypeGroup" key={type.name}>
-              <button className="unitTreeLevel legacyType" onClick={() => toggle(typeKey, open)}>{open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<FallbackTypeIcon category={type.name} size={14}/><strong>{type.name}</strong><em>{type.units.length}</em></button>
-              {open && <div className="unitLeaves legacyLeaves">{type.units.map(unit => <UnitLeaf key={unit.id} unit={unit} exclusiveCountry={exclusiveCountryOf(unit)} selectedId={selectedId} onSelect={onSelect}/>)}</div>}
+              <button className="unitTreeLevel typeLevel" onClick={() => toggle(typeKey, open)}>{open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<FallbackTypeIcon category={type.name} size={14}/><strong>{type.name}</strong><em>{type.units.length}</em></button>
+              {open && <div className="unitLeaves unitLeavesList">{type.units.map(unit => <UnitLeaf key={unit.id} unit={unit} exclusiveCountry={exclusiveCountryOf(unit)} selectedId={selectedId} onSelect={onSelect}/>)}</div>}
             </section>
           })}</div>}
         </section>
@@ -342,8 +342,8 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
             const typeKey = `weapon:${type.name}`
             const typeOpen = isOpen(typeKey)
             return <section className="unitTypeGroup" key={type.name}>
-              <button className="unitTreeLevel legacyType" onClick={() => toggle(typeKey, typeOpen)}>{typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<FallbackTypeIcon category={type.name} size={14}/><strong>{type.name}</strong><em>{type.units.length}</em></button>
-              {typeOpen && <div className="unitLeaves legacyLeaves">{type.units.map(unit => <UnitLeaf key={unit.id} unit={unit} selectedId={selectedId} onSelect={onSelect}/>)}</div>}
+              <button className="unitTreeLevel typeLevel" onClick={() => toggle(typeKey, typeOpen)}>{typeOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}<FallbackTypeIcon category={type.name} size={14}/><strong>{type.name}</strong><em>{type.units.length}</em></button>
+              {typeOpen && <div className="unitLeaves unitLeavesList">{type.units.map(unit => <UnitLeaf key={unit.id} unit={unit} selectedId={selectedId} onSelect={onSelect}/>)}</div>}
             </section>
           })}</div>}
         </section>

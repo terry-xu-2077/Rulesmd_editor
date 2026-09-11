@@ -1,4 +1,4 @@
-"""Import reusable data resources from the legacy desktop and web editors.
+"""Import reusable data resources from the desktop and web editor source repositories.
 
 The old web editor's desc/OptionsDesc.ini is authoritative for how an option key
 maps to a single-select list, multi-select list, or dynamic unit list.  These files
@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = ROOT / "src" / "rulesmd_editor" / "resources" / "legacy"
+TARGET = ROOT / "src" / "rulesmd_editor" / "resources" / "source_ini"
 
 DESKTOP_BASE = "https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditor/master/Resources/"
 WEB_DESC_BASE = "https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/desc/"

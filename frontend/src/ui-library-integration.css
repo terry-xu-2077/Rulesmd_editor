@@ -19,7 +19,7 @@
 }
 .entityHeaderHost .tc-entity-header{height:66px;min-height:66px}
 .entityHeaderHost .tc-entity-icon{width:68px;height:66px}
-.entityHeaderHost .tc-entity-icon>.legacyUnitIcon{visibility:hidden!important}
+.entityHeaderHost .tc-entity-icon>.unitArtworkIcon{visibility:hidden!important}
 .entityHeaderHost .tc-entity-watermark{font-size:54px;line-height:58px;top:-2px}
 .entityHeaderHost .tc-entity-title strong{font-size:17px}
 .entityHeaderHost .tc-entity-title span{font-size:10.5px}

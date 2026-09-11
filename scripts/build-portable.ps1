@@ -16,11 +16,9 @@ $Resources = Join-Path $Root 'src\rulesmd_editor\resources'
 $RuleBuilder = Join-Path $Root 'tools\build_rule_resources.py'
 $RuleTemplate = Join-Path $Resources 'generated\rulesmd.template.ini'
 $RuleSchema = Join-Path $Resources 'generated\rules_schema.json'
-$LegacyHelp = Join-Path $Resources 'legacy\HelpInfor.ini'
-$LegacyNames = Join-Path $Resources 'legacy\NamesDesc.ini'
 $IconSource = Join-Path $TauriDir 'app-icon.png'
 $IconProduct = Join-Path $TauriDir 'icons\icon.ico'
-$LegacyAssets = Join-Path $Frontend 'public\legacy'
+$GameAssets = Join-Path $Frontend 'public\game-assets'
 
 $BuildRoot = Join-Path $Root 'build\portable'
 $BackendEntry = Join-Path $BuildRoot 'backend_entry.py'
@@ -46,7 +44,6 @@ $PackageBackendExe = Join-Path $PackageRuntime 'rulesmd-backend.exe'
 $PackageBackendInternal = Join-Path $PackageRuntime '_internal'
 $PackageRuleSchema = Join-Path $PackageResources 'generated\rules_schema.json'
 $PackageAresSchema = Join-Path $PackageResources 'generated\ares_schema.json'
-$PackageLegacyHelp = Join-Path $PackageResources 'legacy\HelpInfor.ini'
 $PackageAresUnlocks = Join-Path $PackageResources 'ares_hardcode_unlocks.json'
 $ZipPath = Join-Path $ReleaseRoot "$PackageName.zip"
 
@@ -196,7 +193,7 @@ function Ensure-PythonBuildTools {
 }
 
 function Ensure-RuleResources {
-    $required = @($RuleTemplate, $RuleSchema, $LegacyHelp, $LegacyNames)
+    $required = @($RuleTemplate, $RuleSchema)
     $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_) })
     if ($missing.Count -eq 0) {
         Write-Host 'Rules metadata and default template are ready.' -ForegroundColor DarkGray
@@ -241,8 +238,8 @@ function Ensure-FrontendDependencies {
     }
 }
 
-function Sync-LegacyAsset([string]$Name, [string]$Url) {
-    $target = Join-Path $LegacyAssets $Name
+function Sync-GameAsset([string]$Name, [string]$Url) {
+    $target = Join-Path $GameAssets $Name
     if (Test-Path -LiteralPath $target) { return }
 
     try {
@@ -250,7 +247,7 @@ function Sync-LegacyAsset([string]$Name, [string]$Url) {
         return
     } catch {
         if (-not $script:ProxyAvailable) {
-            Write-Host "[WARN] Unable to download legacy asset $Name." -ForegroundColor Yellow
+            Write-Host "[WARN] Unable to download game asset $Name." -ForegroundColor Yellow
             Remove-Item -LiteralPath $target -ErrorAction SilentlyContinue
             return
         }
@@ -259,21 +256,21 @@ function Sync-LegacyAsset([string]$Name, [string]$Url) {
     try {
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $target -Proxy $ProxyUrl -TimeoutSec 30
     } catch {
-        Write-Host "[WARN] Unable to download legacy asset $Name." -ForegroundColor Yellow
+        Write-Host "[WARN] Unable to download game asset $Name." -ForegroundColor Yellow
         Remove-Item -LiteralPath $target -ErrorAction SilentlyContinue
     }
 }
 
-function Ensure-LegacyAssets {
-    Write-Step 'Synchronizing legacy UI assets'
-    New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
+function Ensure-GameAssets {
+    Write-Step 'Synchronizing game UI assets'
+    New-Item -ItemType Directory -Path $GameAssets -Force | Out-Null
 
     $base = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
-    Sync-LegacyAsset 'iconTile.jpg' "$base/iconTile.jpg"
-    Sync-LegacyAsset 'countryTile.png' "$base/countryTile.png"
-    Sync-LegacyAsset 'bgIcon.png' "$base/bgIcon.png"
-    Sync-LegacyAsset 'RA2_NONE.png' "$base/RA2_NONE.png"
-    Sync-LegacyAsset 'app-logo.png' "$base/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
+    Sync-GameAsset 'iconTile.jpg' "$base/iconTile.jpg"
+    Sync-GameAsset 'countryTile.png' "$base/countryTile.png"
+    Sync-GameAsset 'bgIcon.png' "$base/bgIcon.png"
+    Sync-GameAsset 'RA2_NONE.png' "$base/RA2_NONE.png"
+    Sync-GameAsset 'app-logo.png' "$base/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
 }
 
 function Ensure-AppIcon {
@@ -363,7 +360,8 @@ function Assemble-Package {
 
     Copy-Item -LiteralPath $TauriExe -Destination $PackageExe -Force
     Copy-Item -Path (Join-Path $BackendBuiltDir '*') -Destination $PackageRuntime -Recurse -Force
-    Copy-Item -Path (Join-Path $Resources '*') -Destination $PackageResources -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $Resources 'generated') -Destination $PackageResources -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $Resources 'ares_hardcode_unlocks.json') -Destination $PackageResources -Force
 
     if (-not (Test-Path -LiteralPath $PackageExe)) {
         Fail 'Portable main executable was not copied.'
@@ -378,7 +376,6 @@ function Assemble-Package {
     $requiredPackagedResources = @(
         $PackageRuleSchema,
         $PackageAresSchema,
-        $PackageLegacyHelp,
         $PackageAresUnlocks
     )
     $missingPackagedResources = @(
@@ -386,6 +383,12 @@ function Assemble-Package {
     )
     if ($missingPackagedResources.Count -gt 0) {
         Fail "Portable resources are incomplete:`n$($missingPackagedResources -join "`n")"
+    }
+
+    $resourceRootItems = @(Get-ChildItem -LiteralPath $PackageResources -Force)
+    $unexpectedResources = @($resourceRootItems | Where-Object { $_.Name -notin @('generated', 'ares_hardcode_unlocks.json') })
+    if ($unexpectedResources.Count -gt 0) {
+        Fail "Portable resources contain development/source files: $($unexpectedResources.Name -join ', ')"
     }
 
     $rootItems = @(Get-ChildItem -LiteralPath $PackageDir -Force)
@@ -499,7 +502,7 @@ Ensure-PythonEnvironment
 Ensure-PythonBuildTools
 Ensure-RuleResources
 Ensure-FrontendDependencies
-Ensure-LegacyAssets
+Ensure-GameAssets
 Ensure-AppIcon
 Build-PythonBackend
 Build-TauriApp

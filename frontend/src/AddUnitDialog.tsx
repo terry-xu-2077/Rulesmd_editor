@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Button, Checkbox, Dialog, Select, TextField } from 'terry-react-ui-library'
 import { workspaceApi, type CreateUnitResult, type MapRuleCatalogItem, type SectionData, type SectionOption } from './backend'
-import { countryIconStyle } from './legacyIcons'
+import { countryIconStyle } from './previousIcons'
 import { localizedReferenceLabel } from './referenceLabels'
 
 export type UnitTemplateRow = {

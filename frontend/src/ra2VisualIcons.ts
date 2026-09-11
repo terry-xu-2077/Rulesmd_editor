@@ -28,8 +28,8 @@ export type VisualIconResolverOptions = {
   size?: number
 }
 
-export const LEGACY_ICON_TILE = '/legacy/iconTile.jpg'
-export const LEGACY_COUNTRY_TILE = '/legacy/countryTile.png'
+export const RA2_ICON_TILE = '/game-assets/iconTile.jpg'
+export const COUNTRY_ICON_TILE = '/game-assets/countryTile.png'
 
 const ICON_POS: Record<string, [number, number]> = {
   ADOG:[0,0],AEGIS:[60,0],AMCV:[120,0],AmericanParaDropSpecial:[180,0],APOC:[240,0],ATESLA:[300,0],BEAG:[360,0],BFRT:[420,0],BORIS:[480,0],BRUTE:[540,0],
@@ -71,11 +71,11 @@ const SEMANTIC_VALUE_ICON: Record<string, SemanticIconKind> = {
   THIRDSIDE: 'flag',
 }
 
-export function legacyIconStyle(id: string, size = 36): CSSProperties | undefined {
+export function unitIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
   if (!pos) return undefined
   return createTileIconStyle({
-    image: LEGACY_ICON_TILE,
+    image: RA2_ICON_TILE,
     x: pos[0],
     y: pos[1],
     cellWidth: 60,
@@ -91,7 +91,7 @@ export function countryIconStyle(id: string, width = 32): CSSProperties | undefi
   const col = index % 5
   const row = Math.floor(index / 5)
   return createTileIconStyle({
-    image: LEGACY_COUNTRY_TILE,
+    image: COUNTRY_ICON_TILE,
     x: col * 60,
     y: row * 40,
     cellWidth: 60,
@@ -101,7 +101,7 @@ export function countryIconStyle(id: string, width = 32): CSSProperties | undefi
   }, width)
 }
 
-export function hasLegacyIcon(id: string): boolean {
+export function hasUnitIcon(id: string): boolean {
   return Boolean(ICON_POS[id])
 }
 
@@ -114,7 +114,7 @@ export function resolveVisualIcon(value: string, options: VisualIconResolverOpti
   const country = countryIconStyle(value, size)
   if (country) return createElement('span', { className: 'rulesCountryOptionIcon', style: country })
 
-  const unit = legacyIconStyle(value, size)
+  const unit = unitIconStyle(value, size)
   if (unit) return createElement('span', { className: 'rulesUnitOptionIcon', style: unit })
 
   const semantic = semanticOpenIconKind(value)
@@ -128,7 +128,7 @@ installOptionIconResolver((value: string) => {
   const country = countryIconStyle(value)
   if (country) return { className: 'rulesCountryOptionIcon', style: country }
 
-  const unit = legacyIconStyle(value, 32)
+  const unit = unitIconStyle(value, 32)
   if (unit) return { className: 'rulesUnitOptionIcon', style: unit }
 
   const semantic = semanticOpenIconKind(value)

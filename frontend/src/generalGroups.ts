@@ -6,7 +6,7 @@ import type { SectionOption } from './backend'
  * the Python backend owns the actual General parameter categorization from official
  * rulesmd.ini comment blocks.
  */
-export const GENERAL_LEGACY_VIEWS = [
+export const GENERAL_NAVIGATION_VIEWS = [
   { label: '全部', section: 'General', tokens: [] },
   { label: '伞兵设置', section: 'General', tokens: ['Para', 'Pilot', 'PParatrooper'] },
   { label: '秘密科技', section: 'General', tokens: ['Secret'] },
@@ -28,7 +28,7 @@ export const GENERAL_LEGACY_VIEWS = [
   { label: '颜色主题', section: 'Colors', tokens: [] },
 ] as const
 
-export type GeneralLegacyViewLabel = typeof GENERAL_LEGACY_VIEWS[number]['label']
+export type GeneralNavigationViewLabel = typeof GENERAL_NAVIGATION_VIEWS[number]['label']
 
 /** Must mirror GLOBAL_RULE_CATEGORY_ORDER in src/rulesmd_editor/global_rules.py. */
 export const GENERAL_CATEGORY_ORDER = [
@@ -67,21 +67,21 @@ export const GENERAL_CATEGORY_ORDER = [
 
 const KNOWN_GENERAL_GROUPS = new Set<string>(GENERAL_CATEGORY_ORDER)
 const GLOBAL_SUBSECTION_IDS = new Set(
-  GENERAL_LEGACY_VIEWS
+  GENERAL_NAVIGATION_VIEWS
     .map(view => view.section.toLowerCase())
     .filter(section => section !== 'general'),
 )
 
-export function generalLegacyView(label: string) {
-  return GENERAL_LEGACY_VIEWS.find(view => view.label === label) ?? GENERAL_LEGACY_VIEWS[0]
+export function generalNavigationView(label: string) {
+  return GENERAL_NAVIGATION_VIEWS.find(view => view.label === label) ?? GENERAL_NAVIGATION_VIEWS[0]
 }
 
-export function isLegacyGlobalSubsection(section: string) {
+export function isGlobalSubsection(section: string) {
   return GLOBAL_SUBSECTION_IDS.has(section.trim().toLowerCase())
 }
 
-export function matchesLegacyGeneralFilter(option: SectionOption, label: string) {
-  const view = generalLegacyView(label)
+export function matchesGeneralViewFilter(option: SectionOption, label: string) {
+  const view = generalNavigationView(label)
   if (view.section !== 'General') return false
   if (!view.tokens.length) return true
   const key = option.key.trim().toLowerCase()
@@ -93,12 +93,12 @@ export function matchesLegacyGeneralFilter(option: SectionOption, label: string)
  * only for compatibility with a stale sidecar during hot reload; it is not the normal
  * categorization path anymore.
  */
-export function legacyGeneralGroup(option: SectionOption): string {
+export function generalGroupForOption(option: SectionOption): string {
   const category = option.category.trim()
   if (KNOWN_GENERAL_GROUPS.has(category)) return category
 
-  for (const view of GENERAL_LEGACY_VIEWS.slice(1, 6)) {
-    if (matchesLegacyGeneralFilter(option, view.label)) return view.label
+  for (const view of GENERAL_NAVIGATION_VIEWS.slice(1, 6)) {
+    if (matchesGeneralViewFilter(option, view.label)) return view.label
   }
   return '常规全局设置'
 }

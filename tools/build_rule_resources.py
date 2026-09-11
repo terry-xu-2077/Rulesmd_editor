@@ -2,9 +2,9 @@ from __future__ import annotations
 
 """Build the original Yuri's Revenge runtime rules database.
 
-The legacy INI files remain useful as source material, but the application should not
+The source INI files remain useful as source material, but the application should not
 re-parse several loose INI files for every lookup. This tool downloads/synchronizes the
-legacy text resources, normalizes them, applies curated YR corrections, and writes
+source text resources, normalizes them, applies curated YR corrections, and writes
 compact JSON files plus a cleaned Yuri's Revenge template.
 
 Ares is intentionally NOT merged here. Ares metadata is maintained separately in
@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = ROOT / "src" / "rulesmd_editor" / "resources"
-LEGACY_DIR = RESOURCE_ROOT / "legacy"
+SOURCE_INI_DIR = RESOURCE_ROOT / "source_ini"
 GENERATED_DIR = RESOURCE_ROOT / "generated"
 BASE_URL = "https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditor/master/Resources/"
 
@@ -81,13 +81,13 @@ def _decode(data: bytes) -> str:
             return data.decode(encoding)
         except UnicodeDecodeError:
             continue
-    raise UnicodeDecodeError("utf-8", data, 0, 1, "unsupported legacy resource encoding")
+    raise UnicodeDecodeError("utf-8", data, 0, 1, "unsupported source resource encoding")
 
 
 def sync_sources(force: bool = False) -> None:
-    LEGACY_DIR.mkdir(parents=True, exist_ok=True)
+    SOURCE_INI_DIR.mkdir(parents=True, exist_ok=True)
     for name in TEXT_SOURCES:
-        target = LEGACY_DIR / name
+        target = SOURCE_INI_DIR / name
         if target.exists() and not force:
             continue
         print(f"sync {name}")
@@ -146,12 +146,12 @@ def _infer_value_type(key: str, values: list[dict[str, str]], description: str) 
 
 
 def build_schema() -> tuple[dict[str, dict[str, object]], dict[str, str], dict[str, object], dict[str, object]]:
-    options_ini = parse_loose_ini(_decode((LEGACY_DIR / "OptionsDesc.ini").read_bytes()))
-    help_ini = parse_loose_ini(_decode((LEGACY_DIR / "HelpInfor.ini").read_bytes()))
-    names_ini = parse_loose_ini(_decode((LEGACY_DIR / "NamesDesc.ini").read_bytes()))
-    categories_ini = parse_loose_ini(_decode((LEGACY_DIR / "OptionCategory.ini").read_bytes()))
-    identify_ini = parse_loose_ini(_decode((LEGACY_DIR / "IdentType.ini").read_bytes()))
-    mod_ini = parse_loose_ini(_decode((LEGACY_DIR / "ModDesc.ini").read_bytes()))
+    options_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "OptionsDesc.ini").read_bytes()))
+    help_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "HelpInfor.ini").read_bytes()))
+    names_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "NamesDesc.ini").read_bytes()))
+    categories_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "OptionCategory.ini").read_bytes()))
+    identify_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "IdentType.ini").read_bytes()))
+    mod_ini = parse_loose_ini(_decode((SOURCE_INI_DIR / "ModDesc.ini").read_bytes()))
 
     descriptions = _section_dict(options_ini, "OptionDesc")
     helps = _section_dict(help_ini, "HelpInfo")
@@ -280,7 +280,7 @@ def main() -> None:
     sync_sources()
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     rows, names, identify, mod_data = build_schema()
-    template_text, clean_report = modenc_clean_template(_decode((LEGACY_DIR / "rulesmd.pre").read_bytes()))
+    template_text, clean_report = modenc_clean_template(_decode((SOURCE_INI_DIR / "rulesmd.pre").read_bytes()))
 
     (GENERATED_DIR / "rules_schema.json").write_text(
         json.dumps({"version": 1, "options": rows}, ensure_ascii=False, separators=(",", ":")),

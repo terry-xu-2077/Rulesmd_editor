@@ -1,5 +1,5 @@
 /* Final workspace chrome pass: compact navigation, strong help emphasis, raw/table switch,
-   global business theme overrides, centered commands, and legacy-inspired scrollbars. */
+   global business theme overrides, centered commands, and previous-inspired scrollbars. */
 
 .app{grid-template-rows:60px minmax(0,1fr)!important}
 .titlebar{position:relative!important;padding:0 14px!important}

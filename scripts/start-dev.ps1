@@ -11,14 +11,12 @@ $IconStamp = Join-Path $FrontendModules '.rulesmd-icon-source.sha256'
 $TauriManifest = Join-Path $Frontend 'src-tauri\Cargo.toml'
 $IconSource = Join-Path $Frontend 'src-tauri\app-icon.png'
 $IconProduct = Join-Path $Frontend 'src-tauri\icons\icon.ico'
-$LegacyAssets = Join-Path $Frontend 'public\legacy'
+$GameAssets = Join-Path $Frontend 'public\game-assets'
 $Venv = Join-Path $Root '.venv'
 $Python = Join-Path $Venv 'Scripts\python.exe'
 $RuleResourceBuilder = Join-Path $Root 'tools\build_rule_resources.py'
 $RuleTemplate = Join-Path $Root 'src\rulesmd_editor\resources\generated\rulesmd.template.ini'
 $RuleSchema = Join-Path $Root 'src\rulesmd_editor\resources\generated\rules_schema.json'
-$LegacyHelp = Join-Path $Root 'src\rulesmd_editor\resources\legacy\HelpInfor.ini'
-$LegacyNames = Join-Path $Root 'src\rulesmd_editor\resources\legacy\NamesDesc.ini'
 $ProxyHost = '127.0.0.1'
 $ProxyPort = 7897
 $ProxyUrl = "http://${ProxyHost}:${ProxyPort}"
@@ -135,10 +133,10 @@ function Invoke-CargoFetch([string]$Mode) {
     return $LASTEXITCODE
 }
 
-function Sync-LegacyAsset([string]$Name, [string]$Url) {
-    $Target = Join-Path $LegacyAssets $Name
+function Sync-GameAsset([string]$Name, [string]$Url) {
+    $Target = Join-Path $GameAssets $Name
     if (Test-Path $Target) { return }
-    Write-Host "  Legacy UI: $Name" -ForegroundColor DarkGray
+    Write-Host "  Game UI: $Name" -ForegroundColor DarkGray
     try {
         Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Target -TimeoutSec 20
     } catch {
@@ -146,11 +144,11 @@ function Sync-LegacyAsset([string]$Name, [string]$Url) {
             try {
                 Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Target -Proxy $ProxyUrl -TimeoutSec 30
             } catch {
-                Write-Host "  [WARN] Unable to download legacy asset $Name; fallback icon will be used." -ForegroundColor Yellow
+                Write-Host "  [WARN] Unable to download game asset $Name; fallback icon will be used." -ForegroundColor Yellow
                 Remove-Item $Target -ErrorAction SilentlyContinue
             }
         } else {
-            Write-Host "  [WARN] Unable to download legacy asset $Name; fallback icon will be used." -ForegroundColor Yellow
+            Write-Host "  [WARN] Unable to download game asset $Name; fallback icon will be used." -ForegroundColor Yellow
             Remove-Item $Target -ErrorAction SilentlyContinue
         }
     }
@@ -243,7 +241,7 @@ if (-not (Test-Path $PackageStamp)) {
     New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
 }
 
-if ((-not (Test-Path $RuleTemplate)) -or (-not (Test-Path $RuleSchema)) -or (-not (Test-Path $LegacyHelp)) -or (-not (Test-Path $LegacyNames))) {
+if ((-not (Test-Path $RuleTemplate)) -or (-not (Test-Path $RuleSchema))) {
     if (-not (Build-RuleResources)) { Fail 'Rules metadata/default-template generation failed.' }
 } else {
     Write-Host 'Rules metadata and default template are ready.' -ForegroundColor DarkGray
@@ -276,14 +274,14 @@ if ($FrontendHash -ne $ViteInstalledHash) {
     Write-Host 'Vite dependency cache matches current frontend dependencies.' -ForegroundColor DarkGray
 }
 
-New-Item -ItemType Directory -Path $LegacyAssets -Force | Out-Null
-Write-Step 'Synchronizing legacy RulesmdEditorWeb UI assets'
-$LegacyBase = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
-Sync-LegacyAsset 'iconTile.jpg' "$LegacyBase/iconTile.jpg"
-Sync-LegacyAsset 'countryTile.png' "$LegacyBase/countryTile.png"
-Sync-LegacyAsset 'bgIcon.png' "$LegacyBase/bgIcon.png"
-Sync-LegacyAsset 'RA2_NONE.png' "$LegacyBase/RA2_NONE.png"
-Sync-LegacyAsset 'app-logo.png' "$LegacyBase/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
+New-Item -ItemType Directory -Path $GameAssets -Force | Out-Null
+Write-Step 'Synchronizing RulesmdEditorWeb game UI assets'
+$GameAssetBase = 'https://raw.githubusercontent.com/terry-xu-2077/RulesmdEditorWeb/main/img'
+Sync-GameAsset 'iconTile.jpg' "$GameAssetBase/iconTile.jpg"
+Sync-GameAsset 'countryTile.png' "$GameAssetBase/countryTile.png"
+Sync-GameAsset 'bgIcon.png' "$GameAssetBase/bgIcon.png"
+Sync-GameAsset 'RA2_NONE.png' "$GameAssetBase/RA2_NONE.png"
+Sync-GameAsset 'app-logo.png' "$GameAssetBase/appIcon/%E8%B5%84%E6%BA%90%201@64x-8.png"
 
 if (-not (Test-Path $IconSource)) {
     Fail "App icon source is missing: $IconSource"

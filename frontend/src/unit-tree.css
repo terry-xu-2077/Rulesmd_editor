@@ -14,9 +14,9 @@
 .unitTreeLevel,.unitTreeLeaf{width:100%;border:0;background:transparent;color:inherit;cursor:pointer;text-align:left}
 .unitTreeLevel{display:flex;align-items:center;gap:6px;min-height:30px;padding:0 7px;border-radius:5px;color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base))}
 .unitTreeLevel em{margin-left:auto;font-size:10px;font-style:normal;color:color-mix(in srgb,var(--theme-text) 46%,var(--theme-base))}
-.unitTreeLevel.legacyType{font-size:12px;font-weight:700;background:linear-gradient(90deg,var(--theme-surface-2),var(--theme-surface-1));border:1px solid var(--theme-border)}
-.unitTreeLevel.legacyType:hover{background:linear-gradient(90deg,var(--theme-surface-hover),var(--theme-surface-2));color:var(--theme-text)}
-.legacyLeaves{padding:2px 0 5px 8px;border-left:1px solid var(--theme-line);margin-left:8px}
+.unitTreeLevel.typeLevel{font-size:12px;font-weight:700;background:linear-gradient(90deg,var(--theme-surface-2),var(--theme-surface-1));border:1px solid var(--theme-border)}
+.unitTreeLevel.typeLevel:hover{background:linear-gradient(90deg,var(--theme-surface-hover),var(--theme-surface-2));color:var(--theme-text)}
+.unitLeavesList{padding:2px 0 5px 8px;border-left:1px solid var(--theme-line);margin-left:8px}
 .unitLeaves{padding-top:1px}
 .unitTreeLeaf{min-height:38px;padding:3px 6px;border:1px solid transparent;border-radius:6px;display:flex;align-items:center;gap:8px;color:color-mix(in srgb,var(--theme-text) 70%,var(--theme-base))}
 .unitTreeLeafText{min-width:0;flex:1}.unitTreeLeaf b,.unitTreeLeaf small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.unitTreeLeaf b{font-size:12px;font-weight:600;color:color-mix(in srgb,var(--theme-text) 84%,var(--theme-base))}.unitTreeLeaf small{margin-top:1px;font-size:9.5px;color:color-mix(in srgb,var(--theme-text) 46%,var(--theme-base));font-family:"Cascadia Code",Consolas,monospace}
@@ -48,4 +48,4 @@
 .relationshipRow>svg{color:color-mix(in srgb,var(--theme-text) 38%,var(--theme-base))}
 .relationshipEmpty{padding:7px 6px 8px;color:color-mix(in srgb,var(--theme-text) 42%,var(--theme-base));font-size:9.8px;line-height:1.5}
 
-@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.legacyLeaves{margin-left:5px;padding-left:5px}.relationshipRow{grid-template-columns:24px minmax(70px,1fr) 14px}.relationshipKeys{display:none}}
+@media(max-width:1180px){.unitHierarchy{padding-left:4px;padding-right:4px}.unitLeavesList{margin-left:5px;padding-left:5px}.relationshipRow{grid-template-columns:24px minmax(70px,1fr) 14px}.relationshipKeys{display:none}}

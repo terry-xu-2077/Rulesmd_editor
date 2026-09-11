@@ -24,3 +24,8 @@ packages = ["src/rulesmd_editor"]
 
 [tool.ruff]
 line-length = 110
+
+[tool.hatch.build]
+exclude = [
+  "src/rulesmd_editor/resources/source_ini/**",
+]

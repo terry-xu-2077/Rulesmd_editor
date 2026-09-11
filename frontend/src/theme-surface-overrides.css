@@ -33,7 +33,7 @@
 
 /* Fold/navigation bars deliberately share the deeper semantic fold surface. */
 .fieldGroupHeader,
-.unitTreeLevel.legacyType,
+.unitTreeLevel.typeLevel,
 .unitTreeLevel.sideLevel {
   background: var(--theme-fold-surface) !important;
 }
@@ -63,7 +63,7 @@
 
 .parameterTableRow:not(.focused):not(.changed):not(.disabled),
 .fieldGroupHeader,
-.unitTreeLevel.legacyType,
+.unitTreeLevel.typeLevel,
 .unitTreeLevel.sideLevel {
   background-image: none !important;
 }

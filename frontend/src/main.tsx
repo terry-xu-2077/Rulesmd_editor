@@ -37,8 +37,8 @@ import {
 import { workspaceApi, type CatalogOption, type CreateUnitResult, type LineActionResult, type SectionData, type SectionOption, type WorkspaceSnapshot } from './backend'
 import { AddUnitDialog } from './AddUnitDialog'
 import { AppDialog } from './AppDialog'
-import { legacyGeneralGroup, orderedGeneralGroups } from './generalGroups'
-import { countryIconStyle, hasLegacyIcon, legacyIconStyle } from './legacyIcons'
+import { generalGroupForOption, orderedGeneralGroups } from './generalGroups'
+import { countryIconStyle, hasUnitIcon, unitIconStyle } from './ra2VisualIcons'
 import { ParameterContextMenu, type ParameterContextMenuState } from './ParameterContextMenu'
 import { ParameterPicker } from './ParameterPicker'
 import { localizedReferenceLabel } from './referenceLabels'
@@ -100,7 +100,7 @@ function displayGroup(category: string) {
 
 function optionDisplayGroup(section: string, option: SectionOption) {
   if (section.trim().toLowerCase() === 'general') {
-    return legacyGeneralGroup(option) ?? displayGroup(option.category)
+    return generalGroupForOption(option) ?? displayGroup(option.category)
   }
   return displayGroup(option.category)
 }
@@ -225,15 +225,15 @@ function IconButton({ title, children, primary = false, onClick, disabled = fals
   return <button className={`iconButton ${primary ? 'primary' : ''}`} title={title} onClick={onClick} disabled={disabled}>{children}<span className="iconButtonLabel">{title}{dirty && <i className="saveDirtyDot" aria-label="有未保存修改"/>}</span></button>
 }
 
-function LegacyUnitIcon({ id, size = 36, className = '' }: { id: string; size?: number; className?: string }) {
-  if (hasLegacyIcon(id)) return <div className={`legacyUnitIcon ${className}`} style={{ width: size, height: Math.round(size * .8), ...legacyIconStyle(id, size) }} />
-  return <div className={`legacyUnitIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
+function UnitArtworkIcon({ id, size = 36, className = '' }: { id: string; size?: number; className?: string }) {
+  if (hasUnitIcon(id)) return <div className={`unitArtworkIcon ${className}`} style={{ width: size, height: Math.round(size * .8), ...unitIconStyle(id, size) }} />
+  return <div className={`unitArtworkIcon fallback ${className}`} style={{ width: size, height: size }}><Box size={Math.max(14, Math.round(size * .48))}/></div>
 }
 
 function optionVisualIcon(value: string) {
   const country = countryIconStyle(value, 32)
   if (country) return <span className="rulesCountryOptionIcon" style={country}/>
-  if (hasLegacyIcon(value)) return <span className="rulesUnitOptionIcon" style={legacyIconStyle(value, 32)}/>
+  if (hasUnitIcon(value)) return <span className="rulesUnitOptionIcon" style={unitIconStyle(value, 32)}/>
   return undefined
 }
 
@@ -241,7 +241,7 @@ function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic') {
   const visual = optionVisualIcon(value)
   if (visual) return visual
   const Icon = kind === 'weapon' ? Crosshair : kind === 'audio' ? Volume2 : kind === 'warhead' ? Bomb : kind === 'projectile' ? Rocket : kind === 'debris' ? Sparkles : Box
-  return <span className={`legacyUnitIcon fallback referenceOptionFallback referenceTypeIcon referenceTypeIcon-${kind}`} style={{ width: 28, height: 24 }}><Icon size={15}/></span>
+  return <span className={`unitArtworkIcon fallback referenceOptionFallback referenceTypeIcon referenceTypeIcon-${kind}`} style={{ width: 28, height: 24 }}><Icon size={15}/></span>
 }
 
 function FieldControl({
@@ -830,7 +830,7 @@ function App() {
 
   return <div className={`app tc-theme ${selected ? `side-${selected.side}` : ''} ${busy ? 'busy' : ''}`} data-mode={effectiveAppearance}>
     <header className="titlebar">
-      <div className="brand"><div className="brandMark"><img src="/legacy/app-logo.png" alt=""/></div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
+      <div className="brand"><div className="brandMark"><img src="/game-assets/app-logo.png" alt=""/></div><div><strong>Rulesmd Editor</strong><span>Yuri's Revenge · Ares</span></div></div>
       <nav className="toolbar">
         <IconButton title="新建" onClick={() => void newRules()}><FilePlus2 size={18}/></IconButton>
         <IconButton title="打开" onClick={() => void openRules()}><FolderOpen size={18}/></IconButton>
@@ -856,7 +856,7 @@ function App() {
       <main className="editor">
         {selected ? <>
           <div className="entityHeaderHost">
-            <EntityHeader tone={toneForSide(selected.side)} icon={<LegacyUnitIcon id={selected.id} size={52}/>} title={headerSectionReady ? (sectionData.description || selected.label) : selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id}/>
+            <EntityHeader tone={toneForSide(selected.side)} icon={<UnitArtworkIcon id={selected.id} size={52}/>} title={headerSectionReady ? (sectionData.description || selected.label) : selected.label} subtitle={`${selected.type} · ${selected.id}`} watermark={selected.id}/>
             <div className="entityNavigation">
               <button disabled={!previousSection} title={previousSection ? `后退到 ${previousSection.label} [${previousSection.id}]` : '没有上一项'} onClick={() => void navigateHistory(-1)}><ArrowLeft size={14}/><span>{previousSection?.label || '后退'}</span></button>
               <button disabled={!nextSection} title={nextSection ? `前进到 ${nextSection.label} [${nextSection.id}]` : '没有下一项'} onClick={() => void navigateHistory(1)}><span>{nextSection?.label || '前进'}</span><ArrowRight size={14}/></button>

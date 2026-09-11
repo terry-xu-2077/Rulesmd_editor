@@ -24,7 +24,7 @@ const DEFAULTS: Record<ThemeMode, ThemePalette> = {
   },
 }
 
-const LEGACY_DARK_DEFAULTS: ThemePalette[] = [
+const PREVIOUS_DARK_DEFAULTS: ThemePalette[] = [
   {
     base: '#011437',
     accent: '#2ad5b8',
@@ -34,7 +34,7 @@ const LEGACY_DARK_DEFAULTS: ThemePalette[] = [
   },
 ]
 
-const LEGACY_LIGHT_DEFAULTS: ThemePalette[] = [
+const PREVIOUS_LIGHT_DEFAULTS: ThemePalette[] = [
   {
     base: '#d8ebf6',
     accent: '#2acfb7',
@@ -101,8 +101,8 @@ function loadPalette(mode: ThemeMode): ThemePalette {
 
     // Exact former defaults are not user customizations. Migrate only those untouched
     // palettes so existing deliberate color choices stay intact across default refreshes.
-    const legacyDefaults = mode === 'dark' ? LEGACY_DARK_DEFAULTS : LEGACY_LIGHT_DEFAULTS
-    if (legacyDefaults.some(legacy => samePalette(palette, legacy))) {
+    const previousDefaults = mode === 'dark' ? PREVIOUS_DARK_DEFAULTS : PREVIOUS_LIGHT_DEFAULTS
+    if (previousDefaults.some(previous => samePalette(palette, previous))) {
       const migrated = { ...DEFAULTS[mode] }
       localStorage.setItem(storageKey(mode), JSON.stringify(migrated))
       return migrated
