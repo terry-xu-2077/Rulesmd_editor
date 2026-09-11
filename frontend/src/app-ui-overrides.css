@@ -1,0 +1,6 @@
+/* App-specific presentation rules that do not belong to the reusable UI library. */
+
+/* Ares object cards use one short product badge regardless of the internal registration wording. */
+.objectWizardCards>button>small{font-size:0!important}
+.objectWizardCards>button>small::after{content:"Ares";font-size:9.5px;line-height:1}
+.objectWizardCards>button>small>svg{transform:none!important}
