@@ -86,6 +86,31 @@ function semanticGlyphSize(kind: SemanticIconKind, width: number) {
   return Math.max(14, Math.round(semanticFrameHeight(kind, width) * .62))
 }
 
+export function semanticIconKindForCategory(category: string): SemanticIconKind | undefined {
+  const normalized = category.replace(/^Ares\s*·\s*/i, '').trim()
+  if (/步兵/i.test(normalized)) return 'infantry'
+  if (/载具|战车/i.test(normalized)) return 'vehicle'
+  if (/飞机/i.test(normalized)) return 'aircraft'
+  if (/超级武器|超武/i.test(normalized)) return 'superweapon'
+  if (/建筑/i.test(normalized)) return 'building'
+  if (/国家|阵营/i.test(normalized)) return 'flag'
+  if (/武器/i.test(normalized)) return 'weapon'
+  if (/弹头/i.test(normalized)) return 'warhead'
+  if (/弹体|抛射/i.test(normalized)) return 'projectile'
+  if (/声音|音频/i.test(normalized)) return 'audio'
+  if (/碎片|残骸/i.test(normalized)) return 'debris'
+  return undefined
+}
+
+export function categoryVisualIcon(category: string, width = RA2_OPTION_ICON_WIDTH): ReactNode | undefined {
+  const kind = semanticIconKindForCategory(category)
+  if (!kind) return undefined
+  return createOpenIcon(kind, semanticGlyphSize(kind, width), '', {
+    frameWidth: width,
+    frameHeight: semanticFrameHeight(kind, width),
+  })
+}
+
 export function unitIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
   if (!pos) return undefined
@@ -137,6 +162,11 @@ export function resolveVisualIcon(value: string, options: VisualIconResolverOpti
     frameWidth: size,
     frameHeight: semanticFrameHeight(semantic, size),
   })
+
+  if (options.category) {
+    const categoryIcon = categoryVisualIcon(options.category, size)
+    if (categoryIcon) return categoryIcon
+  }
 
   if (options.countryFallback) return createSimpleIcon(options.label || value, { kind: 'flag', withElement: false, className: 'countryFallback' })
   return undefined
