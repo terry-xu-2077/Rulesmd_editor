@@ -30,6 +30,13 @@ export type VisualIconResolverOptions = {
 
 export const RA2_ICON_TILE = '/game-assets/iconTile.jpg'
 export const COUNTRY_ICON_TILE = '/game-assets/countryTile.png'
+export const RA2_UNIT_ICON_CELL_WIDTH = 60
+export const RA2_UNIT_ICON_CELL_HEIGHT = 48
+export const RA2_COUNTRY_ICON_CELL_WIDTH = 60
+export const RA2_COUNTRY_ICON_CELL_HEIGHT = 40
+export const RA2_OPTION_ICON_WIDTH = 32
+export const RA2_UNIT_ICON_ASPECT = RA2_UNIT_ICON_CELL_HEIGHT / RA2_UNIT_ICON_CELL_WIDTH
+export const RA2_COUNTRY_ICON_ASPECT = RA2_COUNTRY_ICON_CELL_HEIGHT / RA2_COUNTRY_ICON_CELL_WIDTH
 
 const ICON_POS: Record<string, [number, number]> = {
   ADOG:[0,0],AEGIS:[60,0],AMCV:[120,0],AmericanParaDropSpecial:[180,0],APOC:[240,0],ATESLA:[300,0],BEAG:[360,0],BFRT:[420,0],BORIS:[480,0],BRUTE:[540,0],
@@ -71,6 +78,14 @@ const SEMANTIC_VALUE_ICON: Record<string, SemanticIconKind> = {
   THIRDSIDE: 'flag',
 }
 
+function semanticFrameHeight(kind: SemanticIconKind, width: number) {
+  return width * (kind === 'flag' ? RA2_COUNTRY_ICON_ASPECT : RA2_UNIT_ICON_ASPECT)
+}
+
+function semanticGlyphSize(kind: SemanticIconKind, width: number) {
+  return Math.max(14, Math.round(semanticFrameHeight(kind, width) * .62))
+}
+
 export function unitIconStyle(id: string, size = 36): CSSProperties | undefined {
   const pos = ICON_POS[id]
   if (!pos) return undefined
@@ -78,8 +93,8 @@ export function unitIconStyle(id: string, size = 36): CSSProperties | undefined 
     image: RA2_ICON_TILE,
     x: pos[0],
     y: pos[1],
-    cellWidth: 60,
-    cellHeight: 48,
+    cellWidth: RA2_UNIT_ICON_CELL_WIDTH,
+    cellHeight: RA2_UNIT_ICON_CELL_HEIGHT,
     sheetWidth: 600,
     sheetHeight: 672,
   }, size)
@@ -92,10 +107,10 @@ export function countryIconStyle(id: string, width = 32): CSSProperties | undefi
   const row = Math.floor(index / 5)
   return createTileIconStyle({
     image: COUNTRY_ICON_TILE,
-    x: col * 60,
-    y: row * 40,
-    cellWidth: 60,
-    cellHeight: 40,
+    x: col * RA2_COUNTRY_ICON_CELL_WIDTH,
+    y: row * RA2_COUNTRY_ICON_CELL_HEIGHT,
+    cellWidth: RA2_COUNTRY_ICON_CELL_WIDTH,
+    cellHeight: RA2_COUNTRY_ICON_CELL_HEIGHT,
     sheetWidth: 300,
     sheetHeight: 80,
   }, width)
@@ -110,7 +125,7 @@ export function semanticOpenIconKind(value: string): SemanticIconKind | undefine
 }
 
 export function resolveVisualIcon(value: string, options: VisualIconResolverOptions = {}): ReactNode | undefined {
-  const size = options.size ?? 32
+  const size = options.size ?? RA2_OPTION_ICON_WIDTH
   const country = countryIconStyle(value, size)
   if (country) return createElement('span', { className: 'rulesCountryOptionIcon', style: country })
 
@@ -118,20 +133,28 @@ export function resolveVisualIcon(value: string, options: VisualIconResolverOpti
   if (unit) return createElement('span', { className: 'rulesUnitOptionIcon', style: unit })
 
   const semantic = semanticOpenIconKind(value)
-  if (semantic) return createOpenIcon(semantic, Math.max(14, Math.round(size * .48)))
+  if (semantic) return createOpenIcon(semantic, semanticGlyphSize(semantic, size), '', {
+    frameWidth: size,
+    frameHeight: semanticFrameHeight(semantic, size),
+  })
 
   if (options.countryFallback) return createSimpleIcon(options.label || value, { kind: 'flag', withElement: false, className: 'countryFallback' })
   return undefined
 }
 
 installOptionIconResolver((value: string) => {
-  const country = countryIconStyle(value)
+  const country = countryIconStyle(value, RA2_OPTION_ICON_WIDTH)
   if (country) return { className: 'rulesCountryOptionIcon', style: country }
 
-  const unit = unitIconStyle(value, 32)
+  const unit = unitIconStyle(value, RA2_OPTION_ICON_WIDTH)
   if (unit) return { className: 'rulesUnitOptionIcon', style: unit }
 
   const semantic = semanticOpenIconKind(value)
-  if (semantic) return { node: createOpenIcon(semantic, 15) }
+  if (semantic) return {
+    node: createOpenIcon(semantic, semanticGlyphSize(semantic, RA2_OPTION_ICON_WIDTH), '', {
+      frameWidth: RA2_OPTION_ICON_WIDTH,
+      frameHeight: semanticFrameHeight(semantic, RA2_OPTION_ICON_WIDTH),
+    }),
+  }
   return undefined
 })
