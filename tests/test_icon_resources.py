@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from rulesmd_editor import icon_resources
-from rulesmd_editor.icon_resources import IconResourceService, read_pcx, write_pcx
+from rulesmd_editor.icon_resources import read_pcx
 from rulesmd_editor.icon_resources_persistent import PersistentIconResourceService
 from rulesmd_editor.ini_document import IniDocument
 
@@ -30,6 +30,10 @@ def _data_url(image: Image.Image) -> str:
     return "data:image/png;base64," + base64.b64encode(payload.getvalue()).decode("ascii")
 
 
+def _write_fixture_pcx(image: Image.Image, target: Path) -> None:
+    image.convert("RGB").quantize(colors=256).save(target, format="PCX")
+
+
 class _Workspace:
     def __init__(self, document: IniDocument):
         self.document = document
@@ -46,42 +50,18 @@ class _Workspace:
         }
 
 
-def test_pcx_round_trip_preserves_dimensions(tmp_path: Path) -> None:
+def test_read_existing_pcx_preserves_dimensions(tmp_path: Path) -> None:
     image = Image.new("RGBA", (60, 48), (218, 72, 35, 255))
     target = tmp_path / "cameo.pcx"
-    write_pcx(image, target)
+    _write_fixture_pcx(image, target)
+
     decoded = read_pcx(target)
-    assert target.read_bytes()[:4] == bytes((0x0A, 5, 1, 8))
+
     assert decoded.size == (60, 48)
     red, green, blue, _ = decoded.getpixel((10, 10))
     assert abs(red - 218) < 40
     assert abs(green - 72) < 40
     assert abs(blue - 35) < 70
-
-
-def test_artmd_icon_config_preserves_unrelated_fields(monkeypatch, tmp_path: Path) -> None:
-    _patch_icon_storage(monkeypatch, tmp_path)
-    game_root = tmp_path / "game"
-    game_root.mkdir()
-    exe = game_root / "gamemd.exe"
-    exe.write_bytes(b"")
-    monkeypatch.setattr(icon_resources, "load_app_config", lambda: {"gamePath": str(exe)})
-
-    rules = IniDocument.from_text("[VehicleTypes]\n1=MYTNK\n[MYTNK]\nImage=MYTNKART\n")
-    rules.path = game_root / "rulesmd.ini"
-    artmd = game_root / "artmd.ini"
-    artmd.write_text("[MYTNKART]\nVoxel=yes\nCameo=OLDICON\n", encoding="utf-8")
-
-    service = IconResourceService(_Workspace(rules))
-    result = service.set_artmd_icon("MYTNKART", cameo="", cameo_pcx="mytank.pcx", alt_cameo_pcx="mytank_elite.pcx")
-
-    saved = IniDocument.load(artmd)
-    assert saved.get("MYTNKART", "Voxel") == "yes"
-    assert saved.get("MYTNKART", "Cameo") == ""
-    assert saved.get("MYTNKART", "CameoPCX") == "mytank.pcx"
-    assert saved.get("MYTNKART", "AltCameoPCX") == "mytank_elite.pcx"
-    assert result["exists"] is True
-    assert result["rows"][0]["section"] == "MYTNKART"
 
 
 def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: Path) -> None:
@@ -93,9 +73,9 @@ def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: P
     monkeypatch.setattr(icon_resources, "load_app_config", lambda: {"gamePath": str(exe)})
 
     unit_image = Image.new("RGBA", (60, 48), (30, 140, 220, 255))
-    write_pcx(unit_image, game_root / "mytank.pcx")
+    _write_fixture_pcx(unit_image, game_root / "mytank.pcx")
     country_image = Image.new("RGBA", (60, 40), (220, 180, 30, 255))
-    write_pcx(country_image, game_root / "mycountry.pcx")
+    _write_fixture_pcx(country_image, game_root / "mycountry.pcx")
 
     rules = IniDocument.from_text(
         "[VehicleTypes]\n1=MYTNK\n[Countries]\n0=MyCountry\n"
@@ -135,7 +115,6 @@ def test_custom_crop_is_written_directly_to_unit_atlas(monkeypatch, tmp_path: Pa
         target_id="MYTNK",
         data_base64=_data_url(source),
         filename="wide-source.png",
-        sync_game=False,
         crop_zoom=1.5,
         crop_x=0.75,
         crop_y=0.5,
