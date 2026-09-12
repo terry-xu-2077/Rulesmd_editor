@@ -39,15 +39,17 @@ class SafeIconResourceService(PersistentIconResourceService):
             return False
 
     @staticmethod
-    def _merge_existing_rows(source: Path, target: Path) -> None:
-        """Overlay keys from an existing partial ArtMD onto the extracted stock file."""
+    def _read_existing_doc(path: Path) -> base.IniDocument | None:
         try:
-            old_doc = base.IniDocument.load(source)
+            return base.IniDocument.load(path)
         except Exception:
-            return
-        if not old_doc.sections():
-            return
+            return None
 
+    @staticmethod
+    def _merge_existing_rows(old_doc: base.IniDocument | None, target: Path) -> None:
+        """Overlay all existing ArtMD keys onto the extracted stock file."""
+        if old_doc is None or not old_doc.sections():
+            return
         new_doc = base.IniDocument.load(target)
         for section in old_doc.sections():
             for key, value in old_doc.items(section):
@@ -73,6 +75,7 @@ class SafeIconResourceService(PersistentIconResourceService):
             return result
 
         previous_bytes = b""
+        old_doc: base.IniDocument | None = None
         had_existing = path.is_file()
         backup_path: Path | None = None
         if had_existing:
@@ -80,6 +83,7 @@ class SafeIconResourceService(PersistentIconResourceService):
                 previous_bytes = path.read_bytes()
             except OSError:
                 previous_bytes = b""
+            old_doc = self._read_existing_doc(path)
             backup_path = path.with_name(path.name + ".rulesmd-incomplete.bak")
             if previous_bytes and not backup_path.exists():
                 backup_path.write_bytes(previous_bytes)
@@ -91,8 +95,7 @@ class SafeIconResourceService(PersistentIconResourceService):
             tmp.write_bytes(artmd_bytes)
             tmp.replace(path)
 
-            if had_existing and backup_path is not None and backup_path.is_file():
-                self._merge_existing_rows(backup_path, path)
+            self._merge_existing_rows(old_doc, path)
 
             if not self._artmd_looks_complete(path):
                 raise RuntimeError("自动提取后的 artmd.ini 完整性检查失败")
