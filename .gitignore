@@ -34,6 +34,7 @@ src/rulesmd_editor/resources/generated/*
 # never be committed as bundled metadata, otherwise git pull/update could overwrite them.
 src/rulesmd_editor/resources/app-config.json
 src/rulesmd_editor/resources/user-descriptions.json
+src/rulesmd_editor/resources/user-icons/
 
 # Local editor / OS noise
 .vscode/
