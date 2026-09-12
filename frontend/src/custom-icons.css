@@ -4,13 +4,13 @@
 .iconResourceTabs>button{border:0;border-bottom:2px solid transparent;background:transparent;color:color-mix(in srgb,var(--theme-text) 62%,transparent);padding:8px 14px;cursor:pointer}
 .iconResourceTabs>button.active{color:var(--theme-text-bright);border-bottom-color:var(--theme-accent)}
 .iconResourcePanelBody{flex:1 1 auto;min-height:0;overflow:auto;padding:2px}
-.iconResourcePanelBody:has(.iconResourceImport){display:flex;flex-direction:column;overflow:auto;scrollbar-gutter:stable}
+.iconResourcePanelBody:has(.iconResourceImport){display:flex;flex-direction:column;overflow:hidden}
 .iconResourceToolbar{flex:0 0 auto;display:grid;grid-template-columns:minmax(190px,1fr) minmax(260px,1.5fr) auto;gap:10px;align-items:end;padding-bottom:10px}
 .iconResourceField{display:flex;flex-direction:column;gap:5px;min-width:0}
 .iconResourceField>span{font-size:12px;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
 .iconResourceField select,.iconResourceField input{width:100%;height:32px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:6px;background:color-mix(in srgb,var(--theme-base) 94%,var(--theme-text) 6%);color:inherit;padding:0 9px}
 .iconResourceActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.iconResourceImport{flex:0 0 auto;display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;margin-bottom:10px;padding:10px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:8px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%)}
+.iconResourceImport{flex:0 0 auto;display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;margin-bottom:0;padding:10px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:8px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%)}
 .iconCropColumn{min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px}
 .iconCropFrame{position:relative;flex:0 0 auto;overflow:hidden;border:1px solid color-mix(in srgb,var(--theme-text) 24%,transparent);border-radius:6px;background:color-mix(in srgb,var(--theme-base) 91%,var(--theme-text) 9%);touch-action:none;user-select:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--theme-base) 62%,transparent)}
 .iconCropFrame.hasImage{cursor:grab}.iconCropFrame.hasImage:active{cursor:grabbing}
@@ -35,18 +35,10 @@
 .iconResourceHint{font-size:12px;line-height:1.45;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
 .iconResourceAresNotice{flex:0 0 auto;margin:0 0 8px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--theme-effect) 32%,var(--theme-border));border-radius:6px;background:color-mix(in srgb,var(--theme-effect) 8%,var(--theme-surface-soft));color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base));font-size:11px;line-height:1.4}
 .disabledChoice,.aresOnlyDisabled{opacity:.48}
-.iconResourceGrid{flex:0 0 auto;min-height:112px;max-height:180px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));grid-auto-rows:min-content;align-content:start;gap:8px;padding:8px;border:1px solid color-mix(in srgb,var(--theme-text) 14%,transparent);border-radius:8px;background:color-mix(in srgb,var(--theme-base) 98%,var(--theme-text) 2%);overflow-y:auto;overflow-x:hidden;box-sizing:border-box}
-.iconResourcePanelBody:has(.iconResourceImport):not(:has(.iconResourceGrid))::after{content:'当前没有可读取的用户 / Mod 图标';flex:1 1 auto;min-height:48px;display:flex;align-items:center;justify-content:center;border:1px dashed color-mix(in srgb,var(--theme-text) 16%,transparent);border-radius:8px;background:color-mix(in srgb,var(--theme-base) 98%,var(--theme-text) 2%);color:color-mix(in srgb,var(--theme-text) 50%,transparent);font-size:12px}
-.iconResourceCard{display:grid;grid-template-columns:60px minmax(0,1fr);gap:9px;align-items:center;padding:8px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:7px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%)}
-.iconResourceCardIcon{width:60px;height:48px;background-repeat:no-repeat;background-position:center;background-size:contain;border-radius:3px;overflow:hidden}
-.iconResourceCardIcon.country{height:40px}
-.iconResourceCardText{min-width:0}
-.iconResourceCardText b,.iconResourceCardText span,.iconResourceCardText em{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.iconResourceCardText b{font-size:13px}
-.iconResourceCardText span{font-size:11px;color:color-mix(in srgb,var(--theme-text) 62%,transparent);margin-top:3px}
-.iconResourceBadge{width:max-content;margin-top:5px;padding:1px 5px;border-radius:4px;background:color-mix(in srgb,var(--theme-base) 84%,var(--theme-text) 16%);font-size:10px;font-style:normal}
-.iconResourceBadge.custom{color:var(--theme-accent)}
-.iconResourceBadge.mod{color:var(--theme-effect)}
+/* Resource scanning stays available for status/cache resolution, but the redundant card overview is intentionally not shown in this task-focused dialog. */
+.iconResourceGrid{display:none!important}
+.iconResourcePanelBody:has(.iconResourceImport):not(:has(.iconResourceGrid))::after{content:none!important;display:none!important}
+.iconResourceCard,.iconResourceCardIcon,.iconResourceCardText,.iconResourceBadge{display:none!important}
 .artmdPath{margin-bottom:10px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:6px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:color-mix(in srgb,var(--theme-text) 62%,transparent);word-break:break-all}
 .artmdLayout{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(330px,1.2fr);gap:12px;min-height:0;height:calc(100% - 46px)}
 .artmdRows{min-height:0;height:100%;overflow:auto;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:7px}
