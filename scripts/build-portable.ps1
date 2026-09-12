@@ -42,6 +42,7 @@ $PackageResources = Join-Path $PackageDir 'resources'
 $PackageRuntime = Join-Path $PackageDir 'runtime'
 $PackageBackendExe = Join-Path $PackageRuntime 'rulesmd-backend.exe'
 $PackageBackendInternal = Join-Path $PackageRuntime '_internal'
+$PackageRuleTemplate = Join-Path $PackageResources 'generated\rulesmd.template.ini'
 $PackageRuleSchema = Join-Path $PackageResources 'generated\rules_schema.json'
 $PackageAresSchema = Join-Path $PackageResources 'generated\ares_schema.json'
 $PackageAresUnlocks = Join-Path $PackageResources 'ares_hardcode_unlocks.json'
@@ -98,8 +99,6 @@ function Enable-ProxyEnv {
 function Invoke-NativeAllowFailure([scriptblock]$Action) {
     $previousPreference = $ErrorActionPreference
     try {
-        # Windows PowerShell 5.1 may promote native stderr into PowerShell errors.
-        # Use the native exit code for commands that are intentionally allowed to fail.
         $ErrorActionPreference = 'Continue'
         & $Action | Out-Host
         return [int]$LASTEXITCODE
@@ -172,12 +171,9 @@ function Ensure-PythonEnvironment {
 
 function Ensure-PythonBuildTools {
     Write-Step 'Preparing Python backend build environment'
-    $code = Invoke-NativeAllowFailure {
-        & $Python -m pip install --disable-pip-version-check -e $Root --no-deps
-    }
-    if ($code -ne 0) {
-        Fail 'Unable to register the Rulesmd Python package in the virtual environment.'
-    }
+    Invoke-WithProxyFallback {
+        & $Python -m pip install --disable-pip-version-check -e $Root
+    } 'Rulesmd Python runtime dependency installation'
 
     $code = Invoke-NativeAllowFailure {
         & $Python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('PyInstaller') else 1)" *> $null
@@ -374,6 +370,7 @@ function Assemble-Package {
     }
 
     $requiredPackagedResources = @(
+        $PackageRuleTemplate,
         $PackageRuleSchema,
         $PackageAresSchema,
         $PackageAresUnlocks
@@ -435,35 +432,59 @@ function Test-PackagedBackend {
     }
 
     try {
-        $requestObject = [ordered]@{
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $stdin = $process.StandardInput.BaseStream
+
+        $pingObject = [ordered]@{
             id = 1
             method = 'ping'
-            params = @{
-                unicode = $TestEdition
-            }
+            params = @{ unicode = $TestEdition }
         }
-        $request = $requestObject | ConvertTo-Json -Compress
-        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-        $requestBytes = $utf8NoBom.GetBytes($request + "`n")
-        $stdin = $process.StandardInput.BaseStream
-        $stdin.Write($requestBytes, 0, $requestBytes.Length)
+        $pingBytes = $utf8NoBom.GetBytes(($pingObject | ConvertTo-Json -Compress) + "`n")
+        $stdin.Write($pingBytes, 0, $pingBytes.Length)
         $stdin.Flush()
-
-        $responseLine = $process.StandardOutput.ReadLine()
-        if ([string]::IsNullOrWhiteSpace($responseLine)) {
+        $pingLine = $process.StandardOutput.ReadLine()
+        if ([string]::IsNullOrWhiteSpace($pingLine)) {
             $stderr = $process.StandardError.ReadToEnd()
-            Fail "Packaged backend returned no response. stderr: $stderr"
+            Fail "Packaged backend returned no ping response. stderr: $stderr"
+        }
+        $ping = $pingLine | ConvertFrom-Json
+        if (($ping.ok -ne $true) -or ($ping.result.status -ne 'ok') -or ($ping.result.unicode -ne $TestEdition)) {
+            Fail "Packaged backend ping failed: $pingLine"
         }
 
-        $response = $responseLine | ConvertFrom-Json
-        if (($response.ok -ne $true) -or ($response.result.status -ne 'ok')) {
-            Fail "Packaged backend ping failed: $responseLine"
+        $newObject = [ordered]@{ id = 2; method = 'new_document'; params = @{} }
+        $newBytes = $utf8NoBom.GetBytes(($newObject | ConvertTo-Json -Compress) + "`n")
+        $stdin.Write($newBytes, 0, $newBytes.Length)
+        $stdin.Flush()
+        $newLine = $process.StandardOutput.ReadLine()
+        if ([string]::IsNullOrWhiteSpace($newLine)) {
+            $stderr = $process.StandardError.ReadToEnd()
+            Fail "Packaged backend returned no new_document response. stderr: $stderr"
         }
-        if ($response.result.unicode -ne $TestEdition) {
-            Fail "Packaged backend Unicode round trip failed: $responseLine"
+        $newResponse = $newLine | ConvertFrom-Json
+        if ($newResponse.ok -ne $true) {
+            Fail "Packaged backend new_document failed: $newLine"
+        }
+        if (($newResponse.result.document.section_count -lt 10) -or ($newResponse.result.categories.Count -lt 1)) {
+            Fail "Packaged backend new_document returned an incomplete template: $newLine"
         }
 
-        Write-Host 'Flat-layout, Chinese-path, resources, and UTF-8 backend smoke test passed.' -ForegroundColor Green
+        $iconObject = [ordered]@{ id = 3; method = 'icon_library_snapshot'; params = @{} }
+        $iconBytes = $utf8NoBom.GetBytes(($iconObject | ConvertTo-Json -Compress) + "`n")
+        $stdin.Write($iconBytes, 0, $iconBytes.Length)
+        $stdin.Flush()
+        $iconLine = $process.StandardOutput.ReadLine()
+        if ([string]::IsNullOrWhiteSpace($iconLine)) {
+            $stderr = $process.StandardError.ReadToEnd()
+            Fail "Packaged backend returned no icon resource response. stderr: $stderr"
+        }
+        $iconResponse = $iconLine | ConvertFrom-Json
+        if ($iconResponse.ok -ne $true) {
+            Fail "Packaged backend icon resource dependency test failed: $iconLine"
+        }
+
+        Write-Host 'Portable backend ping, new-document template, Pillow icon resources, UTF-8, and flat layout smoke tests passed.' -ForegroundColor Green
     } finally {
         try { $process.StandardInput.Close() } catch {}
         if (-not $process.HasExited) {
