@@ -77,7 +77,7 @@ def test_incomplete_loose_artmd_is_repaired_and_overlaid(tmp_path: Path) -> None
 
     assert result["autoExtracted"] is True
     assert result["repairedIncomplete"] is True
-    assert Path(result["backup"]).read_text(encoding="cp1252") == stub
+    assert Path(result["backup"]).read_bytes() == stub.encode("cp1252")
 
     repaired = IniDocument.load(artmd_path)
     assert len(repaired.sections()) >= 24
