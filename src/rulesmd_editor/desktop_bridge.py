@@ -4,10 +4,12 @@ import faulthandler
 import json
 import sys
 import traceback
-from typing import BinaryIO, TextIO
+from typing import BinaryIO, TextIO, TYPE_CHECKING
 
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
-from .icon_resources import IconResourceService
+
+if TYPE_CHECKING:
+    from .icon_resources import IconResourceService
 
 
 def _report_exception() -> None:
@@ -20,9 +22,19 @@ def _report_exception() -> None:
 
 
 class DiagnosticExportBridge(ExportBridge):
-    """Desktop dispatcher that preserves the normal RPC envelope and logs full failures."""
+    """Desktop dispatcher that preserves the normal RPC envelope and logs full failures.
 
-    def _icon_resources(self) -> IconResourceService:
+    Resource-side helpers are loaded lazily so a problem in an optional feature can never
+    prevent the editor core (new/open/save/snapshot) from starting.
+    """
+
+    def _icon_resources(self) -> "IconResourceService":
+        try:
+            from .icon_resources import IconResourceService
+        except ImportError as exc:
+            raise RuntimeError(
+                "图标资源模块运行依赖不完整，请重新运行“启动项目.bat”修复开发环境。"
+            ) from exc
         return IconResourceService(self.workspace)
 
     def rpc_icon_library_snapshot(self) -> dict:
