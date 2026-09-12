@@ -5,6 +5,8 @@ import './icon-settings-entry.css'
 
 let dialogRoot: Root | null = null
 let dialogHost: HTMLElement | null = null
+let documentReady = false
+let consumerRefreshTimer: number | null = null
 
 function closeManager() {
   dialogRoot?.unmount()
@@ -48,9 +50,21 @@ function activateHeaderIcon(icon: HTMLElement, event: Event) {
 }
 
 function refreshSoon() {
-  for (const delay of [350, 900, 1800]) {
+  for (const delay of [120, 350, 900, 1800]) {
     window.setTimeout(() => { void refreshIconCache().catch(() => undefined) }, delay)
   }
+}
+
+function refreshAllReactIconConsumers() {
+  if (consumerRefreshTimer != null) window.clearTimeout(consumerRefreshTimer)
+  consumerRefreshTimer = window.setTimeout(() => {
+    consumerRefreshTimer = null
+    // UnitTree listens to this event directly. Re-select the active editor object as well
+    // so parameter Select/MultiSelect controls rebuild their React option icon nodes.
+    const selected = document.querySelector<HTMLButtonElement>('.unitTreeLeaf.selected')
+      ?? document.querySelector<HTMLButtonElement>('.unitGlobalRule.selected')
+    selected?.click()
+  }, 0)
 }
 
 function install() {
@@ -80,20 +94,35 @@ function install() {
     activateHeaderIcon(icon, event)
   }, true)
 
-  // UnitTree portals the visible header icon after the editor header itself exists.
-  // Bind tooltip/accessibility metadata whenever that portal is recreated for a new unit.
+  window.addEventListener('rulesmd-icon-cache-updated', refreshAllReactIconConsumers)
+
+  // The icon script can start before React has opened/restored a rules document. Do not
+  // ask the backend for an icon snapshot while there is no document: that empty snapshot
+  // would overwrite the valid persisted browser cache from the previous session.
   const observer = new MutationObserver(() => {
     const icon = document.querySelector<HTMLElement>('.entityHeaderHost .headerUnitComposite')
     if (icon && icon.dataset.iconSettingsBound !== '1') {
       icon.dataset.iconSettingsBound = '1'
       prepareHeaderIcon(icon)
     }
+
+    const hasDocumentRows = Boolean(document.querySelector('.unitTreeLeaf[data-unit-id]'))
+    if (hasDocumentRows && !documentReady) {
+      documentReady = true
+      void refreshIconCache().catch(() => undefined)
+    } else if (!hasDocumentRows) {
+      documentReady = false
+    }
   })
   observer.observe(document.body, { childList: true, subtree: true })
 
   const existingIcon = document.querySelector<HTMLElement>('.entityHeaderHost .headerUnitComposite')
   if (existingIcon) prepareHeaderIcon(existingIcon)
-  void refreshIconCache().catch(() => undefined)
+
+  if (document.querySelector('.unitTreeLeaf[data-unit-id]')) {
+    documentReady = true
+    void refreshIconCache().catch(() => undefined)
+  }
 }
 
 if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', install, { once: true })
