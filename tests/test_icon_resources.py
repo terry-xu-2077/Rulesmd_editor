@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtGui import QColor, QImage
+from PIL import Image
 
 from rulesmd_editor import icon_resources
 from rulesmd_editor.icon_resources import IconResourceService, read_pcx, write_pcx
@@ -43,20 +43,18 @@ class _Workspace:
 
 
 def test_pcx_round_trip_preserves_dimensions(tmp_path: Path) -> None:
-    image = QImage(60, 48, QImage.Format.Format_ARGB32)
-    image.fill(QColor(218, 72, 35))
+    image = Image.new("RGBA", (60, 48), (218, 72, 35, 255))
     target = tmp_path / "cameo.pcx"
 
     write_pcx(image, target)
     decoded = read_pcx(target)
 
     assert target.read_bytes()[:4] == bytes((0x0A, 5, 1, 8))
-    assert decoded.width() == 60
-    assert decoded.height() == 48
-    color = decoded.pixelColor(10, 10)
-    assert abs(color.red() - 218) < 40
-    assert abs(color.green() - 72) < 40
-    assert abs(color.blue() - 35) < 70
+    assert decoded.size == (60, 48)
+    red, green, blue, _ = decoded.getpixel((10, 10))
+    assert abs(red - 218) < 40
+    assert abs(green - 72) < 40
+    assert abs(blue - 35) < 70
 
 
 def test_artmd_icon_config_preserves_unrelated_fields(monkeypatch, tmp_path: Path) -> None:
@@ -73,7 +71,12 @@ def test_artmd_icon_config_preserves_unrelated_fields(monkeypatch, tmp_path: Pat
     artmd.write_text("[MYTNKART]\nVoxel=yes\nCameo=OLDICON\n", encoding="utf-8")
 
     service = IconResourceService(_Workspace(rules))
-    result = service.set_artmd_icon("MYTNKART", cameo="", cameo_pcx="mytank.pcx", alt_cameo_pcx="mytank_elite.pcx")
+    result = service.set_artmd_icon(
+        "MYTNKART",
+        cameo="",
+        cameo_pcx="mytank.pcx",
+        alt_cameo_pcx="mytank_elite.pcx",
+    )
 
     saved = IniDocument.load(artmd)
     assert saved.get("MYTNKART", "Voxel") == "yes"
@@ -92,11 +95,9 @@ def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: P
     exe.write_bytes(b"")
     monkeypatch.setattr(icon_resources, "load_app_config", lambda: {"gamePath": str(exe)})
 
-    unit_image = QImage(60, 48, QImage.Format.Format_ARGB32)
-    unit_image.fill(QColor(30, 140, 220))
+    unit_image = Image.new("RGBA", (60, 48), (30, 140, 220, 255))
     write_pcx(unit_image, game_root / "mytank.pcx")
-    country_image = QImage(60, 40, QImage.Format.Format_ARGB32)
-    country_image.fill(QColor(220, 180, 30))
+    country_image = Image.new("RGBA", (60, 40), (220, 180, 30, 255))
     write_pcx(country_image, game_root / "mycountry.pcx")
 
     rules = IniDocument.from_text(
