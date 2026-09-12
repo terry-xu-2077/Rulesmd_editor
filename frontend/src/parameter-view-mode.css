@@ -1,0 +1,27 @@
+.rawTextTablePane {
+  min-height: 0;
+}
+
+.rawTextTablePane .rawParameterValueCell {
+  min-width: 0;
+  cursor: text;
+}
+
+.rawTextTablePane .rawParameterValue {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  font: 12px/1.45 "Cascadia Code", Consolas, monospace;
+  color: inherit;
+}
+
+.rawTextTablePane .parameterTableRow.focused .rawParameterValue,
+.rawTextTablePane .parameterTableRow.selected .rawParameterValue {
+  font-weight: 600;
+}
