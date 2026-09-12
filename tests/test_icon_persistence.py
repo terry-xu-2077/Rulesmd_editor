@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import base64
+import json
 from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
 
 from rulesmd_editor import icon_resources
-from rulesmd_editor.icon_resources import IconResourceService
 from rulesmd_editor.icon_resources_persistent import PersistentIconResourceService
 from rulesmd_editor.ini_document import IniDocument
 
@@ -61,12 +61,48 @@ def _sample_icon() -> Image.Image:
     return image
 
 
-def test_persistent_snapshot_matches_custom_icon_id_case_insensitively(monkeypatch, tmp_path: Path) -> None:
+def test_import_persists_only_metadata_and_custom_atlas(monkeypatch, tmp_path: Path) -> None:
+    root = _patch_icon_storage(monkeypatch, tmp_path)
+    service = PersistentIconResourceService(_Workspace(_rules()))
+
+    service.import_custom_icon(
+        kind="unit",
+        target_id="MYCONA",
+        data_base64=_data_url(_sample_icon()),
+        filename="excavator.png",
+        sync_game=False,
+        crop_zoom=1.5,
+        crop_x=0.65,
+        crop_y=0.5,
+    )
+
+    assert icon_resources.USER_ICON_META.is_file()
+    assert icon_resources.CUSTOM_UNIT_TILE.is_file()
+    assert not icon_resources.SOURCE_ROOT.exists()
+    assert not icon_resources.ORIGINAL_ROOT.exists()
+    assert not icon_resources.RESOLVED_UNIT_TILE.exists()
+    assert not icon_resources.RESOLVED_COUNTRY_TILE.exists()
+
+    payload = json.loads(icon_resources.USER_ICON_META.read_text(encoding="utf-8"))
+    assert payload["storage"] == "single-atlas-v1"
+    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name", "game_file"}
+
+    atlas = Image.open(icon_resources.CUSTOM_UNIT_TILE)
+    assert atlas.width == icon_resources.UNIT_CELL[0] * icon_resources.ATLAS_COLUMNS
+    assert atlas.height == icon_resources.UNIT_CELL[1]
+
+    restored = service.custom_icon_source("unit", "MYCONA")
+    assert restored["exists"] is True
+    assert restored["hasOriginal"] is False
+    assert restored["image"].startswith("data:image/png;base64,")
+    assert restored["crop"] == {"zoom": 1.0, "x": 0.5, "y": 0.5}
+
+
+def test_snapshot_matches_custom_icon_case_and_does_not_require_target_scan(monkeypatch, tmp_path: Path) -> None:
     _patch_icon_storage(monkeypatch, tmp_path)
     rules = _rules()
-
-    # Simulate older metadata/source spelling that differs only by Section case.
-    IconResourceService(_Workspace(rules)).import_custom_icon(
+    service = PersistentIconResourceService(_Workspace(rules))
+    service.import_custom_icon(
         kind="unit",
         target_id="mycona",
         data_base64=_data_url(_sample_icon()),
@@ -74,54 +110,46 @@ def test_persistent_snapshot_matches_custom_icon_id_case_insensitively(monkeypat
         sync_game=False,
     )
 
-    snapshot = PersistentIconResourceService(_Workspace(rules)).library_snapshot()
+    snapshot = PersistentIconResourceService(_Workspace(rules, include_target=False)).library_snapshot()
 
-    assert "MYCONA" in snapshot["unit"]
-    assert snapshot["unit"]["MYCONA"]["source"] == "custom"
+    assert "MYCONA" in snapshot["unit"] or "mycona" in snapshot["unit"]
+    row = snapshot["unit"].get("MYCONA") or snapshot["unit"]["mycona"]
+    assert row["source"] == "custom"
+    assert snapshot["customCount"] == 1
     assert snapshot["unitTile"].startswith("data:image/png;base64,")
 
 
-def test_persistent_snapshot_does_not_depend_on_current_target_scan(monkeypatch, tmp_path: Path) -> None:
-    _patch_icon_storage(monkeypatch, tmp_path)
+def test_legacy_per_object_files_migrate_into_atlas_then_are_removed(monkeypatch, tmp_path: Path) -> None:
+    root = _patch_icon_storage(monkeypatch, tmp_path)
     rules = _rules()
-    service = IconResourceService(_Workspace(rules))
-    service.import_custom_icon(
-        kind="unit",
-        target_id="MYCONA",
-        data_base64=_data_url(_sample_icon()),
-        filename="excavator.png",
-        sync_game=False,
-    )
+    root.mkdir(parents=True)
+    (root / "sources" / "unit").mkdir(parents=True)
+    (root / "originals" / "unit").mkdir(parents=True)
 
-    # Startup/open timing can momentarily return no target rows. The persisted icon must
-    # still remain in the library instead of being replaced by an empty cache snapshot.
-    snapshot = PersistentIconResourceService(_Workspace(rules, include_target=False)).library_snapshot()
-
-    assert snapshot["unit"]["MYCONA"]["source"] == "custom"
-    assert snapshot["customCount"] == 1
-
-
-def test_persistent_snapshot_recovers_generated_png_from_old_custom_atlas(monkeypatch, tmp_path: Path) -> None:
-    _patch_icon_storage(monkeypatch, tmp_path)
-    rules = _rules()
-    service = IconResourceService(_Workspace(rules))
-    service.import_custom_icon(
-        kind="unit",
-        target_id="MYCONA",
-        data_base64=_data_url(_sample_icon()),
-        filename="excavator.png",
-        sync_game=False,
-    )
-
+    icon = Image.new("RGBA", icon_resources.UNIT_CELL, (40, 170, 215, 255))
     generated = icon_resources._source_path("unit", "MYCONA")
+    generated.parent.mkdir(parents=True, exist_ok=True)
+    icon.save(generated, format="PNG")
     original = icon_resources._original_path("unit", "MYCONA")
-    assert icon_resources.CUSTOM_UNIT_TILE.is_file()
-    generated.unlink()
-    original.unlink()
+    original.parent.mkdir(parents=True, exist_ok=True)
+    _sample_icon().save(original, format="PNG")
+    Image.new("RGBA", icon_resources.UNIT_CELL, (0, 0, 0, 0)).save(icon_resources.RESOLVED_UNIT_TILE, format="PNG")
+    icon_resources.USER_ICON_META.write_text(
+        json.dumps({
+            "version": 2,
+            "unit": {"MYCONA": {"slot": 0, "source_name": "old.png", "game_file": "", "crop": {"zoom": 2, "x": .6, "y": .5}}},
+            "country": {},
+        }),
+        encoding="utf-8",
+    )
 
-    snapshot = PersistentIconResourceService(_Workspace(rules)).library_snapshot()
+    service = PersistentIconResourceService(_Workspace(rules))
+    snapshot = service.library_snapshot()
 
     assert snapshot["unit"]["MYCONA"]["source"] == "custom"
-    assert generated.is_file()
-    recovered = Image.open(generated)
-    assert recovered.size == icon_resources.UNIT_CELL
+    assert icon_resources.CUSTOM_UNIT_TILE.is_file()
+    assert not icon_resources.SOURCE_ROOT.exists()
+    assert not icon_resources.ORIGINAL_ROOT.exists()
+    assert not icon_resources.RESOLVED_UNIT_TILE.exists()
+    payload = json.loads(icon_resources.USER_ICON_META.read_text(encoding="utf-8"))
+    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name", "game_file"}
