@@ -18,6 +18,8 @@ def test_app_config_is_normalized_and_written_to_resources(tmp_path, monkeypatch
         "rightPane": 1,
         "lastFile": r"D:\\YURI\\rulesmd.ini",
         "aresEnabled": False,
+        "windowWidth": 2400,
+        "windowHeight": 1400,
         "ignored": "not persisted",
     })
 
@@ -26,8 +28,23 @@ def test_app_config_is_normalized_and_written_to_resources(tmp_path, monkeypatch
     assert saved["leftPane"] == 420
     assert saved["rightPane"] == 300
     assert saved["aresEnabled"] is False
+    assert saved["windowWidth"] == 2400
+    assert saved["windowHeight"] == 1400
     payload = json.loads(config_file.read_text(encoding="utf-8"))
     assert "ignored" not in payload
+
+
+def test_app_config_defaults_and_clamps_window_size(tmp_path, monkeypatch):
+    config_file = tmp_path / "app-config.json"
+    monkeypatch.setattr(user_data, "APP_CONFIG_FILE", config_file)
+
+    defaulted = user_data.load_app_config()
+    assert defaulted["windowWidth"] == 1680
+    assert defaulted["windowHeight"] == 1020
+
+    saved = user_data.save_app_config({"windowWidth": 20, "windowHeight": 99999})
+    assert saved["windowWidth"] == 1120
+    assert saved["windowHeight"] == 4320
 
 
 def test_user_description_is_separate_case_insensitive_override(tmp_path, monkeypatch):
