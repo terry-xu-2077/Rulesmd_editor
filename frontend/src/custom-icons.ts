@@ -50,7 +50,9 @@ function activateHeaderIcon(icon: HTMLElement, event: Event) {
 }
 
 function refreshSoon() {
-  for (const delay of [120, 350, 900, 1800]) {
+  // File dialogs return focus before/around the async open call. Retry long enough to
+  // cover the document swap without making icon recovery depend on dialog timing.
+  for (const delay of [120, 350, 900, 1800, 4000]) {
     window.setTimeout(() => { void refreshIconCache().catch(() => undefined) }, delay)
   }
 }
@@ -65,6 +67,13 @@ function refreshAllReactIconConsumers() {
       ?? document.querySelector<HTMLButtonElement>('.unitGlobalRule.selected')
     selected?.click()
   }, 0)
+}
+
+function hasOpenDocument() {
+  // Do not require a leaf row here. UnitTree intentionally renders leaves only after a
+  // side/type group is expanded, so using .unitTreeLeaf made a freshly opened document
+  // look "not ready" and prevented its persisted icons from ever being loaded.
+  return Boolean(document.querySelector('.unitHierarchy'))
 }
 
 function install() {
@@ -95,6 +104,12 @@ function install() {
   }, true)
 
   window.addEventListener('rulesmd-icon-cache-updated', refreshAllReactIconConsumers)
+  // A native open dialog can remain on screen while the click-scheduled refreshes fire.
+  // Refresh again when the editor window regains focus so the newly opened backend
+  // document, rather than the previous/empty one, is used to rebuild the icon cache.
+  window.addEventListener('focus', () => {
+    if (hasOpenDocument()) refreshSoon()
+  })
 
   // The icon script can start before React has opened/restored a rules document. Do not
   // ask the backend for an icon snapshot while there is no document: that empty snapshot
@@ -106,11 +121,11 @@ function install() {
       prepareHeaderIcon(icon)
     }
 
-    const hasDocumentRows = Boolean(document.querySelector('.unitTreeLeaf[data-unit-id]'))
-    if (hasDocumentRows && !documentReady) {
+    const hasDocument = hasOpenDocument()
+    if (hasDocument && !documentReady) {
       documentReady = true
       void refreshIconCache().catch(() => undefined)
-    } else if (!hasDocumentRows) {
+    } else if (!hasDocument) {
       documentReady = false
     }
   })
@@ -119,7 +134,7 @@ function install() {
   const existingIcon = document.querySelector<HTMLElement>('.entityHeaderHost .headerUnitComposite')
   if (existingIcon) prepareHeaderIcon(existingIcon)
 
-  if (document.querySelector('.unitTreeLeaf[data-unit-id]')) {
+  if (hasOpenDocument()) {
     documentReady = true
     void refreshIconCache().catch(() => undefined)
   }
