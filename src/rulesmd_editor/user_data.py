@@ -17,6 +17,8 @@ DEFAULT_APP_CONFIG: dict[str, Any] = {
     "rightPane": 390,
     "lastFile": "",
     "aresEnabled": True,
+    "windowWidth": 1680,
+    "windowHeight": 1020,
 }
 
 USER_DESCRIPTION_BUCKETS = {
@@ -51,6 +53,8 @@ def load_app_config() -> dict[str, Any]:
     for key, fallback, minimum, maximum in (
         ("leftPane", 230, 180, 420),
         ("rightPane", 390, 300, 620),
+        ("windowWidth", 1680, 1120, 7680),
+        ("windowHeight", 1020, 680, 4320),
     ):
         try:
             result[key] = max(minimum, min(maximum, int(result.get(key, fallback))))
@@ -73,6 +77,8 @@ def save_app_config(values: dict[str, Any]) -> dict[str, Any]:
     for key, fallback, minimum, maximum in (
         ("leftPane", 230, 180, 420),
         ("rightPane", 390, 300, 620),
+        ("windowWidth", 1680, 1120, 7680),
+        ("windowHeight", 1020, 680, 4320),
     ):
         try:
             normalized[key] = max(minimum, min(maximum, int(normalized.get(key, fallback))))
