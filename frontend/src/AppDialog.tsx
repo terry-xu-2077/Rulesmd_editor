@@ -64,6 +64,11 @@ function portalTheme() {
  * the Dialog itself; this wrapper only moves the whole component to document.body so
  * table/editor overflow, stacking contexts and transformed ancestors cannot hide it.
  * It also bridges the active application theme into the portal subtree.
+ *
+ * New ordinary feature dialogs should target an 800x480 envelope by default. The
+ * envelope may be fixed, but its interior must use flexible layout so the main content
+ * fills the available body instead of leaving unused space in the lower-right area.
+ * Larger dialog sizes are reserved for workflows that genuinely need more room.
  */
 export function AppDialog(props: AppDialogProps) {
   if (!props.open || typeof document === 'undefined') return null
