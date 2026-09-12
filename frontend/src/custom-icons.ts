@@ -20,19 +20,30 @@ function openManager(initialTargetId = '') {
   dialogRoot.render(createElement(CustomIconDialog, { open: true, onClose: closeManager, initialTargetId }))
 }
 
-function selectedUnitId() {
-  return document.querySelector<HTMLElement>('.unitTreeLeaf.selected')?.dataset.unitId || ''
+function currentEntityId() {
+  return document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-watermark')?.textContent?.trim()
+    || document.querySelector<HTMLElement>('.unitTreeLeaf.selected')?.dataset.unitId
+    || ''
 }
 
-function targetUnitId(target: HTMLElement) {
-  const leaf = target.closest<HTMLElement>('.unitTreeLeaf[data-unit-id]')
-  if (leaf?.dataset.unitId) return leaf.dataset.unitId
-  if (target.closest('.entityHeaderHost,.headerUnitComposite')) return selectedUnitId()
-  return ''
+function headerIconFromTarget(target: EventTarget | null) {
+  return (target as HTMLElement | null)?.closest<HTMLElement>('.entityHeaderHost .tc-entity-icon') ?? null
 }
 
-function isEditableIconTarget(target: HTMLElement) {
-  return Boolean(target.closest('.unitTreeIcon,.unitTreeIconWrap,.unitArtworkIcon,.unitTreeCountryTextIcon'))
+function prepareHeaderIcon(icon: HTMLElement) {
+  icon.title = '设置图标'
+  icon.setAttribute('aria-label', '设置图标')
+  icon.setAttribute('role', 'button')
+  icon.tabIndex = 0
+}
+
+function activateHeaderIcon(icon: HTMLElement, event: Event) {
+  const id = currentEntityId()
+  if (!id) return
+  event.preventDefault()
+  event.stopPropagation()
+  prepareHeaderIcon(icon)
+  openManager(id)
 }
 
 function refreshSoon() {
@@ -42,22 +53,45 @@ function refreshSoon() {
 }
 
 function install() {
-  document.addEventListener('contextmenu', event => {
-    const target = event.target as HTMLElement | null
-    if (!target || !isEditableIconTarget(target)) return
-    const id = targetUnitId(target)
-    if (!id) return
-    event.preventDefault()
-    event.stopPropagation()
-    openManager(id)
+  // Icon editing belongs to the current entity identity in the editor header. Tree icons
+  // remain pure navigation targets and never open resource configuration themselves.
+  document.addEventListener('pointerover', event => {
+    const icon = headerIconFromTarget(event.target)
+    if (icon) prepareHeaderIcon(icon)
   }, true)
 
   document.addEventListener('click', event => {
+    const icon = headerIconFromTarget(event.target)
+    if (icon) {
+      activateHeaderIcon(icon, event)
+      return
+    }
+
     const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>('.toolbar .iconButton')
     if (!button || (button.title !== '打开' && button.title !== '新建')) return
     refreshSoon()
   }, true)
 
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const icon = headerIconFromTarget(event.target)
+    if (!icon) return
+    activateHeaderIcon(icon, event)
+  }, true)
+
+  // React may render the entity header after this module initializes. A tiny observer only
+  // adds accessibility/tooltip metadata; click handling itself stays delegated above.
+  const observer = new MutationObserver(() => {
+    const icon = document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-icon')
+    if (icon && icon.dataset.iconSettingsBound !== '1') {
+      icon.dataset.iconSettingsBound = '1'
+      prepareHeaderIcon(icon)
+    }
+  })
+  observer.observe(document.body, { childList: true, subtree: true })
+
+  const existingIcon = document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-icon')
+  if (existingIcon) prepareHeaderIcon(existingIcon)
   void refreshIconCache().catch(() => undefined)
 }
 
