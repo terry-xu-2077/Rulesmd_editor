@@ -208,6 +208,13 @@ export function UnitTree({ rows, selectedId, query, documentEpoch, onSelect }: P
   const navigationIndex = useRef(-1)
   const navigationTarget = useRef<number | null>(null)
   const [navigationRevision, setNavigationRevision] = useState(0)
+  const [, setIconRevision] = useState(0)
+
+  useEffect(() => {
+    const refreshIcons = () => setIconRevision(value => value + 1)
+    window.addEventListener('rulesmd-icon-cache-updated', refreshIcons)
+    return () => window.removeEventListener('rulesmd-icon-cache-updated', refreshIcons)
+  }, [])
 
   useEffect(() => {
     setExpanded({})
