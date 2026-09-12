@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Frontend = Join-Path $Root 'frontend'
 $FrontendPackage = Join-Path $Frontend 'package.json'
+$PyProject = Join-Path $Root 'pyproject.toml'
 $FrontendModules = Join-Path $Frontend 'node_modules'
 $FrontendStamp = Join-Path $FrontendModules '.rulesmd-package.sha256'
 $ViteCache = Join-Path $FrontendModules '.vite'
@@ -175,6 +176,22 @@ function Install-FrontendDependencies {
     }
 }
 
+function Install-PythonBackend {
+    Clear-ProxyEnv
+    & $Python -m pip install --disable-pip-version-check -e $Root
+    if ($LASTEXITCODE -eq 0) { return $true }
+
+    if ($ProxyAvailable) {
+        Write-Host "Python dependency install failed directly. Retrying through $ProxyUrl ..." -ForegroundColor Yellow
+        Enable-ProxyEnv
+        & $Python -m pip install --disable-pip-version-check -e $Root
+        $ok = $LASTEXITCODE -eq 0
+        Clear-ProxyEnv
+        return $ok
+    }
+    return $false
+}
+
 function Build-RuleResources {
     Write-Step 'Preparing rules metadata and clean default template'
     Clear-ProxyEnv
@@ -233,12 +250,15 @@ if (-not (Test-Path $Python)) {
 }
 if (-not (Test-VenvPython)) { Fail 'Python virtual environment could not be created or started.' }
 
-$PackageStamp = Join-Path $Venv '.rulesmd-editor-installed'
-if (-not (Test-Path $PackageStamp)) {
-    Write-Step 'Registering Python backend in the virtual environment'
-    & $Python -m pip install --disable-pip-version-check -e $Root --no-deps
-    if ($LASTEXITCODE -ne 0) { Fail 'Python backend installation failed.' }
-    New-Item -ItemType File -Path $PackageStamp -Force | Out-Null
+$PackageStamp = Join-Path $Venv '.rulesmd-editor-pyproject.sha256'
+$PackageHash = (Get-FileHash -Algorithm SHA256 $PyProject).Hash
+$InstalledPackageHash = if (Test-Path $PackageStamp) { (Get-Content $PackageStamp -Raw).Trim() } else { '' }
+if ($PackageHash -ne $InstalledPackageHash) {
+    Write-Step 'Installing/updating Python backend and runtime dependencies'
+    if (-not (Install-PythonBackend)) { Fail 'Python backend/runtime dependency installation failed.' }
+    Set-Content -Path $PackageStamp -Value $PackageHash -NoNewline
+} else {
+    Write-Host 'Python backend dependencies are up to date.' -ForegroundColor DarkGray
 }
 
 if ((-not (Test-Path $RuleTemplate)) -or (-not (Test-Path $RuleSchema))) {
