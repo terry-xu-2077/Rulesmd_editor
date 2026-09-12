@@ -22,6 +22,14 @@ function controlPane() {
   return document.querySelector<HTMLElement>(CONTROL_PANE_SELECTOR)
 }
 
+function setText(element: HTMLElement, value: string) {
+  if (element.textContent !== value) element.textContent = value
+}
+
+function setAttributeIfChanged(element: Element, name: string, value: string) {
+  if (element.getAttribute(name) !== value) element.setAttribute(name, value)
+}
+
 function ensureRawPane(source: HTMLElement) {
   if (rawPane?.isConnected) return rawPane
   const pane = document.createElement('section')
@@ -168,15 +176,16 @@ function viewButtons() {
 function syncSwitchLabels() {
   const { host, buttons } = viewButtons()
   if (!host || buttons.length < 2) return
-  buttons[0].textContent = '控件'
-  buttons[1].textContent = '原文'
-  buttons[0].dataset.parameterView = 'controls'
-  buttons[1].dataset.parameterView = 'raw'
+
+  setText(buttons[0], '控件')
+  setText(buttons[1], '原文')
+  if (buttons[0].dataset.parameterView !== 'controls') buttons[0].dataset.parameterView = 'controls'
+  if (buttons[1].dataset.parameterView !== 'raw') buttons[1].dataset.parameterView = 'raw'
   buttons[0].classList.toggle('active', mode === 'controls')
   buttons[1].classList.toggle('active', mode === 'raw')
-  buttons[0].setAttribute('aria-pressed', String(mode === 'controls'))
-  buttons[1].setAttribute('aria-pressed', String(mode === 'raw'))
-  host.setAttribute('aria-label', '参数显示模式')
+  setAttributeIfChanged(buttons[0], 'aria-pressed', String(mode === 'controls'))
+  setAttributeIfChanged(buttons[1], 'aria-pressed', String(mode === 'raw'))
+  setAttributeIfChanged(host, 'aria-label', '参数显示模式')
 
   if (host.dataset.parameterViewBound === '1') return
   host.dataset.parameterViewBound = '1'
@@ -267,6 +276,16 @@ function scrollToFocusedRow() {
   target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
+function revealFocusedPasteTarget() {
+  clearFieldSearch()
+  chooseAllGroups()
+  window.setTimeout(() => {
+    expandCollapsedGroups()
+    scheduleRawRefresh(0)
+    window.setTimeout(scrollToFocusedRow, 120)
+  }, 80)
+}
+
 function armPasteFocus() {
   if (pasteWatchTimer != null) window.clearInterval(pasteWatchTimer)
   const before = selectionSignature()
@@ -279,13 +298,7 @@ function armPasteFocus() {
     const changed = Boolean(signature && signature !== before)
 
     if (changed) {
-      clearFieldSearch()
-      chooseAllGroups()
-      window.setTimeout(() => {
-        expandCollapsedGroups()
-        scheduleRawRefresh(0)
-        window.setTimeout(scrollToFocusedRow, 120)
-      }, 80)
+      revealFocusedPasteTarget()
       if (pasteWatchTimer != null) window.clearInterval(pasteWatchTimer)
       pasteWatchTimer = null
       return
@@ -293,9 +306,7 @@ function armPasteFocus() {
 
     if (!fallbackScrolled && elapsed >= 650) {
       fallbackScrolled = true
-      clearFieldSearch()
-      expandCollapsedGroups()
-      scrollToFocusedRow()
+      revealFocusedPasteTarget()
     }
 
     if (elapsed >= 3000) {
@@ -337,13 +348,19 @@ const observer = new MutationObserver(mutations => {
   window.queueMicrotask(applyEnhancements)
 })
 
-observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'disabled'] })
+observer.observe(document.body, {
+  childList: true,
+  subtree: true,
+  characterData: true,
+  attributes: true,
+  attributeFilter: ['class', 'disabled'],
+})
+
 bindPasteWatcher()
 applyEnhancements()
 
-// Keep the mirror fresh even when a control updates its internal DOM without changing
-// the surrounding parameter row structure. The backend is local, and this low-frequency
-// refresh avoids rebuilding or remounting the control view itself.
+// Keep the text mirror hot so frequent switching is instant. The control table remains
+// mounted the whole time; only visibility changes, so Select/Slider/etc. state is kept.
 window.setInterval(() => {
   if (!controlPane() || !currentSectionId()) return
   if (mode === 'raw' || lastSectionData?.section.toLowerCase() !== currentSectionId().toLowerCase()) scheduleRawRefresh(0)
