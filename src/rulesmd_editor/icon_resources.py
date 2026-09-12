@@ -3,13 +3,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import os
-import struct
+from io import BytesIO
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QImage, QPainter, qRgb
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .ini_document import IniDocument
 from .resource_paths import RESOURCE_ROOT
@@ -92,38 +90,45 @@ def _decode_upload(payload: str) -> bytes:
         raise ValueError("图标数据不是有效的 Base64") from exc
 
 
-def _load_image_bytes(data: bytes) -> QImage:
-    image = QImage()
-    if not image.loadFromData(data) or image.isNull():
-        raise ValueError("无法读取该图片，请使用 PNG、JPG、BMP 或 Qt 支持的图片格式")
-    return image
+def _load_image_bytes(data: bytes) -> Image.Image:
+    try:
+        with Image.open(BytesIO(data)) as source:
+            source.load()
+            return source.convert("RGBA")
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError("无法读取该图片，请使用 PNG、JPG、BMP 或 WebP") from exc
 
 
-def _normalize_image(image: QImage, width: int, height: int) -> QImage:
-    if image.isNull():
+def _load_image(path: Path) -> Image.Image | None:
+    try:
+        with Image.open(path) as source:
+            source.load()
+            return source.convert("RGBA")
+    except (FileNotFoundError, UnidentifiedImageError, OSError):
+        return None
+
+
+def _normalize_image(image: Image.Image, width: int, height: int) -> Image.Image:
+    if image.width <= 0 or image.height <= 0:
         raise ValueError("图片为空")
-    scaled = image.scaled(
-        width,
-        height,
-        Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-        Qt.TransformationMode.SmoothTransformation,
+    return ImageOps.fit(
+        image.convert("RGBA"),
+        (width, height),
+        method=Image.Resampling.LANCZOS,
+        centering=(0.5, 0.5),
     )
-    x = max(0, (scaled.width() - width) // 2)
-    y = max(0, (scaled.height() - height) // 2)
-    return scaled.copy(x, y, width, height).convertToFormat(QImage.Format.Format_ARGB32)
 
 
 def _source_path(kind: str, target_id: str) -> Path:
     return SOURCE_ROOT / kind / f"{_safe_stem(target_id)}.png"
 
 
-def _save_normalized_source(kind: str, target_id: str, image: QImage) -> Path:
+def _save_normalized_source(kind: str, target_id: str, image: Image.Image) -> Path:
     width, height = UNIT_CELL if kind == "unit" else COUNTRY_CELL
     normalized = _normalize_image(image, width, height)
     target = _source_path(kind, target_id)
     target.parent.mkdir(parents=True, exist_ok=True)
-    if not normalized.save(str(target), "PNG"):
-        raise OSError(f"无法写入图标资源：{target}")
+    normalized.save(target, format="PNG")
     return target
 
 
@@ -160,150 +165,49 @@ def _rebuild_custom_atlas(kind: str, meta: dict[str, Any]) -> Path:
 
     USER_ICON_ROOT.mkdir(parents=True, exist_ok=True)
     if not valid:
-        blank = QImage(width, height, QImage.Format.Format_ARGB32)
-        blank.fill(Qt.GlobalColor.transparent)
-        blank.save(str(tile_path), "PNG")
+        Image.new("RGBA", (width, height), (0, 0, 0, 0)).save(tile_path, format="PNG")
         return tile_path
 
     max_slot = max(slot for slot, _, _ in valid)
-    rows_count = max(1, max_slot // ATLAS_COLUMNS + 1)
-    atlas = QImage(width * ATLAS_COLUMNS, height * rows_count, QImage.Format.Format_ARGB32)
-    atlas.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(atlas)
-    try:
-        for slot, _, source in valid:
-            image = QImage(str(source))
-            if image.isNull():
-                continue
-            col = slot % ATLAS_COLUMNS
-            row = slot // ATLAS_COLUMNS
-            painter.drawImage(col * width, row * height, _normalize_image(image, width, height))
-    finally:
-        painter.end()
-    if not atlas.save(str(tile_path), "PNG"):
-        raise OSError(f"无法写入图标 Tile：{tile_path}")
+    row_count = max(1, max_slot // ATLAS_COLUMNS + 1)
+    atlas = Image.new("RGBA", (width * ATLAS_COLUMNS, height * row_count), (0, 0, 0, 0))
+    for slot, _, source in valid:
+        image = _load_image(source)
+        if image is None:
+            continue
+        col = slot % ATLAS_COLUMNS
+        row = slot // ATLAS_COLUMNS
+        normalized = _normalize_image(image, width, height)
+        atlas.alpha_composite(normalized, (col * width, row * height))
+    atlas.save(tile_path, format="PNG")
     return tile_path
 
 
-def _pcx_palette() -> list[tuple[int, int, int]]:
-    palette: list[tuple[int, int, int]] = []
-    for index in range(256):
-        r = (index >> 5) & 0x07
-        g = (index >> 2) & 0x07
-        b = index & 0x03
-        palette.append((round(r * 255 / 7), round(g * 255 / 7), round(b * 255 / 3)))
-    return palette
-
-
-def _pcx_index(r: int, g: int, b: int) -> int:
-    return ((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6)
-
-
-def _rle_encode_row(row: bytes) -> bytes:
-    result = bytearray()
-    index = 0
-    while index < len(row):
-        value = row[index]
-        run = 1
-        while index + run < len(row) and row[index + run] == value and run < 63:
-            run += 1
-        if run > 1 or value >= 0xC0:
-            result.append(0xC0 | run)
-            result.append(value)
-        else:
-            result.append(value)
-        index += run
-    return bytes(result)
-
-
-def write_pcx(image: QImage, path: Path) -> None:
-    rgb = image.convertToFormat(QImage.Format.Format_RGB888)
-    width, height = rgb.width(), rgb.height()
-    if width <= 0 or height <= 0 or width > 65535 or height > 65535:
+def write_pcx(image: Image.Image, path: Path) -> None:
+    """Write a classic 8-bit/256-colour PCX accepted by Ares cameo/flag fields."""
+    rgb = image.convert("RGB")
+    if rgb.width <= 0 or rgb.height <= 0 or rgb.width > 65535 or rgb.height > 65535:
         raise ValueError("PCX 图片尺寸无效")
-
-    bytes_per_line = width if width % 2 == 0 else width + 1
-    header = bytearray(128)
-    header[0] = 0x0A
-    header[1] = 5
-    header[2] = 1
-    header[3] = 8
-    struct.pack_into("<HHHH", header, 4, 0, 0, width - 1, height - 1)
-    struct.pack_into("<HH", header, 12, width, height)
-    header[64] = 0
-    header[65] = 1
-    struct.pack_into("<H", header, 66, bytes_per_line)
-    struct.pack_into("<H", header, 68, 1)
-    struct.pack_into("<HH", header, 70, width, height)
-
-    encoded = bytearray(header)
-    for y in range(height):
-        row = bytearray()
-        for x in range(width):
-            color = rgb.pixelColor(x, y)
-            row.append(_pcx_index(color.red(), color.green(), color.blue()))
-        if bytes_per_line > width:
-            row.append(0)
-        encoded.extend(_rle_encode_row(bytes(row)))
-
-    encoded.append(0x0C)
-    for r, g, b in _pcx_palette():
-        encoded.extend((r, g, b))
-
+    paletted = rgb.quantize(
+        colors=256,
+        method=Image.Quantize.MEDIANCUT,
+        dither=Image.Dither.FLOYDSTEINBERG,
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(bytes(encoded))
+    paletted.save(tmp, format="PCX")
     tmp.replace(path)
 
 
-def read_pcx(path: Path) -> QImage:
-    data = path.read_bytes()
-    if len(data) < 128 + 769 or data[0] != 0x0A:
-        raise ValueError("不是有效的 PCX 文件")
-    if data[2] != 1 or data[3] != 8 or data[65] != 1:
-        raise ValueError("当前仅支持 8 位、单平面的 PCX")
-
-    xmin, ymin, xmax, ymax = struct.unpack_from("<HHHH", data, 4)
-    width = xmax - xmin + 1
-    height = ymax - ymin + 1
-    bytes_per_line = struct.unpack_from("<H", data, 66)[0]
-    if width <= 0 or height <= 0 or bytes_per_line < width:
-        raise ValueError("PCX 尺寸信息无效")
-    if data[-769] != 0x0C:
-        raise ValueError("PCX 缺少 256 色调色板")
-
-    palette_raw = data[-768:]
-    palette = [
-        qRgb(palette_raw[index], palette_raw[index + 1], palette_raw[index + 2])
-        for index in range(0, 768, 3)
-    ]
-
-    wanted = height * bytes_per_line
-    decoded = bytearray()
-    pos = 128
-    data_end = len(data) - 769
-    while pos < data_end and len(decoded) < wanted:
-        value = data[pos]
-        pos += 1
-        if value & 0xC0 == 0xC0:
-            count = value & 0x3F
-            if pos >= data_end:
-                break
-            pixel = data[pos]
-            pos += 1
-            decoded.extend([pixel] * count)
-        else:
-            decoded.append(value)
-    if len(decoded) < wanted:
-        raise ValueError("PCX 像素数据不完整")
-
-    image = QImage(width, height, QImage.Format.Format_Indexed8)
-    image.setColorTable(palette)
-    for y in range(height):
-        offset = y * bytes_per_line
-        for x in range(width):
-            image.setPixel(x, y, decoded[offset + x])
-    return image.convertToFormat(QImage.Format.Format_ARGB32)
+def read_pcx(path: Path) -> Image.Image:
+    try:
+        with Image.open(path) as source:
+            if source.format != "PCX":
+                raise ValueError("不是有效的 PCX 文件")
+            source.load()
+            return source.convert("RGBA")
+    except UnidentifiedImageError as exc:
+        raise ValueError("不是有效的 PCX 文件") from exc
 
 
 def _resolve_relative_case_insensitive(root: Path, filename: str) -> Path | None:
@@ -446,14 +350,15 @@ class IconResourceService:
                 })
         return rows
 
-    def _custom_image(self, kind: str, target_id: str) -> QImage | None:
-        path = _source_path(kind, target_id)
-        if not path.is_file():
-            return None
-        image = QImage(str(path))
-        return None if image.isNull() else image
+    def _custom_image(self, kind: str, target_id: str) -> Image.Image | None:
+        return _load_image(_source_path(kind, target_id))
 
-    def _mod_unit_image(self, target_id: str, art_section: str, artmd: IniDocument, root: Path) -> tuple[QImage | None, str]:
+    def _mod_unit_image(
+        self,
+        art_section: str,
+        artmd: IniDocument,
+        root: Path,
+    ) -> tuple[Image.Image | None, str]:
         pcx = artmd.get(art_section, "CameoPCX", "").strip()
         if not pcx:
             return None, ""
@@ -465,7 +370,12 @@ class IconResourceService:
         except (OSError, ValueError):
             return None, pcx
 
-    def _mod_country_image(self, target_id: str, doc: IniDocument, root: Path) -> tuple[QImage | None, str]:
+    def _mod_country_image(
+        self,
+        target_id: str,
+        doc: IniDocument,
+        root: Path,
+    ) -> tuple[Image.Image | None, str]:
         pcx = doc.get(target_id, "File.Flag", "").strip()
         if not pcx:
             return None, ""
@@ -480,40 +390,33 @@ class IconResourceService:
     def _build_resolved_atlas(
         self,
         kind: str,
-        rows: list[tuple[str, QImage, str, str]],
+        rows: list[tuple[str, Image.Image, str, str]],
     ) -> tuple[Path, dict[str, dict[str, Any]]]:
         width, height = UNIT_CELL if kind == "unit" else COUNTRY_CELL
         tile_path = RESOLVED_UNIT_TILE if kind == "unit" else RESOLVED_COUNTRY_TILE
+        USER_ICON_ROOT.mkdir(parents=True, exist_ok=True)
         if not rows:
-            image = QImage(width, height, QImage.Format.Format_ARGB32)
-            image.fill(Qt.GlobalColor.transparent)
-            USER_ICON_ROOT.mkdir(parents=True, exist_ok=True)
-            image.save(str(tile_path), "PNG")
+            Image.new("RGBA", (width, height), (0, 0, 0, 0)).save(tile_path, format="PNG")
             return tile_path, {}
 
         rows = sorted(rows, key=lambda item: item[0].casefold())
         row_count = max(1, (len(rows) + ATLAS_COLUMNS - 1) // ATLAS_COLUMNS)
-        atlas = QImage(width * ATLAS_COLUMNS, height * row_count, QImage.Format.Format_ARGB32)
-        atlas.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(atlas)
+        atlas = Image.new("RGBA", (width * ATLAS_COLUMNS, height * row_count), (0, 0, 0, 0))
         registry: dict[str, dict[str, Any]] = {}
-        try:
-            for slot, (target_id, icon, source, game_file) in enumerate(rows):
-                col = slot % ATLAS_COLUMNS
-                row = slot // ATLAS_COLUMNS
-                painter.drawImage(col * width, row * height, _normalize_image(icon, width, height))
-                registry[target_id] = {
-                    "x": col * width,
-                    "y": row * height,
-                    "cellWidth": width,
-                    "cellHeight": height,
-                    "source": source,
-                    "gameFile": game_file,
-                }
-        finally:
-            painter.end()
-        USER_ICON_ROOT.mkdir(parents=True, exist_ok=True)
-        atlas.save(str(tile_path), "PNG")
+        for slot, (target_id, icon, source, game_file) in enumerate(rows):
+            col = slot % ATLAS_COLUMNS
+            row = slot // ATLAS_COLUMNS
+            normalized = _normalize_image(icon, width, height)
+            atlas.alpha_composite(normalized, (col * width, row * height))
+            registry[target_id] = {
+                "x": col * width,
+                "y": row * height,
+                "cellWidth": width,
+                "cellHeight": height,
+                "source": source,
+                "gameFile": game_file,
+            }
+        atlas.save(tile_path, format="PNG")
         return tile_path, registry
 
     def library_snapshot(self) -> dict[str, Any]:
@@ -523,8 +426,8 @@ class IconResourceService:
         art_path = self.artmd_path()
         artmd = _load_artmd(art_path) if art_path is not None else IniDocument.from_text("")
 
-        unit_rows: list[tuple[str, QImage, str, str]] = []
-        country_rows: list[tuple[str, QImage, str, str]] = []
+        unit_rows: list[tuple[str, Image.Image, str, str]] = []
+        country_rows: list[tuple[str, Image.Image, str, str]] = []
         for target in self.targets():
             kind = target["kind"]
             target_id = target["id"]
@@ -537,7 +440,7 @@ class IconResourceService:
             if root is None or doc is None:
                 continue
             if kind == "unit":
-                mod, game_file = self._mod_unit_image(target_id, target["art_section"] or target_id, artmd, root)
+                mod, game_file = self._mod_unit_image(target["art_section"] or target_id, artmd, root)
                 if mod is not None:
                     unit_rows.append((target_id, mod, "mod", game_file))
             else:
@@ -606,8 +509,8 @@ class IconResourceService:
                     self.set_artmd_icon(art_section, cameo_pcx=game_file)
                 sync_result.update({"synced": True, "game_file": game_file, "art_section": art_section})
             else:
-                # Ares does not prescribe a single File.Flag size. Preserve the imported
-                # dimensions for the game asset while the editor preview is normalized to 60x40.
+                # Ares does not prescribe a single File.Flag size. Preserve imported
+                # dimensions for the game asset; editor preview remains normalized 60x40.
                 write_pcx(image, pcx_path)
                 doc = self._doc()
                 if doc is not None and doc.has_section(clean_id):
