@@ -10,7 +10,7 @@ from PIL import Image
 from rulesmd_editor import icon_resources
 from rulesmd_editor.desktop_bridge import DiagnosticExportBridge
 from rulesmd_editor.export_bridge import ExportMixRulesWorkspace
-from rulesmd_editor.icon_resources_app import AppIconResourceService
+from rulesmd_editor.icon_resources_persistent import PersistentIconResourceService
 from rulesmd_editor.ini_document import IniDocument
 
 
@@ -64,7 +64,7 @@ def test_import_custom_icon_never_writes_game_files(monkeypatch, tmp_path: Path)
     artmd_text = "[CONA]\nVoxel=yes\nCameoPCX=existing.pcx\n"
     artmd.write_text(artmd_text, encoding="utf-8")
 
-    service = AppIconResourceService(_Workspace(rules))
+    service = PersistentIconResourceService(_Workspace(rules))
     source = Image.new("RGBA", (160, 100), (80, 120, 210, 255))
     before_files = {path.name for path in game_root.iterdir()}
 
