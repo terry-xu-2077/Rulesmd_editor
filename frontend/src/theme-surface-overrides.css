@@ -53,13 +53,8 @@
   background: var(--theme-surface-2) !important;
 }
 
-/* Multi-selection is a persistent selection state, not a weak hover hint. Every selected
- * parameter row therefore uses the same semantic selection surface as the focused row.
- * The focused row still gets its stronger edge/focus treatment from the row rules below
- * this surface layer, so users can distinguish the active row without making the rest of
- * a Shift/Ctrl selection look unselected. This applies equally in dark and light modes. */
-.parameterTableRow.selected,
-.parameterTableRow.focused,
+/* Generic selected surfaces only. Parameter-row selection is deliberately owned by
+ * polish.css so one late layer controls both multi-selection and keyboard focus. */
 .unitGlobalRule.selected,
 .unitTreeLeaf.selected {
   background: var(--theme-selection-surface) !important;
