@@ -1,3 +1,5 @@
+import { LogicalSize } from '@tauri-apps/api/dpi'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { workspaceApi, type AppConfig, type UserDescriptions } from './backend'
 import { installHelpWindow } from './help-window'
 import './user-descriptions.css'
@@ -8,30 +10,43 @@ const CONFIG_KEYS = {
   leftPane: 'rulesmd.leftPane',
   rightPane: 'rulesmd.rightPane',
   lastFile: 'rulesmd.lastFile',
+  windowWidth: 'rulesmd.windowWidth',
+  windowHeight: 'rulesmd.windowHeight',
 } as const
 
-const DEFAULT_CONFIG: AppConfig = {
+type AppWindowConfig = AppConfig & {
+  windowWidth: number
+  windowHeight: number
+}
+
+const DEFAULT_CONFIG: AppWindowConfig = {
   gamePath: '',
   appearance: 'dark',
   leftPane: 230,
   rightPane: 390,
   lastFile: '',
   aresEnabled: true,
+  windowWidth: 1680,
+  windowHeight: 1020,
 }
 
-type LocalConfigFields = Pick<AppConfig, 'gamePath' | 'appearance' | 'leftPane' | 'rightPane' | 'lastFile'>
+type LocalConfigFields = Pick<AppWindowConfig, 'gamePath' | 'appearance' | 'leftPane' | 'rightPane' | 'lastFile' | 'windowWidth' | 'windowHeight'>
 
-function applyConfigToLocalStorage(config: AppConfig) {
+function applyConfigToLocalStorage(config: AppWindowConfig) {
   localStorage.setItem(CONFIG_KEYS.gamePath, config.gamePath || '')
   localStorage.setItem(CONFIG_KEYS.appearance, config.appearance || 'dark')
   localStorage.setItem(CONFIG_KEYS.leftPane, String(config.leftPane || 230))
   localStorage.setItem(CONFIG_KEYS.rightPane, String(config.rightPane || 390))
   localStorage.setItem(CONFIG_KEYS.lastFile, config.lastFile || '')
+  localStorage.setItem(CONFIG_KEYS.windowWidth, String(config.windowWidth || 1680))
+  localStorage.setItem(CONFIG_KEYS.windowHeight, String(config.windowHeight || 1020))
 }
 
 function configFromLocalStorage(): LocalConfigFields {
   const leftPane = Number.parseInt(localStorage.getItem(CONFIG_KEYS.leftPane) || '', 10)
   const rightPane = Number.parseInt(localStorage.getItem(CONFIG_KEYS.rightPane) || '', 10)
+  const windowWidth = Number.parseInt(localStorage.getItem(CONFIG_KEYS.windowWidth) || '', 10)
+  const windowHeight = Number.parseInt(localStorage.getItem(CONFIG_KEYS.windowHeight) || '', 10)
   const appearance = localStorage.getItem(CONFIG_KEYS.appearance)
   return {
     gamePath: localStorage.getItem(CONFIG_KEYS.gamePath) || '',
@@ -39,6 +54,31 @@ function configFromLocalStorage(): LocalConfigFields {
     leftPane: Number.isFinite(leftPane) ? leftPane : 230,
     rightPane: Number.isFinite(rightPane) ? rightPane : 390,
     lastFile: localStorage.getItem(CONFIG_KEYS.lastFile) || '',
+    windowWidth: Number.isFinite(windowWidth) ? windowWidth : 1680,
+    windowHeight: Number.isFinite(windowHeight) ? windowHeight : 1020,
+  }
+}
+
+async function installWindowSizePersistence(config: AppWindowConfig) {
+  try {
+    const appWindow = getCurrentWindow()
+    await appWindow.setSize(new LogicalSize(config.windowWidth, config.windowHeight))
+
+    let resizeTimer: ReturnType<typeof window.setTimeout> | null = null
+    await appWindow.onResized(() => {
+      if (resizeTimer != null) window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(() => {
+        void (async () => {
+          if (await appWindow.isMaximized()) return
+          const [size, scaleFactor] = await Promise.all([appWindow.innerSize(), appWindow.scaleFactor()])
+          const logical = size.toLogical(scaleFactor)
+          localStorage.setItem(CONFIG_KEYS.windowWidth, String(Math.round(logical.width)))
+          localStorage.setItem(CONFIG_KEYS.windowHeight, String(Math.round(logical.height)))
+        })().catch(error => console.warn('Unable to persist window size', error))
+      }, 180)
+    })
+  } catch (error) {
+    console.warn('Unable to restore window size', error)
   }
 }
 
@@ -375,8 +415,9 @@ async function bootstrap() {
   let descriptions: UserDescriptions = {}
 
   try {
-    config = await workspaceApi.getAppConfig()
+    config = await workspaceApi.getAppConfig() as AppWindowConfig
     applyConfigToLocalStorage(config)
+    await installWindowSizePersistence(config)
     await workspaceApi.setSettings(config.aresEnabled)
   } catch (error) {
     console.warn('Unable to load resources/app-config.json', error)
