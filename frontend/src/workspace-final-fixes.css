@@ -60,8 +60,12 @@
   box-shadow:none!important;
 }
 .app .entityHeaderHost>header>div:nth-child(2){width:50px!important;height:46px!important;min-width:50px!important;margin:0 8px 0 0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important}
-.app .entityHeaderHost>header>div:nth-child(3){height:46px!important;min-width:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:1px!important;margin:0!important;padding:0!important}
+.app .entityHeaderHost>header>div:nth-child(3){height:46px!important;min-width:0!important;width:auto!important;max-width:none!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:1px!important;margin:0!important;padding:0 6px 0 0!important;overflow:visible!important}
 .app .entityHeaderHost>header>div:nth-child(3)>strong{color:var(--theme-text)!important}
+/* The editable title is a stretched flex child. Keep its border inside the identity slot;
+ * the previous negative right margin pushed the last border pixel under EntityHeader's clip. */
+.app .entityHeaderHost>header>div:nth-child(3)>strong.sectionNameEditable{box-sizing:border-box!important;width:100%!important;max-width:100%!important;margin:-3px 0 -3px -5px!important}
+.app .entityHeaderHost>header>div:nth-child(3)>strong.sectionNameEditable.editing{max-width:100%!important}
 .app .entityHeaderHost>header>div:nth-child(3)>span{color:color-mix(in oklab,var(--theme-text) 62%,var(--theme-base) 38%)!important}
 .app .entityNavigation{
   position:absolute!important;
