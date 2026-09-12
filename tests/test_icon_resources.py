@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
@@ -18,6 +20,13 @@ def _patch_icon_storage(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(icon_resources, "RESOLVED_UNIT_TILE", root / "resolvedUnitTile.png")
     monkeypatch.setattr(icon_resources, "RESOLVED_COUNTRY_TILE", root / "resolvedCountryTile.png")
     monkeypatch.setattr(icon_resources, "SOURCE_ROOT", root / "sources")
+    monkeypatch.setattr(icon_resources, "ORIGINAL_ROOT", root / "originals")
+
+
+def _data_url(image: Image.Image) -> str:
+    payload = BytesIO()
+    image.save(payload, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(payload.getvalue()).decode("ascii")
 
 
 class _Workspace:
@@ -115,3 +124,46 @@ def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: P
     assert snapshot["country"]["MyCountry"]["gameFile"] == "mycountry.pcx"
     assert snapshot["unitTile"].startswith("data:image/png;base64,")
     assert snapshot["countryTile"].startswith("data:image/png;base64,")
+
+
+def test_custom_crop_preserves_original_and_can_be_reedited(monkeypatch, tmp_path: Path) -> None:
+    _patch_icon_storage(monkeypatch, tmp_path)
+    game_root = tmp_path / "game"
+    game_root.mkdir()
+    exe = game_root / "gamemd.exe"
+    exe.write_bytes(b"")
+    monkeypatch.setattr(icon_resources, "load_app_config", lambda: {"gamePath": str(exe)})
+
+    rules = IniDocument.from_text("[VehicleTypes]\n1=MYTNK\n[MYTNK]\nImage=MYTNKART\n")
+    rules.path = game_root / "rulesmd.ini"
+    source = Image.new("RGBA", (200, 100), (220, 30, 30, 255))
+    source.paste((25, 70, 225, 255), (100, 0, 200, 100))
+
+    service = IconResourceService(_Workspace(rules))
+    result = service.import_custom_icon(
+        kind="unit",
+        target_id="MYTNK",
+        data_base64=_data_url(source),
+        filename="wide-source.png",
+        sync_game=False,
+        crop_zoom=1.5,
+        crop_x=0.75,
+        crop_y=0.5,
+    )
+
+    original = Image.open(icon_resources._original_path("unit", "MYTNK"))
+    generated = Image.open(icon_resources._source_path("unit", "MYTNK")).convert("RGBA")
+    restored = service.custom_icon_source("unit", "MYTNK")
+
+    assert original.size == (200, 100)
+    assert generated.size == (60, 48)
+    red, _green, blue, _alpha = generated.getpixel((30, 24))
+    assert blue > red
+    assert result["version"] == 2
+    assert restored["exists"] is True
+    assert restored["hasOriginal"] is True
+    assert restored["sourceName"] == "wide-source.png"
+    assert restored["image"].startswith("data:image/png;base64,")
+    assert restored["crop"]["zoom"] == 1.5
+    assert restored["crop"]["x"] == 0.75
+    assert restored["crop"]["y"] == 0.5
