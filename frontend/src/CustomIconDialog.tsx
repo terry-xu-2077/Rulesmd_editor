@@ -91,7 +91,7 @@ function iconStyle(kind: IconKind, entry: IconEntry, snapshot: IconLibrarySnapsh
   const rows = kind === 'unit' ? snapshot.unit : snapshot.country
   const entries = Object.values(rows)
   const image = kind === 'unit' ? snapshot.unitTile : snapshot.countryTile
-  const sheetWidth = Math.max(entry.cellWidth, ...entries.map(item => item.x + item.cellWidth))
+  const sheetWidth = entry.cellWidth * 10
   const sheetHeight = Math.max(entry.cellHeight, ...entries.map(item => item.y + item.cellHeight))
   return {
     backgroundImage: `url(${JSON.stringify(image)})`,
@@ -439,7 +439,7 @@ export function CustomIconDialog({ open, onClose, initialTargetId = '' }: Props)
           <div className="iconResourceImportControls">
             <input ref={fileRef} className="iconResourceHiddenInput" type="file" accept="image/png,image/jpeg,image/bmp,image/webp" onChange={event => void chooseFile(event.target.files?.[0] ?? null)}/>
             <div className="iconResourceInline"><Button onClick={() => fileRef.current?.click()}><Upload size={15}/>选择图片</Button><span className="iconResourceHint">{sourceName || 'PNG / JPG / BMP / WebP'}</span></div>
-            <div className="iconResourceHint">裁剪框就是最终构图。拖动画面调整位置，缩放后会生成 {frame.label} 图标；原图会保留，可再次调整。</div>
+            <div className="iconResourceHint">裁剪框就是最终构图。拖动画面调整位置，缩放后会生成 {frame.label} 图标；仅保存最终裁剪结果，如需重新构图请重新选择原图。</div>
             <div className="iconResourceInline"><label className={!aresEnabled ? 'disabledChoice' : ''}><input type="checkbox" disabled={!aresEnabled} checked={aresEnabled && syncGame} onChange={event => setSyncGame(event.target.checked)}/>同步到游戏（Ares）</label>{selected?.kind === 'unit' && <label className={!aresEnabled ? 'disabledChoice' : ''}>单位图标 <select value={variant} disabled={!aresEnabled} onChange={event => setVariant(event.target.value as 'cameo' | 'alt')}><option value="cameo">普通 Cameo</option><option value="alt">精英 AltCameo</option></select></label>}</div>
             <div className="iconResourceActions"><Button variant="accent" disabled={busy || !selected || !sourceDataUrl} onClick={() => void importIcon()}>导入并应用</Button><Button disabled={busy || !selectedEntry || selectedEntry.source !== 'custom'} onClick={() => void removeIcon()}><Trash2 size={15}/>删除用户图标</Button></div>
           </div>
