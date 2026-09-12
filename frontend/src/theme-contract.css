@@ -126,6 +126,10 @@
   --theme-line: color-mix(in oklab, var(--theme-base-cool) 48%, white 52%);
   --theme-shadow: color-mix(in srgb, color-mix(in oklab, var(--theme-base) 74%, black 26%) 44%, transparent 56%);
 
+  /* Shared Select/MultiSelect menu rows intentionally use a deeper hover than ordinary
+   * workspace surfaces. This keeps hover unmistakable on the very pale light palette. */
+  --tc-row-hover: color-mix(in oklab, var(--theme-base-accent) 54%, white 46%);
+
   /* Keep persistent states readable without turning whole rows into saturated swatches. */
   --theme-fold-surface: var(--theme-surface-2);
   --theme-selection-surface: color-mix(in oklab, var(--theme-surface-2) 82%, var(--theme-accent) 18%);
