@@ -13,12 +13,11 @@ _STORAGE_MARKER = "single-atlas-v1"
 
 
 class PersistentIconResourceService(base.IconResourceService):
-    """Store user icons once, directly in the compact custom Tile atlases.
+    """Store editor-only user icons directly in compact custom Tile atlases.
 
-    Durable user data is intentionally limited to icons.json plus the custom atlases that
-    actually contain icons. Legacy per-object generated PNGs, preserved originals and
-    resolved atlases are migrated once and removed. Mod/game icons are composed into an
-    in-memory atlas for the frontend and are never persisted as another PNG copy.
+    Durable user data is limited to icons.json plus the custom atlases that actually
+    contain icons. Existing loose Mod PCX resources are read only for application-side
+    display and are composed into an in-memory atlas; no game files are ever written.
     """
 
     def __init__(self, workspace: Any):
@@ -108,6 +107,7 @@ class PersistentIconResourceService(base.IconResourceService):
         self._save_tile(kind, atlas)
 
     def _legacy_image(self, kind: str, stored_id: str, entry: dict[str, Any]) -> Image.Image | None:
+        """Recover old editor icons before removing retired per-object/game-sync metadata."""
         current = self._atlas_cell(kind, entry)
         if current is not None:
             return current
@@ -122,6 +122,7 @@ class PersistentIconResourceService(base.IconResourceService):
             crop = base._crop_meta(entry)
             return base._crop_image(original, width, height, crop["zoom"], crop["x"], crop["y"])
 
+        # One-time read-only recovery for icons created by the retired game-sync path.
         root = self.game_root()
         game_file = str(entry.get("game_file", "")).strip()
         if root is not None and game_file:
@@ -160,7 +161,6 @@ class PersistentIconResourceService(base.IconResourceService):
             clean_rows[stored_id] = {
                 "slot": slot,
                 "source_name": str(entry.get("source_name", "")),
-                "game_file": str(entry.get("game_file", "")),
             }
         meta[kind] = clean_rows
         self._save_tile(kind, atlas)
@@ -180,9 +180,15 @@ class PersistentIconResourceService(base.IconResourceService):
 
     def _migrate_legacy_storage(self) -> None:
         meta = base._read_meta()
-        if meta.get("storage") != _STORAGE_MARKER:
-            # Repack while legacy source/original files still exist, then discard all
-            # redundant copies. This also compacts holes left by deleted icons.
+        needs_repack = meta.get("storage") != _STORAGE_MARKER
+        if not needs_repack:
+            for kind in ("unit", "country"):
+                rows = self._kind_rows(meta, kind)
+                if any(isinstance(entry, dict) and "game_file" in entry for entry in rows.values()):
+                    needs_repack = True
+                    break
+
+        if needs_repack:
             for kind in ("unit", "country"):
                 self._repack_kind(kind, meta)
             meta["storage"] = _STORAGE_MARKER
@@ -276,12 +282,11 @@ class PersistentIconResourceService(base.IconResourceService):
                     continue
                 target = target_by_key.get((kind, stored_id.casefold()))
                 visible_id = target["id"] if target is not None else stored_id
-                row = (visible_id, image, "custom", str(entry.get("game_file", "")))
+                row = (visible_id, image, "custom", "")
                 (country_rows if kind == "country" else unit_rows).append(row)
                 custom_keys.add((kind, visible_id.casefold()))
 
-        # Loose Mod PCX resources are composed only in memory; there is no resolved*.png
-        # cache on disk anymore.
+        # Existing loose Mod PCX resources are read-only inputs for application display.
         for target in targets:
             kind = target["kind"]
             target_id = target["id"]
@@ -316,8 +321,6 @@ class PersistentIconResourceService(base.IconResourceService):
         target_id: str,
         data_base64: str,
         filename: str = "",
-        sync_game: bool = True,
-        variant: str = "cameo",
         crop_zoom: float = 1.0,
         crop_x: float = 0.5,
         crop_y: float = 0.5,
@@ -336,7 +339,11 @@ class PersistentIconResourceService(base.IconResourceService):
             clean_id = stored_id
         else:
             target = next(
-                (item for item in self.targets() if item["kind"] == clean_kind and item["id"].casefold() == clean_id.casefold()),
+                (
+                    item
+                    for item in self.targets()
+                    if item["kind"] == clean_kind and item["id"].casefold() == clean_id.casefold()
+                ),
                 None,
             )
             if target is not None:
@@ -355,45 +362,16 @@ class PersistentIconResourceService(base.IconResourceService):
             existing = {"slot": base._allocate_slot(rows)}
         slot = self._entry_slot(existing)
         self._put_cell(clean_kind, slot, cropped)
-        existing = {
+        rows[clean_id] = {
             "slot": slot,
             "source_name": str(filename).strip(),
-            "game_file": str(existing.get("game_file", "")),
         }
-        rows[clean_id] = existing
         meta[clean_kind] = rows
         meta["storage"] = _STORAGE_MARKER
         base._write_meta(meta)
 
-        sync_result = {"synced": False, "game_file": "", "art_section": "", "rules_dirty": False}
-        root = self.game_root()
-        if sync_game and root is not None:
-            root.mkdir(parents=True, exist_ok=True)
-            game_file = f"rulesmd_{base._safe_stem(clean_id)}.pcx"
-            base.write_pcx(cropped, root / game_file)
-            if clean_kind == "unit":
-                doc = self._doc()
-                art_section = clean_id
-                if doc is not None:
-                    art_section = doc.get(clean_id, "Image", "").strip() or clean_id
-                if str(variant).strip().lower() in {"alt", "elite", "altcameo"}:
-                    self.set_artmd_icon(art_section, alt_cameo_pcx=game_file)
-                else:
-                    self.set_artmd_icon(art_section, cameo_pcx=game_file)
-                sync_result.update({"synced": True, "game_file": game_file, "art_section": art_section})
-            else:
-                doc = self._doc()
-                if doc is not None and doc.has_section(clean_id):
-                    doc.set(clean_id, "File.Flag", game_file)
-                    sync_result.update({"synced": True, "game_file": game_file, "rules_dirty": True})
-            existing["game_file"] = game_file
-            rows[clean_id] = existing
-            base._write_meta(meta)
-
         self._remove_legacy_files()
-        result = self.library_snapshot()
-        result["sync"] = sync_result
-        return result
+        return self.library_snapshot()
 
     def remove_custom_icon(self, kind: str, target_id: str) -> dict[str, Any]:
         clean_kind = str(kind).strip().lower()
