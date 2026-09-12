@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { CustomIconDialog, refreshIconCache } from './CustomIconDialog'
+import './icon-settings-entry.css'
 
 let dialogRoot: Root | null = null
 let dialogHost: HTMLElement | null = null
@@ -27,7 +28,7 @@ function currentEntityId() {
 }
 
 function headerIconFromTarget(target: EventTarget | null) {
-  return (target as HTMLElement | null)?.closest<HTMLElement>('.entityHeaderHost .tc-entity-icon') ?? null
+  return (target as HTMLElement | null)?.closest<HTMLElement>('.entityHeaderHost .headerUnitComposite') ?? null
 }
 
 function prepareHeaderIcon(icon: HTMLElement) {
@@ -53,8 +54,8 @@ function refreshSoon() {
 }
 
 function install() {
-  // Icon editing belongs to the current entity identity in the editor header. Tree icons
-  // remain pure navigation targets and never open resource configuration themselves.
+  // Icon editing belongs only to the visible composite in the current-entity header.
+  // Icons inside the left navigation tree remain navigation-only targets.
   document.addEventListener('pointerover', event => {
     const icon = headerIconFromTarget(event.target)
     if (icon) prepareHeaderIcon(icon)
@@ -79,10 +80,10 @@ function install() {
     activateHeaderIcon(icon, event)
   }, true)
 
-  // React may render the entity header after this module initializes. A tiny observer only
-  // adds accessibility/tooltip metadata; click handling itself stays delegated above.
+  // UnitTree portals the visible header icon after the editor header itself exists.
+  // Bind tooltip/accessibility metadata whenever that portal is recreated for a new unit.
   const observer = new MutationObserver(() => {
-    const icon = document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-icon')
+    const icon = document.querySelector<HTMLElement>('.entityHeaderHost .headerUnitComposite')
     if (icon && icon.dataset.iconSettingsBound !== '1') {
       icon.dataset.iconSettingsBound = '1'
       prepareHeaderIcon(icon)
@@ -90,7 +91,7 @@ function install() {
   })
   observer.observe(document.body, { childList: true, subtree: true })
 
-  const existingIcon = document.querySelector<HTMLElement>('.entityHeaderHost .tc-entity-icon')
+  const existingIcon = document.querySelector<HTMLElement>('.entityHeaderHost .headerUnitComposite')
   if (existingIcon) prepareHeaderIcon(existingIcon)
   void refreshIconCache().catch(() => undefined)
 }
