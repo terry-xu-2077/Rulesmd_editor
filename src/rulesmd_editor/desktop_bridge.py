@@ -7,6 +7,7 @@ import traceback
 from typing import BinaryIO, TextIO
 
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
+from .icon_resources import IconResourceService
 
 
 def _report_exception() -> None:
@@ -20,6 +21,50 @@ def _report_exception() -> None:
 
 class DiagnosticExportBridge(ExportBridge):
     """Desktop dispatcher that preserves the normal RPC envelope and logs full failures."""
+
+    def _icon_resources(self) -> IconResourceService:
+        return IconResourceService(self.workspace)
+
+    def rpc_icon_library_snapshot(self) -> dict:
+        return self._icon_resources().library_snapshot()
+
+    def rpc_import_custom_icon(
+        self,
+        kind: str,
+        target_id: str,
+        data_base64: str,
+        filename: str = "",
+        sync_game: bool = True,
+        variant: str = "cameo",
+    ) -> dict:
+        return self._icon_resources().import_custom_icon(
+            kind=kind,
+            target_id=target_id,
+            data_base64=data_base64,
+            filename=filename,
+            sync_game=sync_game,
+            variant=variant,
+        )
+
+    def rpc_remove_custom_icon(self, kind: str, target_id: str) -> dict:
+        return self._icon_resources().remove_custom_icon(kind=kind, target_id=target_id)
+
+    def rpc_artmd_snapshot(self) -> dict:
+        return self._icon_resources().artmd_snapshot()
+
+    def rpc_set_artmd_icon(
+        self,
+        section: str,
+        cameo: str | None = None,
+        cameo_pcx: str | None = None,
+        alt_cameo_pcx: str | None = None,
+    ) -> dict:
+        return self._icon_resources().set_artmd_icon(
+            section=section,
+            cameo=cameo,
+            cameo_pcx=cameo_pcx,
+            alt_cameo_pcx=alt_cameo_pcx,
+        )
 
     def dispatch(self, request: dict) -> dict:
         request_id = request.get("id")
