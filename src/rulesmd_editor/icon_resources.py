@@ -122,12 +122,7 @@ def _crop_image(
     center_x: float = 0.5,
     center_y: float = 0.5,
 ) -> Image.Image:
-    """Crop using normalized center coordinates and zoom relative to a cover fit.
-
-    zoom=1 is the largest source crop that completely fills the requested aspect ratio.
-    Increasing zoom tightens that crop without ever exposing empty pixels. center_x/y are
-    normalized against the original image and are clamped so the crop stays in bounds.
-    """
+    """Crop using normalized center coordinates and zoom relative to a cover fit."""
     source = image.convert("RGBA")
     if source.width <= 0 or source.height <= 0:
         raise ValueError("图片为空")
@@ -259,23 +254,8 @@ def _rebuild_custom_atlas(kind: str, meta: dict[str, Any]) -> Path:
     return tile_path
 
 
-def write_pcx(image: Image.Image, path: Path) -> None:
-    """Write a classic 8-bit/256-colour PCX accepted by Ares cameo/flag fields."""
-    rgb = image.convert("RGB")
-    if rgb.width <= 0 or rgb.height <= 0 or rgb.width > 65535 or rgb.height > 65535:
-        raise ValueError("PCX 图片尺寸无效")
-    paletted = rgb.quantize(
-        colors=256,
-        method=Image.Quantize.MEDIANCUT,
-        dither=Image.Dither.FLOYDSTEINBERG,
-    )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    paletted.save(tmp, format="PCX")
-    tmp.replace(path)
-
-
 def read_pcx(path: Path) -> Image.Image:
+    """Read an existing PCX resource for editor-side Mod icon display."""
     try:
         with Image.open(path) as source:
             if source.format != "PCX":
@@ -330,6 +310,8 @@ def _icon_value_rows(doc: IniDocument) -> list[dict[str, str]]:
 
 
 class IconResourceService:
+    """Read game/mod icon resources and maintain editor-only custom icons."""
+
     def __init__(self, workspace: Any):
         self.workspace = workspace
 
@@ -360,42 +342,12 @@ class IconResourceService:
         return existing or root / "artmd.ini"
 
     def artmd_snapshot(self) -> dict[str, Any]:
+        """Read-only snapshot used to resolve existing Mod icons inside the editor."""
         path = self.artmd_path()
         if path is None:
             return {"path": "", "exists": False, "rows": []}
         doc = _load_artmd(path)
         return {"path": str(path), "exists": path.is_file(), "rows": _icon_value_rows(doc)}
-
-    def set_artmd_icon(
-        self,
-        section: str,
-        cameo: str | None = None,
-        cameo_pcx: str | None = None,
-        alt_cameo_pcx: str | None = None,
-    ) -> dict[str, Any]:
-        clean_section = str(section).strip()
-        if not clean_section:
-            raise ValueError("ArtMD Section 不能为空")
-        path = self.artmd_path()
-        if path is None:
-            raise ValueError("请先在设置中指定游戏路径，或打开游戏目录中的规则文件")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        doc = _load_artmd(path)
-        mapping = {
-            "Cameo": cameo,
-            "CameoPCX": cameo_pcx,
-            "AltCameoPCX": alt_cameo_pcx,
-        }
-        for key, value in mapping.items():
-            if value is None:
-                continue
-            clean = str(value).strip()
-            if clean:
-                doc.set(clean_section, key, clean)
-            else:
-                doc.remove_option(clean_section, key)
-        doc.save(path)
-        return self.artmd_snapshot()
 
     def targets(self) -> list[dict[str, str]]:
         try:
@@ -432,20 +384,21 @@ class IconResourceService:
     def custom_icon_source(self, kind: str, target_id: str) -> dict[str, Any]:
         clean_kind = str(kind).strip().lower()
         clean_id = str(target_id).strip()
+        empty = {"exists": False, "image": "", "sourceName": "", "crop": {"zoom": 1.0, "x": 0.5, "y": 0.5}}
         if clean_kind not in {"unit", "country"} or not clean_id:
-            return {"exists": False, "image": "", "sourceName": "", "crop": {"zoom": 1.0, "x": 0.5, "y": 0.5}}
+            return empty
         meta = _read_meta()
         rows = meta.get(clean_kind, {})
         if not isinstance(rows, dict):
             rows = {}
         stored_id, entry = _entry_for(rows, clean_id)
         if stored_id is None or entry is None:
-            return {"exists": False, "image": "", "sourceName": "", "crop": {"zoom": 1.0, "x": 0.5, "y": 0.5}}
+            return empty
         original = _original_path(clean_kind, stored_id)
         generated = _source_path(clean_kind, stored_id)
         source = original if original.is_file() else generated
         if not source.is_file():
-            return {"exists": False, "image": "", "sourceName": "", "crop": _crop_meta(entry)}
+            return {**empty, "crop": _crop_meta(entry)}
         return {
             "exists": True,
             "image": _data_url(source),
@@ -534,8 +487,7 @@ class IconResourceService:
             target_id = target["id"]
             custom = self._custom_image(kind, target_id)
             if custom is not None:
-                game_file = str(meta.get(kind, {}).get(target_id, {}).get("game_file", ""))
-                row = (target_id, custom, "custom", game_file)
+                row = (target_id, custom, "custom", "")
                 (country_rows if kind == "country" else unit_rows).append(row)
                 continue
             if root is None or doc is None:
@@ -569,8 +521,6 @@ class IconResourceService:
         target_id: str,
         data_base64: str,
         filename: str = "",
-        sync_game: bool = True,
-        variant: str = "cameo",
         crop_zoom: float = 1.0,
         crop_x: float = 0.5,
         crop_y: float = 0.5,
@@ -597,44 +547,14 @@ class IconResourceService:
         if not isinstance(existing, dict):
             existing = {"slot": _allocate_slot(rows if isinstance(rows, dict) else {})}
         existing["source_name"] = str(filename).strip()
-        existing["game_file"] = str(existing.get("game_file", ""))
+        existing.pop("game_file", None)
         existing["crop"] = {"zoom": zoom, "x": center_x, "y": center_y}
         existing["original_width"] = image.width
         existing["original_height"] = image.height
         rows[clean_id] = existing
         _write_meta(meta)
         _rebuild_custom_atlas(clean_kind, meta)
-
-        sync_result = {"synced": False, "game_file": "", "art_section": "", "rules_dirty": False}
-        root = self.game_root()
-        if sync_game and root is not None:
-            root.mkdir(parents=True, exist_ok=True)
-            game_file = f"rulesmd_{_safe_stem(clean_id)}.pcx"
-            pcx_path = root / game_file
-            write_pcx(cropped, pcx_path)
-            if clean_kind == "unit":
-                doc = self._doc()
-                art_section = clean_id
-                if doc is not None:
-                    art_section = doc.get(clean_id, "Image", "").strip() or clean_id
-                if str(variant).strip().lower() in {"alt", "elite", "altcameo"}:
-                    self.set_artmd_icon(art_section, alt_cameo_pcx=game_file)
-                else:
-                    self.set_artmd_icon(art_section, cameo_pcx=game_file)
-                sync_result.update({"synced": True, "game_file": game_file, "art_section": art_section})
-            else:
-                doc = self._doc()
-                if doc is not None and doc.has_section(clean_id):
-                    doc.set(clean_id, "File.Flag", game_file)
-                    sync_result.update({"synced": True, "game_file": game_file, "rules_dirty": True})
-
-            existing["game_file"] = game_file
-            rows[clean_id] = existing
-            _write_meta(meta)
-
-        result = self.library_snapshot()
-        result["sync"] = sync_result
-        return result
+        return self.library_snapshot()
 
     def remove_custom_icon(self, kind: str, target_id: str) -> dict[str, Any]:
         clean_kind = str(kind).strip().lower()
