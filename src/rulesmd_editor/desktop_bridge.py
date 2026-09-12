@@ -9,7 +9,7 @@ from typing import BinaryIO, TextIO, TYPE_CHECKING
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
 
 if TYPE_CHECKING:
-    from .icon_resources_app import AppIconResourceService
+    from .icon_resources_persistent import PersistentIconResourceService
 
 
 def _report_exception() -> None:
@@ -28,14 +28,14 @@ class DiagnosticExportBridge(ExportBridge):
     prevent the editor core (new/open/save/snapshot) from starting.
     """
 
-    def _icon_resources(self) -> "AppIconResourceService":
+    def _icon_resources(self) -> "PersistentIconResourceService":
         try:
-            from .icon_resources_app import AppIconResourceService
+            from .icon_resources_persistent import PersistentIconResourceService
         except ImportError as exc:
             raise RuntimeError(
                 "图标资源模块运行依赖不完整，请重新运行“启动项目.bat”修复开发环境。"
             ) from exc
-        return AppIconResourceService(self.workspace)
+        return PersistentIconResourceService(self.workspace)
 
     def rpc_icon_library_snapshot(self) -> dict:
         return self._icon_resources().library_snapshot()
