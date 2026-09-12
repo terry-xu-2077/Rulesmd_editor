@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 from .bridge import Bridge
+from .ini_document import IniDocument
 from .line_actions import OptionLineState, option_line_state
 from .mix_workspace import MixRulesWorkspace
 from .user_data import (
@@ -14,6 +15,7 @@ from .user_data import (
     set_user_description,
     set_user_section_name,
 )
+from .workspace import DEFAULT_TEMPLATE
 
 _SECTION_NAME_MARKER_RE = re.compile(r"^\s*[;#]\s*@rulesmd-name\s*=\s*(.*?)\s*$", re.IGNORECASE)
 _SECTION_NAME_MARKER_PREFIX = ";@rulesmd-name="
@@ -135,13 +137,39 @@ class ExportMixRulesWorkspace(MixRulesWorkspace):
             "label_changed": name != before_name,
         }
 
+    def _restore_custom_object_priority(self) -> None:
+        """Put non-stock objects ahead of stock objects after reopening a rules file.
+
+        In-session creations already use ``_recent_sections``. Opening a file resets that
+        session list, so compare the loaded object catalog with the shipped stock template
+        and rebuild the same priority list. This keeps user/mod objects at the top of every
+        dynamic reference dropdown after an application restart as well.
+        """
+        if self.document is None or self.is_map_document() or not DEFAULT_TEMPLATE.exists():
+            return
+        stock = IniDocument.load(DEFAULT_TEMPLATE)
+        stock_sections = {section.casefold() for section in stock.sections()}
+        custom_sections: list[str] = []
+        seen: set[str] = set()
+        for entries in self._categories_cache.values():
+            for section, _ in entries:
+                folded = section.casefold()
+                if folded in stock_sections or folded in seen:
+                    continue
+                seen.add(folded)
+                custom_sections.append(section)
+        if not custom_sections:
+            return
+        self._recent_sections = custom_sections
+        self._rebuild_indexes()
+
     def open_file(self, path: str | Path) -> dict:
         source = Path(path)
-        result = super().open_file(source)
+        super().open_file(source)
+        self._restore_custom_object_priority()
         if source.suffix.casefold() == ".mix":
             self._doc().path = None
-            result = self.snapshot()
-        return result
+        return self.snapshot()
 
 
 class ExportBridge(Bridge):
