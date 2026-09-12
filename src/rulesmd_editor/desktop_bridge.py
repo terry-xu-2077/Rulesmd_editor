@@ -7,6 +7,7 @@ import traceback
 from typing import BinaryIO, TextIO, TYPE_CHECKING
 
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
+from .user_data import load_app_config
 
 if TYPE_CHECKING:
     from .icon_resources import IconResourceService
@@ -37,8 +38,14 @@ class DiagnosticExportBridge(ExportBridge):
             ) from exc
         return IconResourceService(self.workspace)
 
+    @staticmethod
+    def _ares_enabled() -> bool:
+        return bool(load_app_config().get("aresEnabled", True))
+
     def rpc_icon_library_snapshot(self) -> dict:
-        return self._icon_resources().library_snapshot()
+        result = self._icon_resources().library_snapshot()
+        result["aresEnabled"] = self._ares_enabled()
+        return result
 
     def rpc_import_custom_icon(
         self,
@@ -49,20 +56,32 @@ class DiagnosticExportBridge(ExportBridge):
         sync_game: bool = True,
         variant: str = "cameo",
     ) -> dict:
-        return self._icon_resources().import_custom_icon(
+        # CameoPCX / AltCameoPCX and country File.Flag are Ares extensions. The user may
+        # still keep an editor-only custom tile with Ares disabled, but game sync must
+        # never silently write tags the vanilla game does not understand.
+        allow_game_sync = bool(sync_game) and self._ares_enabled()
+        result = self._icon_resources().import_custom_icon(
             kind=kind,
             target_id=target_id,
             data_base64=data_base64,
             filename=filename,
-            sync_game=sync_game,
+            sync_game=allow_game_sync,
             variant=variant,
         )
+        result["aresEnabled"] = self._ares_enabled()
+        if sync_game and not allow_game_sync:
+            result["syncBlockedByAres"] = True
+        return result
 
     def rpc_remove_custom_icon(self, kind: str, target_id: str) -> dict:
-        return self._icon_resources().remove_custom_icon(kind=kind, target_id=target_id)
+        result = self._icon_resources().remove_custom_icon(kind=kind, target_id=target_id)
+        result["aresEnabled"] = self._ares_enabled()
+        return result
 
     def rpc_artmd_snapshot(self) -> dict:
-        return self._icon_resources().artmd_snapshot()
+        result = self._icon_resources().artmd_snapshot()
+        result["aresEnabled"] = self._ares_enabled()
+        return result
 
     def rpc_set_artmd_icon(
         self,
@@ -71,12 +90,16 @@ class DiagnosticExportBridge(ExportBridge):
         cameo_pcx: str | None = None,
         alt_cameo_pcx: str | None = None,
     ) -> dict:
-        return self._icon_resources().set_artmd_icon(
+        if not self._ares_enabled() and (cameo_pcx is not None or alt_cameo_pcx is not None):
+            raise ValueError("Ares 支持已关闭；CameoPCX / AltCameoPCX 不能写入。原版可继续使用 Cameo=SHP 名称。")
+        result = self._icon_resources().set_artmd_icon(
             section=section,
             cameo=cameo,
             cameo_pcx=cameo_pcx,
             alt_cameo_pcx=alt_cameo_pcx,
         )
+        result["aresEnabled"] = self._ares_enabled()
+        return result
 
     def dispatch(self, request: dict) -> dict:
         request_id = request.get("id")
