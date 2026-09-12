@@ -1,10 +1,6 @@
 .iconResourceShell{width:100%;height:100%;display:flex;flex-direction:column;min-width:0;min-height:0;color:var(--theme-text)}
 .iconResourceTopline{flex:0 0 auto;padding:0 2px 8px;font-size:11px;color:color-mix(in srgb,var(--theme-text) 62%,transparent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.iconResourceTabs{flex:0 0 auto;display:flex;gap:2px;border-bottom:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);margin-bottom:10px}
-.iconResourceTabs>button{border:0;border-bottom:2px solid transparent;background:transparent;color:color-mix(in srgb,var(--theme-text) 62%,transparent);padding:8px 14px;cursor:pointer}
-.iconResourceTabs>button.active{color:var(--theme-text-bright);border-bottom-color:var(--theme-accent)}
-.iconResourcePanelBody{flex:1 1 auto;min-height:0;overflow:auto;padding:2px}
-.iconResourcePanelBody:has(.iconResourceImport){display:flex;flex-direction:column;overflow:hidden}
+.iconResourcePanelBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:auto;padding:2px}
 .iconResourceToolbar{flex:0 0 auto;display:grid;grid-template-columns:minmax(190px,1fr) minmax(260px,1.5fr) auto;gap:10px;align-items:end;padding-bottom:10px}
 .iconResourceField{display:flex;flex-direction:column;gap:5px;min-width:0}
 .iconResourceField>span{font-size:12px;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
@@ -30,26 +26,7 @@
 .iconCropReset:hover:not(:disabled){background:var(--theme-surface-hover);color:var(--theme-text)}.iconCropReset:disabled{opacity:.4;cursor:default}
 .iconResourceImportControls{display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:0}
 .iconResourceInline{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.iconResourceInline label{display:flex;gap:6px;align-items:center;font-size:13px}
-.iconResourceInline select{height:28px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:5px;background:color-mix(in srgb,var(--theme-base) 94%,var(--theme-text) 6%);color:inherit}
 .iconResourceHint{font-size:12px;line-height:1.45;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
-.iconResourceAresNotice{flex:0 0 auto;margin:0 0 8px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--theme-effect) 32%,var(--theme-border));border-radius:6px;background:color-mix(in srgb,var(--theme-effect) 8%,var(--theme-surface-soft));color:color-mix(in srgb,var(--theme-text) 78%,var(--theme-base));font-size:11px;line-height:1.4}
-.disabledChoice,.aresOnlyDisabled{opacity:.48}
-/* Resource scanning stays available for status/cache resolution, but the redundant card overview is intentionally not shown in this task-focused dialog. */
-.iconResourceGrid{display:none!important}
-.iconResourcePanelBody:has(.iconResourceImport):not(:has(.iconResourceGrid))::after{content:none!important;display:none!important}
-.iconResourceCard,.iconResourceCardIcon,.iconResourceCardText,.iconResourceBadge{display:none!important}
-.artmdPath{margin-bottom:10px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:6px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;color:color-mix(in srgb,var(--theme-text) 62%,transparent);word-break:break-all}
-.artmdLayout{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(330px,1.2fr);gap:12px;min-height:0;height:calc(100% - 46px)}
-.artmdRows{min-height:0;height:100%;overflow:auto;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:7px}
-.artmdRows>button{width:100%;display:grid;grid-template-columns:minmax(100px,.75fr) minmax(0,1.25fr);gap:8px;border:0;border-bottom:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);background:transparent;color:inherit;text-align:left;padding:8px 9px;cursor:pointer}
-.artmdRows>button:hover,.artmdRows>button.active{background:color-mix(in srgb,var(--theme-text) 10%,transparent)}
-.artmdRows>button b,.artmdRows>button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.artmdRows>button span{font-size:11px;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
-.artmdEditor{height:100%;padding:10px;border:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);border-radius:7px;background:color-mix(in srgb,var(--theme-base) 96%,var(--theme-text) 4%);overflow:auto}
-.artmdEditor .iconResourceField{margin-bottom:8px}
-.artmdEditor h3{margin:0 0 10px;font-size:14px}
-.iconResourceEmpty{height:100%;min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;color:color-mix(in srgb,var(--theme-text) 62%,transparent)}
 .iconResourceStatus{flex:0 0 30px;min-height:30px;margin-top:8px;padding:6px 2px 0;border-top:1px solid color-mix(in srgb,var(--theme-text) 18%,transparent);font-size:12px;color:color-mix(in srgb,var(--theme-text) 62%,transparent);box-sizing:border-box}
 .iconResourceHiddenInput{display:none}
-@media(max-width:760px){.iconResourceToolbar{grid-template-columns:1fr}.iconResourceImport,.artmdLayout{grid-template-columns:1fr}.iconResourceImport{overflow:auto}.artmdLayout{height:auto}.artmdRows{min-height:180px;max-height:240px}}
+@media(max-width:760px){.iconResourceToolbar{grid-template-columns:1fr}.iconResourceImport{grid-template-columns:1fr;overflow:auto}}
