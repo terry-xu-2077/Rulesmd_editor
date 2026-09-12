@@ -55,6 +55,7 @@ export const RA2_COUNTRY_ICON_CELL_HEIGHT = 40
 export const RA2_OPTION_ICON_WIDTH = 32
 export const RA2_UNIT_ICON_ASPECT = RA2_UNIT_ICON_CELL_HEIGHT / RA2_UNIT_ICON_CELL_WIDTH
 export const RA2_COUNTRY_ICON_ASPECT = RA2_COUNTRY_ICON_CELL_HEIGHT / RA2_COUNTRY_ICON_CELL_WIDTH
+const RESOLVED_ATLAS_COLUMNS = 10
 
 const ICON_POS: Record<string, [number, number]> = {
   ADOG:[0,0],AEGIS:[60,0],AMCV:[120,0],AmericanParaDropSpecial:[180,0],APOC:[240,0],ATESLA:[300,0],BEAG:[360,0],BFRT:[420,0],BORIS:[480,0],BRUTE:[540,0],
@@ -122,8 +123,11 @@ function cachedTileStyle(kind: 'unit' | 'country', id: string, size: number): CS
   const entry = cachedEntry(rows, id)
   if (!entry || !image) return undefined
   const entries = Object.values(rows ?? {})
-  const sheetWidth = Math.max(entry.cellWidth, ...entries.map(item => item.x + item.cellWidth))
-  const sheetHeight = Math.max(entry.cellHeight, ...entries.map(item => item.y + item.cellHeight))
+  // The backend resolved atlas always has ten columns, even when only one or two icons
+  // are present.  Inferring sheetWidth from the last occupied cell makes a 600px sheet
+  // look like a 60px sheet and compresses a single custom icon to almost nothing.
+  const sheetWidth = entry.cellWidth * RESOLVED_ATLAS_COLUMNS
+  const sheetHeight = entry.cellHeight * Math.max(1, Math.ceil(entries.length / RESOLVED_ATLAS_COLUMNS))
   return createTileIconStyle({
     image,
     x: entry.x,
