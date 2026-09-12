@@ -7,10 +7,9 @@ import traceback
 from typing import BinaryIO, TextIO, TYPE_CHECKING
 
 from .export_bridge import ExportBridge, ExportMixRulesWorkspace
-from .user_data import load_app_config
 
 if TYPE_CHECKING:
-    from .icon_resources_safe import SafeIconResourceService
+    from .icon_resources_app import AppIconResourceService
 
 
 def _report_exception() -> None:
@@ -29,23 +28,17 @@ class DiagnosticExportBridge(ExportBridge):
     prevent the editor core (new/open/save/snapshot) from starting.
     """
 
-    def _icon_resources(self) -> "SafeIconResourceService":
+    def _icon_resources(self) -> "AppIconResourceService":
         try:
-            from .icon_resources_safe import SafeIconResourceService
+            from .icon_resources_app import AppIconResourceService
         except ImportError as exc:
             raise RuntimeError(
                 "图标资源模块运行依赖不完整，请重新运行“启动项目.bat”修复开发环境。"
             ) from exc
-        return SafeIconResourceService(self.workspace)
-
-    @staticmethod
-    def _ares_enabled() -> bool:
-        return bool(load_app_config().get("aresEnabled", True))
+        return AppIconResourceService(self.workspace)
 
     def rpc_icon_library_snapshot(self) -> dict:
-        result = self._icon_resources().library_snapshot()
-        result["aresEnabled"] = self._ares_enabled()
-        return result
+        return self._icon_resources().library_snapshot()
 
     def rpc_custom_icon_source(self, kind: str, target_id: str) -> dict:
         return self._icon_resources().custom_icon_source(kind=kind, target_id=target_id)
@@ -56,59 +49,22 @@ class DiagnosticExportBridge(ExportBridge):
         target_id: str,
         data_base64: str,
         filename: str = "",
-        sync_game: bool = True,
-        variant: str = "cameo",
         crop_zoom: float = 1.0,
         crop_x: float = 0.5,
         crop_y: float = 0.5,
     ) -> dict:
-        # CameoPCX / AltCameoPCX and country File.Flag are Ares extensions. The user may
-        # still keep an editor-only custom tile with Ares disabled, but game sync must
-        # never silently write tags the vanilla game does not understand.
-        allow_game_sync = bool(sync_game) and self._ares_enabled()
-        result = self._icon_resources().import_custom_icon(
+        return self._icon_resources().import_custom_icon(
             kind=kind,
             target_id=target_id,
             data_base64=data_base64,
             filename=filename,
-            sync_game=allow_game_sync,
-            variant=variant,
             crop_zoom=crop_zoom,
             crop_x=crop_x,
             crop_y=crop_y,
         )
-        result["aresEnabled"] = self._ares_enabled()
-        if sync_game and not allow_game_sync:
-            result["syncBlockedByAres"] = True
-        return result
 
     def rpc_remove_custom_icon(self, kind: str, target_id: str) -> dict:
-        result = self._icon_resources().remove_custom_icon(kind=kind, target_id=target_id)
-        result["aresEnabled"] = self._ares_enabled()
-        return result
-
-    def rpc_artmd_snapshot(self) -> dict:
-        result = self._icon_resources().artmd_snapshot()
-        result["aresEnabled"] = self._ares_enabled()
-        return result
-
-    def rpc_set_artmd_icon(
-        self,
-        section: str,
-        cameo: str | None = None,
-        cameo_pcx: str | None = None,
-        alt_cameo_pcx: str | None = None,
-    ) -> dict:
-        if not self._ares_enabled() and (cameo_pcx is not None or alt_cameo_pcx is not None):
-            raise ValueError("Ares 支持已关闭；CameoPCX / AltCameoPCX 不能写入。原版可继续使用 Cameo=SHP 名称。")
-        result = self._icon_resources().set_artmd_icon(
-            section=section,
-            cameo=cameo,
-            cameo_pcx=cameo_pcx,
-            alt_cameo_pcx=alt_cameo_pcx,
-        )
-        result["aresEnabled"] = self._ares_enabled()
-        return result
+        return self._icon_resources().remove_custom_icon(kind=kind, target_id=target_id)
 
     def dispatch(self, request: dict) -> dict:
         request_id = request.get("id")
