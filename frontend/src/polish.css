@@ -17,7 +17,23 @@
 .rulesControlHost{position:relative;display:flex;align-items:center;gap:7px;min-width:0}
 .referenceJump{flex:0 0 28px!important;width:28px!important;height:26px!important}
 .parameterTableGroup>.fieldGroupHeader,.fieldGroupHeader{background:linear-gradient(180deg,var(--theme-surface-2) 0%,var(--theme-surface-1) 58%,var(--theme-surface-soft) 100%)!important;border-top:1px solid var(--theme-line)!important;border-bottom:1px solid var(--theme-border)!important;color:color-mix(in srgb,var(--theme-text) 74%,var(--theme-base))!important;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--theme-text) 2%,transparent),0 2px 5px var(--theme-shadow)!important}
-.parameterTableRow.focused{background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 24%,var(--theme-surface-1)),color-mix(in srgb,var(--theme-effect) 12%,var(--theme-surface-1)) 58%,var(--theme-accent-soft))!important;box-shadow:inset 4px 0 0 var(--theme-effect),0 4px 13px var(--theme-shadow)!important;position:relative;z-index:1}
+
+/* Parameter-table selection is a row operation, not browser text selection. Prevent
+ * Shift/Ctrl range gestures from painting native blue text ranges across Key/label cells.
+ * Text entry remains selectable inside real editable controls. */
+.parameterTableRow{-webkit-user-select:none;user-select:none}
+.parameterTableRow input,.parameterTableRow textarea,.parameterTableRow [contenteditable="true"]{-webkit-user-select:text;user-select:text}
+
+/* Every member of a multi-selection must remain visibly selected. The focused row is
+ * intentionally stronger below, but it is no longer the only row that reads as active. */
+.parameterTableRow.selected:not(.focused){
+  background:linear-gradient(90deg,color-mix(in oklab,var(--theme-selection-surface) 72%,var(--theme-effect) 28%),color-mix(in oklab,var(--theme-selection-surface) 90%,var(--theme-effect) 10%))!important;
+  box-shadow:inset 3px 0 0 color-mix(in oklab,var(--theme-effect) 78%,var(--theme-border) 22%),inset 0 0 0 1px color-mix(in oklab,var(--theme-effect) 28%,var(--theme-border) 72%),0 2px 8px color-mix(in srgb,var(--theme-shadow) 70%,transparent)!important;
+  position:relative;
+  z-index:1;
+}
+.parameterTableRow.selected:not(.focused) .parameterLabelCell strong,.parameterTableRow.selected:not(.focused) .parameterKeyCell code{color:var(--theme-text)!important}
+.parameterTableRow.focused{background:linear-gradient(90deg,color-mix(in srgb,var(--theme-effect) 24%,var(--theme-surface-1)),color-mix(in srgb,var(--theme-effect) 12%,var(--theme-surface-1)) 58%,var(--theme-accent-soft))!important;box-shadow:inset 4px 0 0 var(--theme-effect),0 4px 13px var(--theme-shadow)!important;position:relative;z-index:2}
 .parameterTableRow.focused .parameterLabelCell strong,.parameterTableRow.focused .parameterKeyCell code{color:var(--theme-text)!important}
 .inspectorHeading{height:40px!important}
 .helpDescriptionCard{border-radius:10px!important;border:1px solid color-mix(in srgb,var(--theme-effect) 48%,var(--theme-border))!important;background:linear-gradient(145deg,color-mix(in srgb,var(--theme-surface-0) 84%,var(--theme-effect) 16%),color-mix(in srgb,var(--theme-surface-soft) 92%,var(--theme-effect) 8%))!important;box-shadow:0 7px 18px var(--theme-shadow),inset 0 1px 0 color-mix(in srgb,var(--theme-text) 7%,transparent)!important}
