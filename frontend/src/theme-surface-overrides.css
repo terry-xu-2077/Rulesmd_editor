@@ -60,7 +60,10 @@
   background: var(--theme-selection-surface) !important;
 }
 
-.parameterTableRow:not(.focused):not(.changed):not(.disabled),
+/* This neutral reset must never match a selected row. Its old selector had higher
+ * specificity than .parameterTableRow.selected and silently erased the multi-select
+ * gradient, leaving only the cyan inset bar visible. */
+.parameterTableRow:not(.selected):not(.focused):not(.changed):not(.disabled),
 .fieldGroupHeader,
 .unitTreeLevel.typeLevel,
 .unitTreeLevel.sideLevel {
