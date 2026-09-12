@@ -15,10 +15,10 @@ _STORAGE_MARKER = "single-atlas-v1"
 class PersistentIconResourceService(base.IconResourceService):
     """Store user icons once, directly in the compact custom Tile atlases.
 
-    Durable user data is intentionally limited to icons.json + unitTile.png +
-    countryTile.png. Legacy per-object generated PNGs, preserved originals and resolved
-    atlases are migrated once and removed. Mod/game icons are composed into an in-memory
-    atlas for the frontend and are never persisted as another PNG copy.
+    Durable user data is intentionally limited to icons.json plus the custom atlases that
+    actually contain icons. Legacy per-object generated PNGs, preserved originals and
+    resolved atlases are migrated once and removed. Mod/game icons are composed into an
+    in-memory atlas for the frontend and are never persisted as another PNG copy.
     """
 
     def __init__(self, workspace: Any):
@@ -44,6 +44,15 @@ class PersistentIconResourceService(base.IconResourceService):
         image.convert("RGBA").save(payload, format="PNG")
         return "data:image/png;base64," + base64.b64encode(payload.getvalue()).decode("ascii")
 
+    @staticmethod
+    def _entry_slot(entry: Any) -> int:
+        if not isinstance(entry, dict):
+            return 0
+        try:
+            return max(0, int(entry.get("slot", 0)))
+        except (TypeError, ValueError):
+            return 0
+
     def _load_tile(self, kind: str, minimum_slot: int = 0) -> Image.Image:
         width, height = self._cell_size(kind)
         sheet_width = width * base.ATLAS_COLUMNS
@@ -66,15 +75,18 @@ class PersistentIconResourceService(base.IconResourceService):
         atlas.convert("RGBA").save(tmp, format="PNG")
         tmp.replace(path)
 
+    def _delete_tile(self, kind: str) -> None:
+        try:
+            self._tile_path(kind).unlink()
+        except FileNotFoundError:
+            pass
+
     def _atlas_cell(self, kind: str, entry: dict[str, Any]) -> Image.Image | None:
         tile = base._load_image(self._tile_path(kind))
         if tile is None:
             return None
         width, height = self._cell_size(kind)
-        try:
-            slot = max(0, int(entry.get("slot", 0)))
-        except (TypeError, ValueError):
-            return None
+        slot = self._entry_slot(entry)
         col = slot % base.ATLAS_COLUMNS
         row = slot // base.ATLAS_COLUMNS
         left = col * width
@@ -124,10 +136,7 @@ class PersistentIconResourceService(base.IconResourceService):
     def _repack_kind(self, kind: str, meta: dict[str, Any]) -> None:
         rows = self._kind_rows(meta, kind)
         snapshots: list[tuple[str, dict[str, Any], Image.Image]] = []
-        ordered = sorted(
-            rows.items(),
-            key=lambda item: (int(item[1].get("slot", 0)) if isinstance(item[1], dict) else 0, item[0].casefold()),
-        )
+        ordered = sorted(rows.items(), key=lambda item: (self._entry_slot(item[1]), item[0].casefold()))
         for stored_id, entry in ordered:
             if not isinstance(entry, dict):
                 continue
@@ -135,20 +144,24 @@ class PersistentIconResourceService(base.IconResourceService):
             if image is not None:
                 snapshots.append((stored_id, entry, image))
 
+        if not snapshots:
+            meta[kind] = {}
+            self._delete_tile(kind)
+            return
+
         width, height = self._cell_size(kind)
-        row_count = max(1, (len(snapshots) + base.ATLAS_COLUMNS - 1) // base.ATLAS_COLUMNS)
+        row_count = (len(snapshots) + base.ATLAS_COLUMNS - 1) // base.ATLAS_COLUMNS
         atlas = Image.new("RGBA", (width * base.ATLAS_COLUMNS, height * row_count), (0, 0, 0, 0))
         clean_rows: dict[str, Any] = {}
         for slot, (stored_id, entry, image) in enumerate(snapshots):
             col = slot % base.ATLAS_COLUMNS
             row = slot // base.ATLAS_COLUMNS
             atlas.alpha_composite(base._normalize_image(image, width, height), (col * width, row * height))
-            clean = {
+            clean_rows[stored_id] = {
                 "slot": slot,
                 "source_name": str(entry.get("source_name", "")),
                 "game_file": str(entry.get("game_file", "")),
             }
-            clean_rows[stored_id] = clean
         meta[kind] = clean_rows
         self._save_tile(kind, atlas)
 
@@ -318,7 +331,7 @@ class PersistentIconResourceService(base.IconResourceService):
 
         meta = base._read_meta()
         rows = self._kind_rows(meta, clean_kind)
-        stored_id, entry = base._entry_for(rows, clean_id)
+        stored_id, _entry = base._entry_for(rows, clean_id)
         if stored_id is not None:
             clean_id = stored_id
         else:
@@ -340,7 +353,7 @@ class PersistentIconResourceService(base.IconResourceService):
         existing = rows.get(clean_id) if isinstance(rows.get(clean_id), dict) else None
         if existing is None:
             existing = {"slot": base._allocate_slot(rows)}
-        slot = max(0, int(existing.get("slot", 0)))
+        slot = self._entry_slot(existing)
         self._put_cell(clean_kind, slot, cropped)
         existing = {
             "slot": slot,
