@@ -10,7 +10,7 @@ from .export_bridge import ExportBridge, ExportMixRulesWorkspace
 from .user_data import load_app_config
 
 if TYPE_CHECKING:
-    from .icon_resources_persistent import PersistentIconResourceService
+    from .icon_resources_safe import SafeIconResourceService
 
 
 def _report_exception() -> None:
@@ -29,14 +29,14 @@ class DiagnosticExportBridge(ExportBridge):
     prevent the editor core (new/open/save/snapshot) from starting.
     """
 
-    def _icon_resources(self) -> "PersistentIconResourceService":
+    def _icon_resources(self) -> "SafeIconResourceService":
         try:
-            from .icon_resources_persistent import PersistentIconResourceService
+            from .icon_resources_safe import SafeIconResourceService
         except ImportError as exc:
             raise RuntimeError(
                 "图标资源模块运行依赖不完整，请重新运行“启动项目.bat”修复开发环境。"
             ) from exc
-        return PersistentIconResourceService(self.workspace)
+        return SafeIconResourceService(self.workspace)
 
     @staticmethod
     def _ares_enabled() -> bool:
