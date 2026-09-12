@@ -70,7 +70,6 @@ def test_import_persists_only_metadata_and_custom_atlas(monkeypatch, tmp_path: P
         target_id="MYCONA",
         data_base64=_data_url(_sample_icon()),
         filename="excavator.png",
-        sync_game=False,
         crop_zoom=1.5,
         crop_x=0.65,
         crop_y=0.5,
@@ -86,7 +85,7 @@ def test_import_persists_only_metadata_and_custom_atlas(monkeypatch, tmp_path: P
 
     payload = json.loads(icon_resources.USER_ICON_META.read_text(encoding="utf-8"))
     assert payload["storage"] == "single-atlas-v1"
-    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name", "game_file"}
+    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name"}
 
     atlas = Image.open(icon_resources.CUSTOM_UNIT_TILE)
     assert atlas.width == icon_resources.UNIT_CELL[0] * icon_resources.ATLAS_COLUMNS
@@ -108,7 +107,6 @@ def test_snapshot_matches_custom_icon_case_and_does_not_require_target_scan(monk
         target_id="mycona",
         data_base64=_data_url(_sample_icon()),
         filename="excavator.png",
-        sync_game=False,
     )
 
     snapshot = PersistentIconResourceService(_Workspace(rules, include_target=False)).library_snapshot()
@@ -138,7 +136,14 @@ def test_legacy_per_object_files_migrate_into_atlas_then_are_removed(monkeypatch
     icon_resources.USER_ICON_META.write_text(
         json.dumps({
             "version": 2,
-            "unit": {"MYCONA": {"slot": 0, "source_name": "old.png", "game_file": "", "crop": {"zoom": 2, "x": .6, "y": .5}}},
+            "unit": {
+                "MYCONA": {
+                    "slot": 0,
+                    "source_name": "old.png",
+                    "game_file": "legacy.pcx",
+                    "crop": {"zoom": 2, "x": .6, "y": .5},
+                }
+            },
             "country": {},
         }),
         encoding="utf-8",
@@ -154,4 +159,4 @@ def test_legacy_per_object_files_migrate_into_atlas_then_are_removed(monkeypatch
     assert not icon_resources.ORIGINAL_ROOT.exists()
     assert not icon_resources.RESOLVED_UNIT_TILE.exists()
     payload = json.loads(icon_resources.USER_ICON_META.read_text(encoding="utf-8"))
-    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name", "game_file"}
+    assert set(payload["unit"]["MYCONA"]) == {"slot", "source_name"}
