@@ -145,6 +145,21 @@
 }
 .addUnitActions>.tc-button{height:32px!important;border-radius:7px;min-width:92px}
 
+/* Icon resource dialog uses the project default 800x480 envelope. The feature CSS owns
+ * only its inner elastic layout; shared Dialog geometry stays in this integration layer. */
+.tc-dialog:has(.iconResourceShell){
+  width:min(800px,calc(100vw - 64px));
+  max-width:min(800px,calc(100vw - 64px));
+  height:min(480px,calc(100vh - 64px));
+  max-height:min(480px,calc(100vh - 64px));
+}
+.tc-dialog:has(.iconResourceShell)>.tc-dialog-body{
+  height:calc(100% - 38px);
+  max-height:none;
+  overflow:hidden;
+  padding:12px;
+}
+
 /* Parameter-table control slot. Width belongs to the business slot; component geometry stays library-owned. */
 .rulesControlHost{
   position:relative;
@@ -250,4 +265,13 @@
 .parameterValueCell .tc-multi.opens-up .tc-pop{
   top:auto!important;
   bottom:calc(100% + 6px)!important;
+}
+
+@media(max-width:760px){
+  .tc-dialog:has(.iconResourceShell){
+    width:calc(100vw - 32px);
+    max-width:calc(100vw - 32px);
+    height:calc(100vh - 32px);
+    max-height:calc(100vh - 32px);
+  }
 }
