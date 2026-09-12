@@ -23,6 +23,7 @@ const allCss = fs.readdirSync(src).filter(file => file.endsWith('.css')).sort()
 const settingsOwner = 'settings-panel.css'
 const integrationOwner = 'ui-library-integration.css'
 const themeContractOwner = 'theme-contract.css'
+const parameterSelectionOwner = 'polish.css'
 const businessCss = allCss.filter(file => file !== settingsOwner && file !== integrationOwner)
 const ordinaryBusinessCss = businessCss.filter(file => file !== themeContractOwner)
 
@@ -130,6 +131,18 @@ for (const file of ordinaryBusinessCss) {
   if (/\.tc-[a-z0-9_-]+/i.test(text)) {
     fail(file, 'shared UI selectors belong only in ui-library-integration.css', 'found .tc-* selector')
   }
+}
+
+// RED LINE 4B: parameter-row selection/focus has exactly one visual owner. This prevents
+// a repeat of the old cascade where context-menu, density and generic surface layers all
+// painted the same selected row and made Shift/Ctrl selection effectively invisible.
+for (const file of allCss) {
+  if (file === parameterSelectionOwner) continue
+  const text = cssCode(file)
+  containsAny(file, text, [
+    '.parameterTableRow.selected',
+    '.parameterTableRow.focused',
+  ], 'parameter selection/focus styles must live only in polish.css')
 }
 
 // RED LINE 5: integration layer may target roots/context, but not component implementation details.
