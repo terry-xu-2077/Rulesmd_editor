@@ -8,6 +8,7 @@ from PIL import Image
 
 from rulesmd_editor import icon_resources
 from rulesmd_editor.icon_resources import IconResourceService, read_pcx, write_pcx
+from rulesmd_editor.icon_resources_persistent import PersistentIconResourceService
 from rulesmd_editor.ini_document import IniDocument
 
 
@@ -39,14 +40,8 @@ class _Workspace:
     def snapshot(self) -> dict:
         return {
             "categories": [
-                {
-                    "name": "载具",
-                    "items": [{"section": "MYTNK", "label": "测试坦克"}],
-                },
-                {
-                    "name": "国家",
-                    "items": [{"section": "MyCountry", "label": "测试国家"}],
-                },
+                {"name": "载具", "items": [{"section": "MYTNK", "label": "测试坦克"}]},
+                {"name": "国家", "items": [{"section": "MyCountry", "label": "测试国家"}]},
             ]
         }
 
@@ -54,10 +49,8 @@ class _Workspace:
 def test_pcx_round_trip_preserves_dimensions(tmp_path: Path) -> None:
     image = Image.new("RGBA", (60, 48), (218, 72, 35, 255))
     target = tmp_path / "cameo.pcx"
-
     write_pcx(image, target)
     decoded = read_pcx(target)
-
     assert target.read_bytes()[:4] == bytes((0x0A, 5, 1, 8))
     assert decoded.size == (60, 48)
     red, green, blue, _ = decoded.getpixel((10, 10))
@@ -80,12 +73,7 @@ def test_artmd_icon_config_preserves_unrelated_fields(monkeypatch, tmp_path: Pat
     artmd.write_text("[MYTNKART]\nVoxel=yes\nCameo=OLDICON\n", encoding="utf-8")
 
     service = IconResourceService(_Workspace(rules))
-    result = service.set_artmd_icon(
-        "MYTNKART",
-        cameo="",
-        cameo_pcx="mytank.pcx",
-        alt_cameo_pcx="mytank_elite.pcx",
-    )
+    result = service.set_artmd_icon("MYTNKART", cameo="", cameo_pcx="mytank.pcx", alt_cameo_pcx="mytank_elite.pcx")
 
     saved = IniDocument.load(artmd)
     assert saved.get("MYTNKART", "Voxel") == "yes"
@@ -116,7 +104,7 @@ def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: P
     rules.path = game_root / "rulesmd.ini"
     (game_root / "artmd.ini").write_text("[MYTNKART]\nCameoPCX=mytank.pcx\n", encoding="utf-8")
 
-    snapshot = IconResourceService(_Workspace(rules)).library_snapshot()
+    snapshot = PersistentIconResourceService(_Workspace(rules)).library_snapshot()
 
     assert snapshot["unit"]["MYTNK"]["source"] == "mod"
     assert snapshot["unit"]["MYTNK"]["gameFile"] == "mytank.pcx"
@@ -124,9 +112,11 @@ def test_library_reads_loose_mod_cameo_and_country_flag(monkeypatch, tmp_path: P
     assert snapshot["country"]["MyCountry"]["gameFile"] == "mycountry.pcx"
     assert snapshot["unitTile"].startswith("data:image/png;base64,")
     assert snapshot["countryTile"].startswith("data:image/png;base64,")
+    assert not icon_resources.RESOLVED_UNIT_TILE.exists()
+    assert not icon_resources.RESOLVED_COUNTRY_TILE.exists()
 
 
-def test_custom_crop_preserves_original_and_can_be_reedited(monkeypatch, tmp_path: Path) -> None:
+def test_custom_crop_is_written_directly_to_unit_atlas(monkeypatch, tmp_path: Path) -> None:
     _patch_icon_storage(monkeypatch, tmp_path)
     game_root = tmp_path / "game"
     game_root.mkdir()
@@ -139,7 +129,7 @@ def test_custom_crop_preserves_original_and_can_be_reedited(monkeypatch, tmp_pat
     source = Image.new("RGBA", (200, 100), (220, 30, 30, 255))
     source.paste((25, 70, 225, 255), (100, 0, 200, 100))
 
-    service = IconResourceService(_Workspace(rules))
+    service = PersistentIconResourceService(_Workspace(rules))
     result = service.import_custom_icon(
         kind="unit",
         target_id="MYTNK",
@@ -151,19 +141,17 @@ def test_custom_crop_preserves_original_and_can_be_reedited(monkeypatch, tmp_pat
         crop_y=0.5,
     )
 
-    original = Image.open(icon_resources._original_path("unit", "MYTNK"))
-    generated = Image.open(icon_resources._source_path("unit", "MYTNK")).convert("RGBA")
+    atlas = Image.open(icon_resources.CUSTOM_UNIT_TILE).convert("RGBA")
+    generated = atlas.crop((0, 0, 60, 48))
     restored = service.custom_icon_source("unit", "MYTNK")
 
-    assert original.size == (200, 100)
     assert generated.size == (60, 48)
     red, _green, blue, _alpha = generated.getpixel((30, 24))
     assert blue > red
     assert result["version"] == 2
     assert restored["exists"] is True
-    assert restored["hasOriginal"] is True
+    assert restored["hasOriginal"] is False
     assert restored["sourceName"] == "wide-source.png"
     assert restored["image"].startswith("data:image/png;base64,")
-    assert restored["crop"]["zoom"] == 1.5
-    assert restored["crop"]["x"] == 0.75
-    assert restored["crop"]["y"] == 0.5
+    assert not icon_resources.SOURCE_ROOT.exists()
+    assert not icon_resources.ORIGINAL_ROOT.exists()
