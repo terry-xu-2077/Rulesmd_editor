@@ -62,7 +62,7 @@ def _sample_icon() -> Image.Image:
 
 
 def test_import_persists_only_metadata_and_custom_atlas(monkeypatch, tmp_path: Path) -> None:
-    root = _patch_icon_storage(monkeypatch, tmp_path)
+    _patch_icon_storage(monkeypatch, tmp_path)
     service = PersistentIconResourceService(_Workspace(_rules()))
 
     service.import_custom_icon(
@@ -78,6 +78,7 @@ def test_import_persists_only_metadata_and_custom_atlas(monkeypatch, tmp_path: P
 
     assert icon_resources.USER_ICON_META.is_file()
     assert icon_resources.CUSTOM_UNIT_TILE.is_file()
+    assert not icon_resources.CUSTOM_COUNTRY_TILE.exists()
     assert not icon_resources.SOURCE_ROOT.exists()
     assert not icon_resources.ORIGINAL_ROOT.exists()
     assert not icon_resources.RESOLVED_UNIT_TILE.exists()
@@ -148,6 +149,7 @@ def test_legacy_per_object_files_migrate_into_atlas_then_are_removed(monkeypatch
 
     assert snapshot["unit"]["MYCONA"]["source"] == "custom"
     assert icon_resources.CUSTOM_UNIT_TILE.is_file()
+    assert not icon_resources.CUSTOM_COUNTRY_TILE.exists()
     assert not icon_resources.SOURCE_ROOT.exists()
     assert not icon_resources.ORIGINAL_ROOT.exists()
     assert not icon_resources.RESOLVED_UNIT_TILE.exists()
