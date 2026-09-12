@@ -47,6 +47,9 @@ class DiagnosticExportBridge(ExportBridge):
         result["aresEnabled"] = self._ares_enabled()
         return result
 
+    def rpc_custom_icon_source(self, kind: str, target_id: str) -> dict:
+        return self._icon_resources().custom_icon_source(kind=kind, target_id=target_id)
+
     def rpc_import_custom_icon(
         self,
         kind: str,
@@ -55,6 +58,9 @@ class DiagnosticExportBridge(ExportBridge):
         filename: str = "",
         sync_game: bool = True,
         variant: str = "cameo",
+        crop_zoom: float = 1.0,
+        crop_x: float = 0.5,
+        crop_y: float = 0.5,
     ) -> dict:
         # CameoPCX / AltCameoPCX and country File.Flag are Ares extensions. The user may
         # still keep an editor-only custom tile with Ares disabled, but game sync must
@@ -67,6 +73,9 @@ class DiagnosticExportBridge(ExportBridge):
             filename=filename,
             sync_game=allow_game_sync,
             variant=variant,
+            crop_zoom=crop_zoom,
+            crop_x=crop_x,
+            crop_y=crop_y,
         )
         result["aresEnabled"] = self._ares_enabled()
         if sync_game and not allow_game_sync:
