@@ -28,6 +28,24 @@ export type VisualIconResolverOptions = {
   size?: number
 }
 
+type CachedIconEntry = {
+  x: number
+  y: number
+  cellWidth: number
+  cellHeight: number
+  source?: 'custom' | 'mod' | string
+  gameFile?: string
+}
+
+type CachedIconRegistry = {
+  version?: number
+  unitTile?: string
+  countryTile?: string
+  unit?: Record<string, CachedIconEntry>
+  country?: Record<string, CachedIconEntry>
+}
+
+export const CUSTOM_ICON_CACHE_KEY = 'rulesmd.customIconCache'
 export const RA2_ICON_TILE = '/game-assets/iconTile.jpg'
 export const COUNTRY_ICON_TILE = '/game-assets/countryTile.png'
 export const RA2_UNIT_ICON_CELL_WIDTH = 60
@@ -78,6 +96,45 @@ const SEMANTIC_VALUE_ICON: Record<string, SemanticIconKind> = {
   THIRDSIDE: 'flag',
 }
 
+function cachedRegistry(): CachedIconRegistry {
+  try {
+    const raw = localStorage.getItem(CUSTOM_ICON_CACHE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed as CachedIconRegistry : {}
+  } catch {
+    return {}
+  }
+}
+
+function cachedEntry(rows: Record<string, CachedIconEntry> | undefined, id: string) {
+  if (!rows) return undefined
+  if (rows[id]) return rows[id]
+  const folded = id.toLowerCase()
+  const key = Object.keys(rows).find(value => value.toLowerCase() === folded)
+  return key ? rows[key] : undefined
+}
+
+function cachedTileStyle(kind: 'unit' | 'country', id: string, size: number): CSSProperties | undefined {
+  const cache = cachedRegistry()
+  const rows = kind === 'unit' ? cache.unit : cache.country
+  const image = kind === 'unit' ? cache.unitTile : cache.countryTile
+  const entry = cachedEntry(rows, id)
+  if (!entry || !image) return undefined
+  const entries = Object.values(rows ?? {})
+  const sheetWidth = Math.max(entry.cellWidth, ...entries.map(item => item.x + item.cellWidth))
+  const sheetHeight = Math.max(entry.cellHeight, ...entries.map(item => item.y + item.cellHeight))
+  return createTileIconStyle({
+    image,
+    x: entry.x,
+    y: entry.y,
+    cellWidth: entry.cellWidth,
+    cellHeight: entry.cellHeight,
+    sheetWidth,
+    sheetHeight,
+  }, size)
+}
+
 function semanticFrameHeight(kind: SemanticIconKind, width: number) {
   return width * (kind === 'flag' ? RA2_COUNTRY_ICON_ASPECT : RA2_UNIT_ICON_ASPECT)
 }
@@ -112,6 +169,8 @@ export function categoryVisualIcon(category: string, width = RA2_OPTION_ICON_WID
 }
 
 export function unitIconStyle(id: string, size = 36): CSSProperties | undefined {
+  const custom = cachedTileStyle('unit', id, size)
+  if (custom) return custom
   const pos = ICON_POS[id]
   if (!pos) return undefined
   return createTileIconStyle({
@@ -126,6 +185,8 @@ export function unitIconStyle(id: string, size = 36): CSSProperties | undefined 
 }
 
 export function countryIconStyle(id: string, width = 32): CSSProperties | undefined {
+  const custom = cachedTileStyle('country', id, width)
+  if (custom) return custom
   const index = COUNTRY_ORDER.indexOf(id as typeof COUNTRY_ORDER[number])
   if (index < 0) return undefined
   const col = index % 5
@@ -142,7 +203,8 @@ export function countryIconStyle(id: string, width = 32): CSSProperties | undefi
 }
 
 export function hasUnitIcon(id: string): boolean {
-  return Boolean(ICON_POS[id])
+  const cache = cachedRegistry()
+  return Boolean(cachedEntry(cache.unit, id) || ICON_POS[id])
 }
 
 export function semanticOpenIconKind(value: string): SemanticIconKind | undefined {
