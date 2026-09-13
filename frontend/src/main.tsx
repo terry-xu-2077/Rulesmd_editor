@@ -237,7 +237,9 @@ function optionVisualIcon(value: string, category?: string) {
 }
 
 function referenceOptionIcon(value: string, kind: ReferenceKind = 'generic', category?: string) {
-  const visual = optionVisualIcon(value, category)
+  // Typed references (weapon/warhead/projectile/audio/debris) must keep their semantic
+  // icon even when their ID collides with a unit ID such as Virus/VIRUS.
+  const visual = kind === 'generic' ? optionVisualIcon(value, category) : undefined
   if (visual) return visual
   const Icon = kind === 'weapon' ? Crosshair : kind === 'audio' ? Volume2 : kind === 'warhead' ? Bomb : kind === 'projectile' ? Rocket : kind === 'debris' ? Sparkles : Box
   return <span className={`unitArtworkIcon fallback referenceOptionFallback referenceTypeIcon referenceTypeIcon-${kind}`} style={{ width: 28, height: 24 }}><Icon size={15}/></span>
@@ -356,7 +358,6 @@ function App() {
   const unsavedChangesRef = useRef(false)
 
   const rows = useMemo(() => rowsFromSnapshot(snapshot), [snapshot])
-  const rowById = useMemo(() => new Map(rows.map(row => [row.id.toLowerCase(), row])), [rows])
   const rulesNavigation = useMemo(() => buildRulesNavigation(rawRules), [rawRules])
   const countryExclusiveRows = useMemo(() => {
     if (!selected || selected.category !== '国家') return []
@@ -469,9 +470,13 @@ function App() {
     const category = referenceCategoryForOption(option)
     const value = option.value.trim()
     if (!category || !value || value.includes(',')) return null
-    const target = rowById.get(value.toLowerCase()) ?? null
-    if (!target) return null
-    return target.category.replace('战车', '载具') === category.replace('战车', '载具') ? target : null
+    const candidates = referenceRows(option)
+    // Prefer an exact-case Section match first. This disambiguates real RA2 collisions
+    // such as infantry [VIRUS] versus warhead [Virus]. Only then fall back to the
+    // engine-friendly case-insensitive match, still constrained to the expected type.
+    return candidates.find(row => row.id === value)
+      ?? candidates.find(row => row.id.toLowerCase() === value.toLowerCase())
+      ?? null
   }
 
   function updateLocalSetting<K extends keyof LocalEditorSettings>(key: K, value: LocalEditorSettings[K]) {
